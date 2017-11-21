@@ -1,0 +1,87 @@
+{
+    "parameters": {
+        "caffe.launcher": "${DLBS_ROOT}/scripts/launchers/caffe.sh",
+        "caffe.fork": "bvlc",
+        "caffe.phase": "$('train' if '${exp.phase}' == 'training' else 'deploy')$",
+        "caffe.action": "$('train' if '${exp.phase}' == 'training' else 'time')$",
+        "caffe.model_file": "${exp.id}.model.prototxt",
+        "caffe.solver_file": "${exp.id}.solver.prototxt",
+        "caffe.model_dir": "$('${DLBS_ROOT}/models/${exp.model}' if '${exp.env}' == 'host' else '/workspace/model')$",
+        "caffe.solver": [
+            "net: '${caffe.model_dir}/${caffe.model_file}'\\n",
+            "max_iter: ${exp.bench_iters}\\n",
+            "test_interval: 0\\n",
+            "snapshot: 0\\n",
+            "snapshot_after_train: false\\n",
+            "base_lr: 0.01\\n",
+            "lr_policy: 'fixed'\\n",
+            "solver_mode: $('${exp.device}'.upper())$\\n",
+            "$('solver_data_type: ${nvidia_caffe.solver_precision}' if '${exp.framework_id}' == 'nvidia_caffe' else '')$"
+        ],
+        "caffe.args": [
+            "$('--solver=${caffe.model_dir}/${caffe.solver_file}' if '${exp.phase}' == 'training' else '')$",
+            "$('--model=${caffe.model_dir}/${caffe.model_file}' if '${exp.phase}' == 'inference' else '')$",
+            "$('-iterations ${exp.bench_iters}' if '${exp.phase}' == 'inference' else '')$",
+            "$('--gpu=${exp.gpus}' if '${exp.device}' == 'gpu' else '')$"
+        ],
+        "caffe.data_dir": "",
+        "caffe.mirror": true,
+        "caffe.data_mean_file": "",
+        "caffe.data_backend": "LMDB",
+        "caffe.host.path": "${${caffe.fork}_caffe.host.path}",
+        "caffe.docker.image": "${${caffe.fork}_caffe.docker.image}",
+        "caffe.docker.args": [
+            "-i",
+            "--security-opt seccomp=unconfined",
+            "--pid=host",
+            "--volume=${DLBS_ROOT}/models/${exp.model}:/workspace/model",
+            "$('--volume=${CUDA_CACHE_PATH}:/workspace/cuda_cache' if '${CUDA_CACHE_PATH}' else '')$",
+            "$('--volume=${caffe.data_dir}:/workspace/data' if '${caffe.data_dir}' else '')$",
+            "$('--volume=${resource_monitor.pid_file_folder}:/workspace/tmp' if '${resource_monitor.enabled}' == 'true' else '')$",
+            "${exp.docker.args}",
+            "${caffe.docker.image}"
+        ],
+        "bvlc_caffe.host.path": "${HOME}/projects/bvlc_caffe/build/tools",
+        "bvlc_caffe.host.libpath": "",
+        "bvlc_caffe.docker.image": "hpe/bvlc_caffe:cuda9-cudnn7",
+        "nvidia_caffe.host.path": "${HOME}/projects/nvidia_caffe/build/tools",
+        "nvidia_caffe.host.libpath": "",
+        "nvidia_caffe.docker.image": "hpe/nvidia_caffe:cuda9-cudnn7",
+        "nvidia_caffe.solver_precision": "FLOAT",
+        "nvidia_caffe.forward_precision": "FLOAT",
+        "nvidia_caffe.forward_math_precision": "FLOAT",
+        "nvidia_caffe.backward_precision": "FLOAT",
+        "nvidia_caffe.backward_math_precision": "FLOAT",
+        "intel_caffe.host.path": "${HOME}/projects/intel_caffe/build/tools",
+        "intel_caffe.host.libpath": "",
+        "intel_caffe.docker.image": "hpe/intel_caffe:cpu"
+    },
+    "extensions": [
+        {
+            "condition":{ "exp.framework": "bvlc_caffe" },
+            "parameters": { "exp.framework_id":"bvlc_caffe", "exp.framework": "caffe", "caffe.fork": "bvlc" }
+        },
+        {
+            "condition":{ "exp.framework": "nvidia_caffe" },
+            "parameters": { "exp.framework_id":"nvidia_caffe", "exp.framework": "caffe", "caffe.fork": "nvidia" }
+        },
+        {
+            "condition":{ "exp.framework": "intel_caffe" },
+            "parameters": { "exp.framework_id":"intel_caffe", "exp.framework": "caffe", "caffe.fork": "intel" }
+        },
+        {
+            "condition":{ "exp.framework": "caffe", "exp.env": "docker" },
+            "parameters": { "caffe.env": ["$('CUDA_CACHE_PATH=${runtime.cuda_cache}' if '${CUDA_CACHE_PATH}' else '')$"]}
+        },
+        {
+            "condition":{ "exp.framework": "caffe", "exp.env": "host" },
+            "parameters": { 
+                "caffe.env": [
+                    "PATH=$('${${caffe.fork}_caffe.host.path}:\\$PATH'.strip(' \t:'))$",
+                    "LD_LIBRARY_PATH=$('${${caffe.fork}_caffe.host.libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
+                    "$('CUDA_CACHE_PATH=${runtime.cuda_cache}' if '${CUDA_CACHE_PATH}' else '')$"
+                ]
+            }
+        }
+    ]
+}

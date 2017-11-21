@@ -1,0 +1,41 @@
+{
+    "parameters": {
+        "exp.framework": "",
+        "exp.model": "",
+        "exp.env": "host",
+        "exp.warmup_iters": 2,
+        "exp.bench_iters": 100,
+        "exp.phase": "training",
+        "exp.device_batch": 16,
+        "exp.gpus": "0",
+        "exp.num_gpus": "$(len('${exp.gpus}'.replace(',', ' ').split()))$",
+        "exp.device": "$('gpu' if ${exp.num_gpus} > 0 else 'cpu')$",
+        "exp.dtype": "float",
+        "exp.enable_tensor_core": "false",
+
+        "exp.simulation": "false",
+        "exp.bench_root": "${BENCH_ROOT}",
+        "exp.framework_id": "${exp.framework}",
+        "exp.id": "$(uuid.uuid4().__str__().replace('-',''))$",                        
+        "exp.effective_batch": "$(${exp.num_gpus}*${exp.device_batch} if '${exp.device}' == 'gpu' else ${exp.device_batch})$",    
+        "exp.exp_path": "${exp.bench_root}/${exp.framework}/${exp.env}/${exp.device}/${exp.phase}",
+        "exp.log_file": "${exp.exp_path}/exp/$('${exp.gpus}'.replace(',','.'))$_${exp.model}_${exp.effective_batch}.log",
+        "exp.force_rerun": "false",
+        "exp.docker.launcher": "$('nvidia-docker' if '${exp.device}' == 'gpu' else 'docker')$",
+        "exp.docker.image": "${${exp.framework_id}.docker.image}",
+        "exp.docker.args": "",
+
+        "resource_monitor.enabled": "false",
+        "resource_monitor.pid_file_folder": "/dev/shm/dl",
+        "resource_monitor.launcher": "${DLBS_ROOT}/scripts/resource_monitor.sh",
+        "resource_monitor.data_file": "${exp.bench_root}/resource_consumption.csv",
+        "resource_monitor.frequency": 0.1,
+
+        "runtime.bind_proc": "",
+        "runtime.limit_resources": "",
+        "runtime.cuda_cache": "$('${CUDA_CACHE_PATH}' if '${exp.env}' == 'host' else '/workspace/cuda_cache')$",
+
+        "sys.plan_builder.var_order": ["exp.framework", "exp.phase", "exp.model", "exp.gpus"],
+        "sys.plan_builder.method": "cartesian_product"
+    }
+}

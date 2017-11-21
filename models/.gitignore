@@ -1,0 +1,4 @@
+# Ignore all Caffe and TensorFlow binary files
+**/*.caffemodel
+**/*.pb
+**/*.pyc

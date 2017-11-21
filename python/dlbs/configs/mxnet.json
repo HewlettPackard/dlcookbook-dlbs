@@ -1,0 +1,55 @@
+{
+    "parameters": {
+        "mxnet.launcher": "${DLBS_ROOT}/scripts/launchers/mxnet.sh",
+        "mxnet.bench_path": "$('${DLBS_ROOT}/python' if '${exp.env}' == 'host' else '/workspace')$",
+        "mxnet.cudnn_autotune": "true",
+        "mxnet.kv_store": "device",    
+        "mxnet.data_dir": "",
+        "mxnet.args": [
+            "--model=${exp.model}",
+            "--forward_only=$('true' if '${exp.phase}'=='inference' else 'false')$",
+            "--batch_size=${exp.device_batch}",
+            "--num_batches=${exp.bench_iters}",
+            "--num_warmup_batches=${exp.warmup_iters}",
+            "--num_gpus=${exp.num_gpus}",
+            "--device=${exp.device}",
+            "--kv_store=${mxnet.kv_store}",
+            "$('' if not '${mxnet.data_dir}' else '--data_dir=${mxnet.data_dir}' if '${exp.env}' == 'host' else '/workspace/data')$"
+        ],
+        "mxnet.docker.image": "hpe/mxnet:cuda9-cudnn7",
+        "mxnet.docker.args": [
+            "-i",
+            "--security-opt seccomp=unconfined",
+            "--pid=host",
+            "--volume=${DLBS_ROOT}/python/mxnet_benchmarks:/workspace/mxnet_benchmarks",
+            "$('--volume=${CUDA_CACHE_PATH}:/workspace/cuda_cache' if '${CUDA_CACHE_PATH}' else '')$",
+            "$('--volume=${mxnet.data_dir}:/workspace/data' if '${mxnet.data_dir}' else '')$",
+            "$('--volume=${resource_monitor.pid_file_folder}:/workspace/tmp' if '${resource_monitor.enabled}' == 'true' else '')$",
+            "${exp.docker.args}",
+            "${mxnet.docker.image}"
+        ],
+        "mxnet.host.python_path": "${HOME}/projects/mxnet/python",
+        "mxnet.host.libpath": ""
+    },
+    "extensions": [
+        {
+            "condition":{ "exp.framework": "mxnet", "exp.env": "docker" },
+            "parameters": { "mxnet.env": [
+                "PYTHONPATH=$('${mxnet.bench_path}:\\$PYTHONPATH'.strip(' \t:'))$",
+                "$('CUDA_CACHE_PATH=${runtime.cuda_cache}' if '${CUDA_CACHE_PATH}' else '')$",
+                "CUDA_VISIBLE_DEVICES=${exp.gpus}",
+                "MXNET_CUDNN_AUTOTUNE_DEFAULT=$(1 if '${mxnet.cudnn_autotune}' == 'true' else 0)$"
+            ]}
+        },
+        {
+            "condition":{ "exp.framework": "mxnet", "exp.env": "host" },
+            "parameters": { "mxnet.env": [
+                "LD_LIBRARY_PATH=$('${mxnet.host.libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
+                "PYTHONPATH=$('${mxnet.host.python_path}:${mxnet.bench_path}:\\$PYTHONPATH'.strip(' \t:'))$",
+                "$('CUDA_CACHE_PATH=${runtime.cuda_cache}' if '${CUDA_CACHE_PATH}' else '')$",
+                "CUDA_VISIBLE_DEVICES=${exp.gpus}",
+                "MXNET_CUDNN_AUTOTUNE_DEFAULT=$(1 if '${mxnet.cudnn_autotune}' == 'true' else 0)$"
+            ]}
+        }
+    ]
+}

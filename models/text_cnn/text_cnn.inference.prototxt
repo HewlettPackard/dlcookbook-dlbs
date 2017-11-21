@@ -1,0 +1,97 @@
+name: "TextCNN"
+layer {
+  name: "data"
+  type: "Input"
+  top: "data"
+  input_param { shape: { dim: __EXP_DEVICE_BATCH__ dim: 1 dim: 59 dim: 128 } }
+}
+
+layer {
+  name: "conv1/1x128"
+  type: "Convolution"
+  bottom: "data"
+  top: "conv1/1x128"
+
+  convolution_param {
+    num_output: 128
+    kernel_w: 128
+    kernel_h: 1
+    stride: 1
+  }
+}
+
+layer {
+  name: "conv1/3x128"
+  type: "Convolution"
+  bottom: "data"
+  top: "conv1/3x128"
+
+  convolution_param {
+    num_output: 128
+    kernel_w: 128
+    kernel_h: 3
+    pad_h: 1
+    stride: 1
+  }
+}
+
+layer {
+  name: "conv1/5x128"
+  type: "Convolution"
+  bottom: "data"
+  top: "conv1/5x128"
+
+  convolution_param {
+    num_output: 128
+    kernel_w: 128
+    kernel_h: 5
+    pad_h: 2
+    stride: 1
+  }
+}
+
+layer {
+  name: "conv1/output"
+  type: "Concat"
+  bottom: "conv1/1x128"
+  bottom: "conv1/3x128"
+  bottom: "conv1/5x128"
+  top: "conv1/output"
+}
+
+layer {
+  name: "conv1/relu"
+  type: "ReLU"
+  bottom: "conv1/output"
+  top: "conv1/relu"
+}
+
+layer {
+  name: "pool1"
+  type: "Pooling"
+  bottom: "conv1/relu"
+  top: "pool1"
+  pooling_param {
+    pool: MAX
+    kernel_w: 1
+    kernel_h: 59
+    stride: 1
+  }
+}
+
+layer {
+  name: "fc"
+  type: "InnerProduct"
+  bottom: "pool1"
+  top: "fc"
+  inner_product_param {
+    num_output: 10
+  }
+}
+
+layer {
+  name: "prob"
+  type: "Softmax"
+  bottom: "fc"
+  top: "prob"
+}

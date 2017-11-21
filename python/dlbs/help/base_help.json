@@ -1,0 +1,47 @@
+{
+    "exp.framework": [
+        "Framework to use. Supported frameworks: 'tensorflow', 'caffe2', 'mxnet', 'tensorrt',",
+        "'nvidia_caffe', 'intel_caffe', 'bvlc_caffe'. May be overriden be experimenter if mutiple",
+        "frameworks share the same backend implementation like all Caffe forks."
+    ],
+    "exp.model": "A model identifier to use such as 'alexnet', 'googlenet', 'vgg16' etc. Framework specific.",
+    "exp.env": "Benchmarking environment - docker or bare metal. Possible values: 'docker' or 'host'",
+    "exp.warmup_iters": "Number of warmup iterations to perform if supported by backend (For instance, Caffe does not support it).",
+    "exp.bench_iters": "Number of benchmarking iterations.",
+    "exp.phase": "Phase to benchmark. Possible values - 'inference' or 'training'",
+    "exp.device_batch": "A device batch size.",
+    "exp.gpus": "GPUs to use. List of comma-separated GPU identifiers. For instance '0' or '0,1' or '0,1,2,3' or '0,1,2,3,4,5,6,7'.",
+    "exp.num_gpus": "Number of GPUs. Default value is computed based on ${exp.gpus} value.",
+    "exp.device": "Device to use. Possible values - 'gpu' or 'cpu'. By default, is computed based on ${exp.num_gpus} value.",
+    "exp.dtype": "Type of data to use if supported by a framework. Possible values 'float32', 'float16' or 'int8'.",
+    "exp.enable_tensor_core": [
+        "If true, enable tensor core operations for NVIDIA V100 and CUDA >= 9.0 if supported by a framework.",
+        "Possible values 'true' or 'false'"
+    ],
+    "exp.simulation": "If true, do not run benchmark but print framework command line to a log file instead.",
+    "exp.bench_root": "Root bechmark folder. Based on this relative path other paths, like log files, may be specified.",
+    "exp.framework_id": "Unique framework identifier, default value is ${exp.framework}.",
+    "exp.id": "UUID for a single benchamrk experiment.",
+    "exp.effective_batch": "Effective batch size.",    
+    "exp.exp_path": "Root folder where benchmark log files are stored.",
+    "exp.log_file": "Benchmark log files.",
+    "exp.force_rerun": "If log file exists and false, benchmark will not be ran.",
+    "exp.docker.launcher": "One of 'nvidia-docker' or 'docker' depending on a ${exp.device} value.",
+
+    "resource_monitor.enabled": "If true, in-process monitor is started that logs system resource consumption.",
+    "resource_monitor.pid_file_folder": "A folder that contains file that is used to commonicate process identifier to monitor.",
+    "resource_monitor.launcher": "A resource montor launcher script.",
+    "resource_monitor.data_file": "A resource monitor log file",
+    "resource_monitor.frequency": "Sampling frequency in seconds.",
+
+    "runtime.limit_resources": "Something that limits process resources. It's used like ${runtime.limit_resources} ${runtime.bind_proc} command with parameters.",
+    "runtime.bind_proc": [
+        "Can be used to spicify process binding commands like numactl or taskset.",
+        "In general, it's any command that should launch the framework. May be a debugger probably.",
+        "It's used like ${runtime.limit_resources} ${runtime.bind_proc} command with parameters."
+    ],
+    "runtime.cuda_cache": "CUDA cache path. May significantly speedup slow startup when a large number of experuments are ran. Set to somewhere in /dev/shm.",
+
+    "sys.plan_builder.var_order": "Order in which plan builder varies variables doing Cartesian product.",
+    "sys.plan_builder.method": "Method to build multiple experiments, the only supported value is 'cartesian_product'."
+}

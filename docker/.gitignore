@@ -1,0 +1,3 @@
+# Ignore all Caffe and TensorFlow binary files
+**/*.log
+**/*.out

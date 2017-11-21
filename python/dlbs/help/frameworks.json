@@ -1,0 +1,31 @@
+{
+    "__base__": [
+        "exp.framework", "exp.model", "exp.env", "exp.warmup_iters", "exp.bench_iters", 
+        "exp.phase", "exp.device_batch", "exp.gpus", "exp.log_file"
+    ],
+    "tensorflow": [
+        "tensorflow.var_update", "tensorflow.use_nccl",  
+        "tensorflow.local_parameter_device",
+        "tensorflow.docker.image", "tensorflow.host.libpath"
+    ],
+    "caffe": [
+    ],
+    "bvlc_caffe":[
+         "bvlc_caffe.host.path", "bvlc_caffe.host.libpath", "bvlc_caffe.docker.image"
+    ],
+    "nvidia_caffe":[
+        "nvidia_caffe.host.path", "nvidia_caffe.host.libpath", "nvidia_caffe.docker.image"
+    ],
+    "intel_caffe":[
+        "intel_caffe.host.path", "intel_caffe.host.libpath", "intel_caffe.docker.image"
+    ],
+    "caffe2":[
+        "caffe2.docker.image", "caffe2.host.python_path", "caffe2.host.libpath"
+    ],
+    "mxnet":[
+        "mxnet.kv_store", "mxnet.docker.image", "mxnet.host.python_path", 
+        "mxnet.host.libpath"
+    ],
+    "tensorrt":[
+    ]
+}
