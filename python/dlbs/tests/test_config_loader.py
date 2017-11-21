@@ -66,6 +66,10 @@ class TestConfigurationLoader(unittest.TestCase):
             "host.path", "host.libpath", "docker.image", "solver_precision",
             "forward_precision", "forward_math_precision",
             "backward_precision", "backward_math_precision"
+        ],
+        'tensorrt': [
+            "launcher", "args", "model_file", "model_dir", "docker.image", 
+            "docker.args", "profile", "input", "output", "host.path", "host.libpath"
         ]
     }
 

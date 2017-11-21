@@ -120,7 +120,7 @@ status=0
 for dockerfile_dir in "$@"; do
     # If no version provided, read it from file.
     [ "${use_version}" == "false" ] && version=""
-    
+
     # Firstly, check if user specified Dockerfile instead of a directory
     if [ "$(basename $dockerfile_dir)" == "Dockerfile" ] && [ -f "$dockerfile_dir" ]; then
         dockerfile_dir=$(dirname $dockerfile_dir)
@@ -154,7 +154,7 @@ for dockerfile_dir in "$@"; do
         version=$(get_value_by_key ./versions  "${name}\/${tag}")
         if [ "${version}XXX" == "XXX" ]; then
             logwarn "Framework version for docker file  '${name}/${tag}' not found in ./versions (trying general framework version)."
-            version=$(get_value_by_key ./versions  "${name}") 
+            version=$(get_value_by_key ./versions  "${name}")
             if [ "${version}XXX" == "XXX" ]; then
                 logwarn "Framework version '${name}' not found in ./versions."
                 status=1
@@ -164,11 +164,18 @@ for dockerfile_dir in "$@"; do
     fi
 
     img_name=$prefix/$name:$tag                     # something like hpe/caffe:gpu
-    dockerfile_dir=$DLBS_ROOT/docker/$name/$tag     # something like caffe/gpu (dir)
     assert_files_exist $dockerfile_dir/Dockerfile
+    dockerfile_dir=$DLBS_ROOT/docker/$name/$tag     # something like caffe/gpu (dir)
     args="--build-arg version=${version} --build-arg cuda_arch_bin=${cuda_arch_bin} --build-arg cuda_arch_ptx=${cuda_arch_ptx}"
     [ -n "$http_proxy" ] && args="$args --build-arg http_proxy=$http_proxy"
     [ -n "$https_proxy" ] && args="$args --build-arg https_proxy=$https_proxy"
+
+    # If we are building tensorrt docker, we need to copy source of benchmark
+    # project to docker context folder
+    if [ "$name" == "tensorrt" ]; then
+        rm -rf -- $dockerfile_dir/tensorrt       # Delete if old version exists
+        cp -r ../src/tensorrt  $dockerfile_dir   # Copy project
+    fi
 
 
     exec="docker build -t $img_name $args $dockerfile_dir"
@@ -186,5 +193,8 @@ for dockerfile_dir in "$@"; do
     ret_code=$?
     loginfo "docker image $img_name build finished with code $ret_code"
     [ "$ret_code" -ne "0" ] && status=$ret_code
+
+    # If it was TensorRT, clean folder
+    [ "$name" == "tensorrt" ] && rm -rf -- $dockerfile_dir/tensorrt
 done
 exit $status

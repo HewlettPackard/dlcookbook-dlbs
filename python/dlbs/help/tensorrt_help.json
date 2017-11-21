@@ -1,0 +1,13 @@
+{
+    "tensorrt.launcher": "Path to script that launches TensorRT benchmarks.",
+    "tensorrt.args": "Command line arguments that launcher uses to launch TensorRT.",
+    "tensorrt.model_file": "Caffe's prototxt inference (deploy) model file.",
+    "tensorrt.model_dir": "Directory where Caffe's model file is located. Different for host/docker benchmarks.)$",
+    "tensorrt.docker.image": "The name of a docker image to use for TensorRT.",
+    "tensorrt.docker.args": "In case if containerized benchmarks, this are the docker parameters.",
+    "tensorrt.profile": "If true, per layer statistics are measured.",
+    "tensorrt.input": "Name of an input data tensor (data)",
+    "tensorrt.output": "Name of an output tensor (prob)",
+    "tensorrt.host.path": "Path to a tensorrt executable in case of bare metal run.",
+    "tensorrt.host.libpath": "Basically, it's a LD_LIBRARY_PATH for TensorRT in case of a bare metal run (should be empty)."
+}

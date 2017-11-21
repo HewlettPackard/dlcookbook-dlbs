@@ -1,26 +1,54 @@
 {
     "parameters": {
         "tensorrt.launcher": "${DLBS_ROOT}/scripts/launchers/tensorrt.sh",
-        "tensorrt.env": [
-            "CUDA_VISIBLE_DEVICES=${exp.gpus}"
+        "tensorrt.args": [
+            "--model ${tensorrt.model_dir}/${tensorrt.model_file}",
+            "--batch_size ${exp.device_batch}",
+            "--dtype ${exp.dtype}",
+            "--num_warmup_batches ${exp.warmup_iters}",
+            "--num_batches ${exp.bench_iters}",
+            "$('--profile' if '${tensorrt.profile}' == 'true' else '')$",
+            "--input ${tensorrt.input}",
+            "--output ${tensorrt.output}"
         ],
-        "tensorrt.def_file": "${exp.id}.model.prototxt",
-        "tensorrt.precision": "fp32",
-        "tensorrt.docker.image": "hpe/tensorrt:gpu",
+        "tensorrt.model_file": "${exp.id}.model.prototxt",
+        "tensorrt.model_dir": "$('${DLBS_ROOT}/models/${exp.model}' if '${exp.env}' == 'host' else '/workspace/model')$",
+        "tensorrt.docker.image": "hpe/tensorrt:cuda8-cudnn6",
         "tensorrt.docker.args": [
             "-i",
             "--security-opt seccomp=unconfined",
+            "--pid=host",
             "--volume=${DLBS_ROOT}/models/${exp.model}:/workspace/model",
             "$('--volume=${CUDA_CACHE_PATH}:/workspace/cuda_cache' if '${CUDA_CACHE_PATH}' else '')$",
             "$('--volume=${resource_monitor.pid_file_folder}:/workspace/tmp' if '${resource_monitor.enabled}' == 'true' else '')$",
+            "${exp.docker.args}",
             "${tensorrt.docker.image}"
-        ]
+        ],
+        "tensorrt.profile": "false",
+        "tensorrt.input": "data",
+        "tensorrt.output": "prob",
+        "tensorrt.host.path": "${DLBS_ROOT}/src/tensorrt/build",
+        "tensorrt.host.libpath": ""
     },
     "extensions": [
         {
             "condition":{ "exp.framework": "tensorrt" },
             "parameters": { 
-                "exp.disabled": "$('true' if ('${exp.phase}'=='training') or ('${exp.device}'=='cpu') or (${exp.num_gpus}>1) or ('${exp.env}'=='host') else 'false')$" 
+                "exp.disabled": "$('true' if ('${exp.phase}'=='training') or ('${exp.device}'=='cpu') or (${exp.num_gpus}>1) else 'false')$" 
+            }
+        },
+        {
+            "condition":{ "exp.framework": "tensorrt", "exp.env": "docker" },
+            "parameters": { "tensorrt.env": ["$('CUDA_CACHE_PATH=${runtime.cuda_cache}' if '${CUDA_CACHE_PATH}' else '')$"]}
+        },
+        {
+            "condition":{ "exp.framework": "tensorrt", "exp.env": "host" },
+            "parameters": { 
+                "tensorrt.env": [
+                    "PATH=$('${tensorrt.host.path}:\\$PATH'.strip(' \t:'))$",
+                    "LD_LIBRARY_PATH=$('${tensorrt.host.libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
+                    "$('CUDA_CACHE_PATH=${runtime.cuda_cache}' if '${CUDA_CACHE_PATH}' else '')$"
+                ]
             }
         }
     ]
