@@ -10,7 +10,6 @@ Deep Learning Benchmarking Suite (DLBS) is a set of command line tools for provi
 1. Install Docker and NVIDIA Docker for containerized benchmarks. Read [here](/docker/docker.md?id=docker) why we prefer to use docker and [here](/docker/install_docker.md?id=installing-docker) for installing/troubleshooting tips. This is not required. DLBS can work with bare metal framework installations.
 2. Clone Deep Learning Benchmarking Suite from [GitHub](https://github.com/HewlettPackard/dlcookbook-dlbs)
    ```bash
-   cd $HOME
    git clone https://github.com/HewlettPackard/dlcookbook-dlbs dlbs
    ```
 3. Build/pull docker images for containerized benchmarks or build/install host frameworks for bare metal benchmarks.
@@ -25,16 +24,18 @@ Deep Learning Benchmarking Suite (DLBS) is a set of command line tools for provi
    There are several ways to get Docker images. Read [here](/docker/pull_build_images.md?id=buildpull-docker-images) about various options including images from [NVIDIA GPU Cloud](https://www.nvidia.com/en-us/gpu-cloud/).
 
 ## Quick start
-Assuming the project has been cloned to `$HOME/dlbs` and TensorFlow is installed, execute the following commands to run simple experiment with ResNet50 model:
+Assuming TensorFlow is installed and CUDA enabled GPU is present, execute the following commands to run simple experiment with ResNet50 model:
 ```bash
 # Go to DLBS home folder
-cd ~/dlbs
+cd dlbs
+# Setup python paths
+export PYTHONPATH=$(pwd)/python:$PYTHONPATH
 # Create folder for experiment results
 mkdir -p ./benchmarks/my_experiment
 # Run experiment
-PYTHONPATH=$(pwd)/python:$PYTHONPATH python ./python/dlbs/experimenter.py run -Pexp.framework='"tensorflow"' -Pexp.model='"resnet50"' -Pexp.gpus='"0"' -Pexp.bench_root='"./benchmarks/my_experiment"' -Pexp.log_file='"${exp.bench_root}/tf.log"'
+python ./python/dlbs/experimenter.py run -Pexp.framework='"tensorflow"' -Pexp.model='"resnet50"' -Pexp.gpus='"0"' -Pexp.bench_root='"./benchmarks/my_experiment"' -Pexp.log_file='"${exp.bench_root}/tf.log"'
 # Print some results
-PYTHONPATH=$(pwd)/python:$PYTHONPATH python ./python/dlbs/logparser.py --keys exp.device results.training_time exp.framework_title exp.model_title exp.device_batch -- ./benchmarks/my_experiment/tf.log
+python ./python/dlbs/logparser.py --keys exp.device results.training_time exp.framework_title exp.model_title exp.device_batch -- ./benchmarks/my_experiment/tf.log
 ```
 
 If everything is OK, you should expect seeing this JSON (training time - an average batch time - of course will be different):

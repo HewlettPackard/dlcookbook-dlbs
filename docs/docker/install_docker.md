@@ -193,6 +193,6 @@ There are several great sources with best practices on how to write Dockerfiles.
 * [Docker Best Practices](https://github.com/FuriKuri/docker-best-practices)
 * [How to write excellent Dockerfiles](https://rock-it.pl/how-to-write-excellent-dockerfiles/)
 
-Another advice that can help in minimzing space occupied by image layers.
+Another advice that can help minimizing space occupied by image layers.
 
 1. `Scenario`: Install application/driver/library from a very large file stored on your hard drive. `Why is it a problem?`: Normally, you need to copy (`COPY` command) this file inside an image during a build process. This will create a layer with that file even though you will not need it and after installation you will delete it. `Solution`: Run `python -m SimpleHTTPServer` from the folder on your HDD where you store that file. It will enable http access to that file over the network. You can use normal `RUN` command in Dockerfile to download it (wget) and then delete it. Since it is all done inside a single `RUN` command, there will be no trace of this large file left in image layers.

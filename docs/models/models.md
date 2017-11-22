@@ -35,8 +35,8 @@ In current version, models are defined depending on which framework backend is u
 ## Supported models
 
 The following table summarizes models we currently support. We try to make sure that every
-model implementation is the same across all frameworks. The source code for the models contains
-references of the original implementations.
+model implementation is the same across all frameworks. There may still be differences - I am working
+on it now. The source code for the models contains references of the original implementations.
 
 <table>
   <tr>

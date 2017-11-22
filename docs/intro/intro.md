@@ -14,7 +14,7 @@ There are several components in DLBS:
 
 2. `Launcher script` - aka launcher - a thin bash wrapper script that launches framework with appropriate arguments. Its task is to parse command line arguments and launch respective framework using these parameters. If supported, this script must be able to launch experiments in docker and host environments or in distributed environment.
 
-3. `Benchmark script` - if present, usually a python project that knows how to run training/inference with a particular model for one framework. We take advantage of existing TensorFlow's CNN [benchmarks](https://github.com/tensorflow/benchmarks/tree/master/scripts/tf_cnn_benchmarks) to benchmark TensorFlow. We have our in-house implementation of benchmarking proejcts with similar command line API for [Caffe2](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/caffe2_benchmarks), and [MXNet](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/mxnet_benchmarks) frameworks. Caffe's forks do not require similar benchmark scripts due to natural integration with launcher scripts.
+3. `Benchmark script` - if present, usually a python project that knows how to run training/inference with a particular model for one framework. We take advantage of existing TensorFlow's CNN [benchmarks](https://github.com/tensorflow/benchmarks/tree/master/scripts/tf_cnn_benchmarks) to benchmark TensorFlow. We have our in-house implementation of benchmarking projects with similar command line API for [Caffe2](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/caffe2_benchmarks), and [MXNet](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/mxnet_benchmarks) frameworks. Caffe's forks do not require similar benchmark scripts due to natural integration with launcher scripts.
 
 4. `Log parser`. Every entity in DLBS writes information to log files as key-value pairs. Log parser parses any textual file and extracts those key-value pairs and puts them into a dictionary. A value can be an arbitrary json parsable string (i.e. values can be any json-serialziable objects like numbers, strings, lists, dictionaries, objects etc.)
 
@@ -146,7 +146,7 @@ If some of the parameters cannot be expanded or if there is a cyclic dependency,
 
 
 ## Default parameters
-We have default parameters for Caffe, Caffe2, TensorFlow and TensorRT frameworks. They are located in [configs](https://github.hpe.com/labs/dlcookbook/tree/master/python/dlbs/configs) folder and are loaded each time you run experimenter. So, there's no need to provide every parameter. If required, you can disable loading default parameters and create configurations from scratch.
+We have default parameters for Caffe, Caffe2, TensorFlow, MXNet and TensorRT frameworks. They are located in [configs](https://github.hpe.com/labs/dlcookbook/tree/master/python/dlbs/configs) folder and are loaded each time you run experimenter. So, there's no need to provide every parameter. If required, you can disable loading default parameters and create configurations from scratch.
 
 ## Command line arguments
 It is not required to provide json specification to experimenter. Majority of benchmark experiments can be specified on a command line.

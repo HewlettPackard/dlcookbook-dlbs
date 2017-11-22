@@ -12,13 +12,13 @@ We provide a number of Dockerfiles for various frameworks/software stacks. We al
 The structure of that folder is the following:
 1. The folder itself contains subfolders. One subfolder for one framework. The name of a subfolder becomes an image name.
 2. Every subfolder contains subfolders that contain Dockerfiles for various hardware/software stack. The names of those subfolders become image tag.
-3. A prefix is added to an image name. Default value is `hpe`. User can specify their own prefix with `--prefix=my_prefix` command line argument.
+3. A prefix is added to an image name. Default value is `hpe`. User can specify their own prefix with `--prefix my_prefix` command line argument.
 
-The name of an image thus becomes `$prefix/$framework:$tag`. The build script requires one mandatory parameter - path to a folder file with Dockerfile to build. For instance, the following command:
+The name of an image thus becomes `$prefix/$framework:$tag`. The build script requires one mandatory parameter - path to a folder with Dockerfile to build. For instance, the following command:
 ```bash
 ./build tensorflow/cuda8-cudnn6
 ```
-builds a latest TensorFlow docker images (master branch) with Ubuntu 16.04, CUDA 8 and cuDNN 6. The image name is `hpe/tensorflow:cuda8-cudnn6`.
+builds a specific version of TensorFlow docker images (versions are defined in [versions](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/docker/versions) file) with Ubuntu 16.04, CUDA 8 and cuDNN 6. The image name is `hpe/tensorflow:cuda8-cudnn6`.
 
 This is a list of docker files we provide (they are not optimized yet, we are working on it):
 * benchmarks
@@ -47,4 +47,4 @@ This is a list of docker files we provide (they are not optimized yet, we are wo
   * [cuda8-cudnn7](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/docker/tensorflow/cuda8-cudnn7)
   * [cuda9-cudnn7](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/docker/tensorflow/cuda9-cudnn7)
 * TensorRT
-  * [gpu](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/docker/tensorrt/gpu)
+  * [cuda8-cudnn6](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/docker/tensorrt/cuda8-cudnn6)
