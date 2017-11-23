@@ -6,6 +6,7 @@ export CUDA_CACHE_PATH=/dev/shm/cuda_cache
 script=$DLBS_ROOT/python/dlbs/experimenter.py
 
 action=run
+loglevel=warning
 #------------------------------------------------------------------------------#
 # Example: a minimal working example to run TensorRT. Run one experiment and
 # store results in a file.
@@ -14,10 +15,10 @@ action=run
 # This example runs in a host OS. You need to have TensorRT and build a TensorRT
 # benchmarker in $DLBS_ROOT/src/tensorrt
 # I need to run it as a root. Need to investigate further.
-if false; then
+if true; then
     rm -rf ./tensorrt
 
-    python $script $action --log-level=debug\
+    python $script $action --log-level=$loglevel\
                            -Pexp.framework='"tensorrt"'\
                            -Pexp.env='"host"'\
                            -Pexp.gpus='0'\
@@ -28,10 +29,10 @@ if false; then
     python $DLBS_ROOT/python/dlbs/logparser.py ./tensorrt/*.log --keys exp.framework_id exp.effective_batch results.inference_time results.total_time exp.model_title
 fi
 
-if true; then
+if false; then
     rm -rf ./tensorrt
 
-    python $script $action --log-level=debug\
+    python $script $action --log-level=$loglevel\
                            -Pexp.framework='"tensorrt"'\
                            -Pexp.env='"docker"'\
                            -Pexp.gpus='0'\
@@ -46,7 +47,7 @@ fi
 # Example: this one runs TensorRT with several models and several batch sizes
 if false; then
     rm -rf ./tensorrt
-    python $script $action --log-level=debug\
+    python $script $action --log-level=$loglevel\
                    -Pexp.framework='"tensorrt"'\
                    -Pexp.env='"host"'\
                    -Pexp.gpus='0'\

@@ -7,16 +7,17 @@ script=$DLBS_ROOT/python/dlbs/experimenter.py
 
 action=run
 framework=nvidia_caffe
+loglevel=warning
 #------------------------------------------------------------------------------#
 # Example: a minimal working example to run NVIDIA Caffe. Run one experiment and
 # store results in a file.
 # If you run multiple experiments, you really want to make sure that experiment
 # log file is different for every experiment.
 
-if false; then
+if true; then
     rm -rf ./$framework
 
-    python $script $action --log-level=debug\
+    python $script $action --log-level=$loglevel\
                            -Pexp.warmup_iters=0\
                            -Pexp.bench_iters=100\
                            -Pexp.framework='"nvidia_caffe"'\
@@ -35,7 +36,7 @@ fi
 if false; then
     rm -rf ./$framework
 
-    python $script $action --log-level=info\
+    python $script $action --log-level=$loglevel\
                            -Pexp.framework='"nvidia_caffe"'\
                            -Vexp.env='["docker"]'\
                            -Pexp.gpus='0'\
@@ -50,7 +51,7 @@ fi
 #------------------------------------------------------------------------------#
 # Example: this example shows how to run bare metal BVLC Caffe with custom library path
 
-if true; then
+if false; then
     rm -rf ./$framework
 
     python $script $action --log-level=info\

@@ -1,7 +1,0 @@
-input_shape: "*,3,224,224"
-name: "GoogleNet"
-caffe2_impl: "yes"
-caffe2_skip: "no"
-input_size: "150528"
-int8_infer: "yes"
-

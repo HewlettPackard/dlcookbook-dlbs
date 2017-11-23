@@ -27,6 +27,6 @@
         "mxnet.host.libpath"
     ],
     "tensorrt":[
-        "tensorrt.model_file", "tensorrt.docker.image", "tensorrt.host.path"
+        "tensorrt.docker.image", "tensorrt.host.path"
     ]
 }

@@ -9,5 +9,6 @@ export experimenter="python $DLBS_ROOT/python/dlbs/experimenter.py"
 [ ! -z $(which nvidia-docker) ] && export HAVE_NVIDIA_DOCKER=true || export HAVE_NVIDIA_DOCKER=false
 [ ! -z $(which python) ] && export HAVE_PYTHON=true || export HAVE_PYTHON=false
 [ ! -z $(which awk) ] && export HAVE_AWK=true || export HAVE_AWK=false
+[ ! -z $(which sed) ] && export HAVE_SED=true || export HAVE_SED=false
 
 source $DLBS_ROOT/scripts/utils.sh

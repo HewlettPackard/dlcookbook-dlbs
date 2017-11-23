@@ -45,7 +45,7 @@ class Launcher(object):
         return 'exp.force_rerun' in exp and exp['exp.force_rerun'] == 'true'
 
     @staticmethod
-    def run(plan):
+    def run(plan, compute_variables=True):
         """Runs experiments.
 
         Before running experiments, make sure we can compute variables. Exception
@@ -53,9 +53,10 @@ class Launcher(object):
         convert all lists into white space separated strings.
 
         :param list plan: List of experiments to perform.
+        :param bool compute_variables: If true, variables need to be comptued.
         """
-
-        Processor().compute_variables(plan)
+        if compute_variables:
+            Processor().compute_variables(plan)
         num_experiments = len(plan)
         start_time = datetime.datetime.now()
         stats = {

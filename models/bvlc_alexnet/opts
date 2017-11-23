@@ -1,6 +1,0 @@
-input_shape: "*,3,227,227"
-name: "AlexNet"
-caffe2_impl: "yes"
-input_size: "154587"
-int8_infer: "yes"
-

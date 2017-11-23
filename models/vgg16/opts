@@ -1,6 +1,0 @@
-input_shape: "*,3,224,224"
-name: "VGG16"
-caffe2_impl: "yes"
-input_size: "150528"
-int8_infer: "yes"
-

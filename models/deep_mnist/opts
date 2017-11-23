@@ -1,6 +1,0 @@
-input_shape: "*,1,28,28"
-name: "DeepMNIST"
-caffe2_impl: "yes"
-input_size: "784"
-int8_infer: "yes"
-

@@ -6,6 +6,7 @@ export CUDA_CACHE_PATH=/dev/shm/cuda_cache
 script=$DLBS_ROOT/python/dlbs/experimenter.py
 
 action=run
+loglevel=warning
 #------------------------------------------------------------------------------#
 # Example: a minimal working example to run MxNet. Run one experiment and
 # store results in a file.
@@ -15,7 +16,7 @@ action=run
 if true; then
     rm -rf ./mxnet
 
-    python $script $action --log-level=debug\
+    python $script $action --log-level=$loglevel\
                            -Pexp.framework='"mxnet"'\
                            -Pexp.gpus='0'\
                            -Pexp.env='"docker"'\
@@ -35,7 +36,7 @@ fi
 if false; then
     rm -rf ./mxnet
 
-    python $script $action --log-level=debug\
+    python $script $action --log-level=$loglevel\
                            -Pexp.framework='"mxnet"'\
                            -Pexp.gpus='0'\
                            -Vexp.env='["docker", "host"]'\

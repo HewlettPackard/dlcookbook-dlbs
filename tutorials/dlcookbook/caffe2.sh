@@ -6,6 +6,7 @@ export CUDA_CACHE_PATH=/dev/shm/cuda_cache
 script=$DLBS_ROOT/python/dlbs/experimenter.py
 
 action=run
+loglevel=warning
 #------------------------------------------------------------------------------#
 # Example: a minimal working example to run Caffe2. Run one experiment and
 # store results in a file.
@@ -14,7 +15,7 @@ action=run
 if true; then
     rm -rf ./caffe2
 
-    python $script $action --log-level=debug\
+    python $script $action --log-level=$loglevel\
                            -Pexp.warmup_iters=0\
                            -Pexp.bench_iters=200\
                            -Pexp.framework='"caffe2"'\
@@ -35,7 +36,7 @@ fi
 if false; then
     rm -rf ./caffe2
 
-    python $script run --log-level=debug\
+    python $script run --log-level=$loglevel\
                    -Pexp.docker.launcher='"nvidia-docker"'\
                    -Pexp.framework='"caffe2"'\
                    -Pexp.gpus='"0"'\

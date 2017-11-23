@@ -1,5 +1,0 @@
-name: "ResNet50"
-caffe2_impl: "no"
-caffe2_skip: "yes"
-input_size: "150528"
-int8_infer: "no"

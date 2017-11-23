@@ -1,5 +1,0 @@
-input_shape: "*,540"
-name: "EngAcousticModel"
-caffe2_impl: "yes"
-input_size: "540"
-int8_infer: "yes"

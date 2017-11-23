@@ -39,5 +39,8 @@ Some of the components of this project are derived/inspired from/by the followin
 9.  To visualize neural network architectures, we use Netscope project:
     https://github.com/ethereon/netscope
 
-10.  Documentation is served with docsify:
+10. Documentation is served with docsify:
     https://github.com/QingWei-Li/docsify/
+
+11. TensorRT benchmark C++ code is based on NVIDIA's `giexec.cpp` sample shipped with
+    TensorRT distribution package.

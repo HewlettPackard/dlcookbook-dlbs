@@ -7,6 +7,7 @@ script=$DLBS_ROOT/python/dlbs/experimenter.py
 
 action=run
 framework=bvlc_caffe
+loglevel=warning
 #------------------------------------------------------------------------------#
 # Example: a minimal working example to run BVLC Caffe. Run one experiment and
 # store results in a file.
@@ -16,7 +17,7 @@ framework=bvlc_caffe
 if true; then
     rm -rf ./$framework
 
-    python $script $action --log-level=debug\
+    python $script $action --log-level=$loglevel \
                            -Pexp.warmup_iters=0\
                            -Pexp.bench_iters=100\
                            -Pexp.framework='"bvlc_caffe"'\
@@ -35,7 +36,7 @@ fi
 if false; then
     rm -rf ./$framework
 
-    python $script $action --log-level=info\
+    python $script $action --log-level=$loglevel\
                            -Pexp.framework='"bvlc_caffe"'\
                            -Vexp.env='["docker"]'\
                            -Pexp.gpus='0'\
@@ -53,7 +54,7 @@ fi
 if false; then
     rm -rf ./$framework
 
-    python $script $action --log-level=info\
+    python $script $action --log-level=$loglevel\
                            -Pexp.framework='"bvlc_caffe"'\
                            -Vexp.env='["host"]'\
                            -Pexp.gpus='0'\

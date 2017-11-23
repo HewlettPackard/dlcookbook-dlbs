@@ -6,6 +6,7 @@ export CUDA_CACHE_PATH=/dev/shm/cuda_cache
 script=$DLBS_ROOT/python/dlbs/experimenter.py
 
 action=run
+loglevel=warning
 #------------------------------------------------------------------------------#
 # Example: a minimal working example to run TensorFlow. Run one experiment and
 # store results in a file.
@@ -15,7 +16,7 @@ action=run
 if true; then
     rm -rf ./tensorflow
 
-    python $script $action --log-level=debug\
+    python $script $action --log-level=$loglevel\
                            -Pexp.warmup_iters=0\
                            -Pexp.bench_iters=100\
                            -Pexp.device_batch=1\
@@ -32,7 +33,7 @@ fi
 #------------------------------------------------------------------------------#
 # Example: this one runs tensorflow with several models and several batch sizes
 if false; then
-    python $script $action --log-level=debug\
+    python $script $action --log-level=$loglevel\
                            -Pexp.framework='"tensorflow"'\
                            -Pexp.gpus='0'\
                            -Vexp.env='["docker", "host"]'\

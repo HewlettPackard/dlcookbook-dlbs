@@ -36,6 +36,7 @@ import os
 import subprocess
 import string
 import copy
+from collections import defaultdict
 from dlbs.processor import Processor
 
 class Validator(object):
@@ -58,10 +59,13 @@ class Validator(object):
         self.framework_host_checks = {}    # Temporary storage for the mapping "framework -> env". Env is the env
                                            # variables that we have already checked.
 
-    def validate(self):
-        """Performs all checks for provided plan."""
-        processor = Processor()
-        processor.compute_variables(self.plan)
+    def validate(self, compute_variables=True):
+        """Performs all checks for provided plan.
+        
+        :param bool compute_variables: If true, variables need to be comptued.
+        """
+        if compute_variables:
+            Processor().compute_variables(self.plan)
 
         log_files = set()
         for experiment in self.plan:
@@ -96,11 +100,12 @@ class Validator(object):
 
     def report(self):
         """Prints validation summary."""
-        print("========================= PLAN SUMMARY =========================")
-        print("Is plan OK .......................... %s" % (str(self.plan_ok)))
-        print("Number of experiments ............... %d" % (len(self.plan)))
-        print("Number of disabled experiments ...... %d" % (self.num_disabled))
-        print("Log files collisions ................ %s" % ('YES' if self.log_files_collisions else 'NO'))
+        print("====================== VALIDATION REPORT =======================")
+        if self.messages:
+            print("=========================== MESSAGES ===========================")
+            print(json.dumps(list(self.messages), sort_keys=False, indent=4))
+        print("======================== FRAMEWORK STATS =======================")
+        print(json.dumps(self.frameworks, sort_keys=False, indent=4))
         if not self.plan_ok:
             print("============================ ERRORS ============================")
             if self.log_files_collisions:
@@ -109,11 +114,11 @@ class Validator(object):
             if self.errors:
                 print("Other errors:")
                 print(json.dumps(self.errors, sort_keys=False, indent=4))
-        if self.messages:
-            print("=========================== MESSAGES ===========================")
-            print(json.dumps(list(self.messages), sort_keys=False, indent=4))
-        print("======================== FRAMEWORK STATS =======================")
-        print(json.dumps(self.frameworks, sort_keys=False, indent=4))
+        print("========================= PLAN SUMMARY =========================")
+        print("Is plan OK .......................... %s" % (str(self.plan_ok)))
+        print("Number of experiments ............... %d" % (len(self.plan)))
+        print("Number of disabled experiments ...... %d" % (self.num_disabled))
+        print("Log files collisions ................ %s" % ('YES' if self.log_files_collisions else 'NO'))
         print("================================================================")
 
     def update_framework_stats(self, exp):
@@ -199,9 +204,13 @@ class Validator(object):
 
         self.framework_host_checks[framework].add(env)
 
-        # Convert `env` to valid dictionary of variables
+        # Convert `env` to valid dictionary of variables. Here, the 'env' is a
+        # computed parameter. It still may have dependencies on standard system
+        # variables like PYTHONPATH or LD_LIBRARY_PATH. We need to take care if
+        # these variables are not in os.environ when we substitute them. That's
+        # defaultdict is used here.
         variables = {}
-        for item in string.Template(env.replace('\$', '$')).substitute(os.environ).split():
+        for item in string.Template(env.replace('\$', '$')).substitute(defaultdict(lambda: '', os.environ)).split():
             name_value = item.split('=')
             variables[name_value[0]] = name_value[1]
         # Run simple tests
@@ -218,6 +227,8 @@ class Validator(object):
             #cmd = ['python', '-c', 'from caffe2.python.build import CAFFE2_NO_OPERATOR_SCHEMA; print(CAFFE2_NO_OPERATOR_SCHEMA);']
         elif framework == 'caffe':
             cmd = ['caffe', '--version']
+        elif framework == 'tensorrt':
+            cmd = ['tensorrt', '--version']
 
         if cmd is not None:
             retcode, output = Validator.run_process(cmd, env=variables)
@@ -266,7 +277,7 @@ class Validator(object):
         :param dict env: Environmental variables to initialize environment.
         :return: tuple (return_code (int), command_output (list of strings))
         """
-        process = subprocess.Popen(cmd, universal_newlines=True, stdout=subprocess.PIPE, 
+        process = subprocess.Popen(cmd, universal_newlines=True, stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT, env=env)
         output = []
         while True:

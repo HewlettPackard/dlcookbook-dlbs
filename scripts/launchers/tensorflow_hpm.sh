@@ -10,11 +10,6 @@ fi
 __framework__="TensorFlow"
 __batch_file__="$(dirname ${exp_log_file})/${exp_framework_id}_${exp_device}_${exp_model}.batch"
 is_batch_good "${__batch_file__}" "${exp_device_batch}" || exit 0
-opts_file="$DLBS_ROOT/models/${exp_model}/opts"
-if [ -f "$opts_file" ]; then
-    net_name=$(get_value_by_key $opts_file "name") || logfatal "$net_name";
-fi
-echo "__exp.model_title__= \"${net_name}\"" >> ${exp_log_file}
 echo "__exp.framework_title__= \"${__framework__}\"" >> ${exp_log_file}
 # This script is to be executed inside docker container or on a host machine.
 # Thus, the environment must be initialized inside this scrip lazily.

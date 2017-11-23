@@ -1,6 +1,0 @@
-input_shape: "*,1,59,128"
-name: "TextCNN"
-caffe2_impl: "no"
-input_size: "7552"
-int8_infer: "yes"
-
