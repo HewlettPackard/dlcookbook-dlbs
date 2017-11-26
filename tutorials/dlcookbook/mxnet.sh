@@ -20,11 +20,12 @@ if true; then
                            -Pexp.framework='"mxnet"'\
                            -Pexp.gpus='0'\
                            -Pexp.env='"docker"'\
-                           -Vexp.device_batch='[1]'\
-                           -Pexp.warmup_iters=0\
+                           -Vexp.device_batch='[16]'\
+                           -Pexp.warmup_iters=10\
                            -Pexp.bench_iters=100\
                            -Pmxnet.cudnn_autotune='"false"'\
-                           -Vexp.model='["googlenet"]'\
+                           -Vexp.model='["alexnet"]'\
+                           -Pexp.phase='"training"'\
                            -Pexp.log_file='"${BENCH_ROOT}/mxnet/${exp.model}_${exp.effective_batch}.log"'\
                            -Pmxnet.docker.image='"hpe/mxnet:cuda9-cudnn7"'
 

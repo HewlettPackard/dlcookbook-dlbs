@@ -19,6 +19,9 @@ References:
   Krizhevsky, Alex, Ilya Sutskever, and Geoffrey E. Hinton
   ImageNet Classification with Deep Convolutional Neural Networks
   Advances in Neural Information Processing Systems. 2012
+  
+  http://ethereon.github.io/netscope/#/gist/5c94a074f4e4ac4b81ee28a796e04b5d
+  Reference AlexNet with grouped convolutions removed.
 """
 
 import model

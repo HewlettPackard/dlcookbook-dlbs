@@ -43,8 +43,8 @@ on it now. The source code for the models contains references of the original im
     <th>model</th><th>Name</th><th>#Parameters</th><th>#Model size (Mb)</th><th>TensorFlow</th><th>Caffe</th><th>TensorRT</th><th>Caffe2</th><th>MXNet</th>
   </tr>
   <tr>
-    <td>alexnet</td><td>[AlexNet](http://ethereon.github.io/netscope/#/gist/f2e4825a8d4f8a3609cefd7ffadc910a)</td>
-    <td>60,965,224</td><td>233</td>
+    <td>alexnet</td><td>[AlexNet](http://ethereon.github.io/netscope/#/gist/5c94a074f4e4ac4b81ee28a796e04b5d)</td>
+    <td>62,378,344</td><td>238</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/alexnet_model.py)</td>
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/bvlc_alexnet)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/alexnet.py)</td>
@@ -52,7 +52,7 @@ on it now. The source code for the models contains references of the original im
   </tr>
   <tr>
     <td>deep_mnist</td><td>[DeepMNIST](http://ethereon.github.io/netscope/#/gist/9c75cd95891207082bd42264eb7a2706)</td>
-    <td></td><td></td>
+    <td>11,972,510</td><td>46</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/deepmnist_model.py)</td>
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/deep_mnist)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/deep_mnist.py)</td>
@@ -60,7 +60,7 @@ on it now. The source code for the models contains references of the original im
   </tr>
   <tr>
     <td>eng_acoustic_model</td><td>[EngAcousticModel]()</td>
-    <td></td><td></td>
+    <td>34,678,784</td><td>133</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/engacoustic_model.py)</td>
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/eng_acoustic_model)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/eng_acoustic_model.py)</td>
@@ -92,34 +92,29 @@ on it now. The source code for the models contains references of the original im
     <td></td>
   </tr>
   <tr>
-    <td>overfeat</td><td>Overfeat</td>
-    <td></td><td></td>
+    <td>overfeat</td><td>[Overfeat](http://ethereon.github.io/netscope/#/gist/ebfeff824393bcd66a9ceb851d8e5bde)</td>
+    <td>145,920,872</td><td>557</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/overfeat_model.py)</td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
+    <td colspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/overfeat)</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/overfeat.py)</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/overfeat.py)</td>
   </tr>
   <tr>
-    <td>resnet18</td><td>ResNet18</td>
-    <td></td><td></td>
-    <td framework="tensorflow"></td>
-    <td framework="caffe"></td>
-    <td framework="tensorrt"></td>
+    <td>resnet18</td><td>[ResNet18](http://ethereon.github.io/netscope/#/gist/649e0fb6c96c60c9f0abaa339da3cd27)</td>
+    <td>11,703,485</td><td>45</td>
+    <td rowspan="7" framework="tensorflow">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/resnet_model.py)</td>
+    <td colspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/resnet18)</td>
     <td rowspan="7" framework="caffe2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/resnet.py)</td>
     <td rowspan="7" framework="mxnet">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/resnet.py)</td>
   </tr>
   <tr>
-    <td>resnet34</td><td>ResNet34</td>
-    <td></td><td></td>
-    <td framework="tensorflow"></td>
-    <td framework="caffe"></td>
-    <td framework="tensorrt"></td>
+    <td>resnet34</td><td>[ResNet34](http://ethereon.github.io/netscope/#/gist/277a9604370076d8eed03e9e44e23d53)</td>
+    <td>21,819,085</td><td>84</td>
+    <td colspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/resnet34)</td>
   </tr>
   <tr>
     <td>resnet50</td><td>[ResNet50](http://ethereon.github.io/netscope/#/gist/db945b393d40bfa26006)</td>
     <td>25,610,269</td><td>98</td>
-    <td rowspan="3">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/resnet_model.py)</td>
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/resnet50)</td>
   </tr>
   <tr>
@@ -133,37 +128,31 @@ on it now. The source code for the models contains references of the original im
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/resnet152)</td>
   </tr>
   <tr>
-    <td>resnet200</td><td>ResNet200</td>
-    <td></td><td></td>
-    <td framework="tensorflow"></td>
-    <td framework="caffe"></td>
-    <td framework="tensorrt"></td>
+    <td>resnet200</td><td>[ResNet200](http://ethereon.github.io/netscope/#/gist/38a20d8dd1a4725d12659c8e313ab2c7)</td>
+    <td>64,850,035</td><td>248</td>
+    <td framework="caffe" colspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/resnet200)</td>
   </tr>
   <tr>
-    <td>resnet269</td><td>ResNet269</td>
-    <td></td><td></td>
-    <td framework="tensorflow"></td>
-    <td framework="caffe"></td>
-    <td framework="tensorrt"></td>
+    <td>resnet269</td><td>[ResNet269](http://ethereon.github.io/netscope/#/gist/fbf7c67565523a9ac2c349aa89c5e78d)</td>
+    <td>102,326,456</td><td>391</td>
+    <td framework="caffe" colspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/resnet269)</td>
   </tr>
   <tr>
-    <td>vgg11</td><td>VGG11</td>
-    <td></td><td></td>
-    <td>[Impl](https://github.hpe.com/labs/dlcookbook/blob/master/python/tf_cnn_benchmarks/vgg_model.py)</td>
-    <td colspan="2"></td>
+    <td>vgg11</td><td>[VGG11](http://ethereon.github.io/netscope/#/gist/5550b93fb51ab63d520af5be555d691f)</td>
+    <td>132,863,336</td><td>507</td>
+    <td rowspan="4">[Impl](https://github.hpe.com/labs/dlcookbook/blob/master/python/tf_cnn_benchmarks/vgg_model.py)</td>
+    <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/vgg11)</td>
     <td rowspan="4">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/vgg.py)</td>
     <td rowspan="4">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/vgg.py)</td>
   </tr>
   <tr>
-    <td>vgg13</td><td>VGG13</td>
-    <td></td><td></td>
-    <td></td>
-    <td colspan="2"></td>
+    <td>vgg13</td><td>[VGG13](http://ethereon.github.io/netscope/#/gist/a96ba317064a61b22a1742bd05c54816)</td>
+    <td>133,047,848</td><td>508</td>
+    <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/vgg13)</td>
   </tr>
   <tr>
     <td>vgg16</td><td>[VGG16](http://ethereon.github.io/netscope/#/gist/050efcbb3f041bfc2a392381d0aac671)</td>
     <td>138,357,544</td><td>528</td>
-    <td rowspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/vgg_model.py)</td>
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/vgg16)</td>
   </tr>
   <tr>
@@ -174,3 +163,10 @@ on it now. The source code for the models contains references of the original im
 </table>
 
 The experimenter script accepts ``--model`` command line argument that specifies model to benchmark.
+
+1. __AlexNet__ Same as [BVLC Caffe's version](https://github.com/BVLC/caffe/tree/master/models/bvlc_alexnet) _without_ grouped convolutions in layers 2, 4 and 5 (`group=1`). This does not significantly change number of  trainable parameters but does change computational profile - roughly from 0.7 gFLOP to 1.14 gFLOP for forward pass.
+2. __DeepMNIST__ A fully-connected architecture mentioned [here](http://yann.lecun.com/exdb/mnist/) described in this [paper](http://arxiv.org/abs/1003.0358).
+3. __EngAcousticModel__ A fully-connected architecture that's typically used in hybrid HMM-DNN speech recognition systems (English language) for acoustic modeling.
+4. __Overfeat__ A model described in this [paper](https://arxiv.org/pdf/1312.6229.pdf). Based on Google's tf_cnn_benchmarks with additional dropout operators applied to 6th and 7th layers as described in the paper.
+5. __ResNets__ are the reference implementations. ResNet18 and ResNet34 are based on this [implementation](https://github.com/antingshen/resnet-protofiles).
+ResNet50, 101 and 152 are based on this [implementation](https://github.com/KaimingHe/deep-residual-networks). ResNet200 and 269 are based on ResNet152's descriptor. I re-implemented ResNets in tf_cnn_benchmarks. See details [here](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/resnet_model.py).

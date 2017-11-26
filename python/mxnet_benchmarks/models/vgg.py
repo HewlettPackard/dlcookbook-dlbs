@@ -34,9 +34,11 @@ class VGG(Model):
         Model.check_parameters(
             params,
             {'name': specs['name'], 'input_shape': (3, 224, 224),
-             'num_classes': 1000, 'phase': 'training'}
+             'num_classes': 1000, 'phase': 'training',
+             'dtype': 'float32'}
         )
         Model.__init__(self, params)
+        training = self.phase == 'training'
 
         v = mx.sym.Variable(name="data")
 
@@ -52,5 +54,6 @@ class VGG(Model):
         for i in range(2):
             v = mx.sym.FullyConnected(name='fc%d' % (6+i), data=v, num_hidden=4096)
             v = mx.symbol.Activation(name='relu%d' % (6+i), data=v, act_type="relu")
+            v = mx.symbol.Dropout(name='drop%d' % (6+i), data=v, p=0.5) if training else v
 
         self.__output = self.add_head_nodes(v)

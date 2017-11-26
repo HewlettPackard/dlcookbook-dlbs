@@ -1,9 +1,9 @@
-name: "AlexNet"
+name: "Overfeat"
 layer {
   name: "data"
   type: "Input"
   top: "data"
-  input_param { shape: { dim: __EXP_DEVICE_BATCH__ dim: 3 dim: 227 dim: 227 } }
+  input_param { shape: { dim: __EXP_DEVICE_BATCH__ dim: 3 dim: 231 dim: 231 } }
 }
 layer {
   name: "conv1"
@@ -31,24 +31,13 @@ layer {
   top: "conv1"
 }
 layer {
-  name: "norm1"
-  type: "LRN"
-  bottom: "conv1"
-  top: "norm1"
-  lrn_param {
-    local_size: 5
-    alpha: 0.0001
-    beta: 0.75
-  }
-}
-layer {
   name: "pool1"
   type: "Pooling"
-  bottom: "norm1"
+  bottom: "conv1"
   top: "pool1"
   pooling_param {
     pool: MAX
-    kernel_size: 3
+    kernel_size: 2
     stride: 2
   }
 }
@@ -67,9 +56,7 @@ layer {
   }
   convolution_param {
     num_output: 256
-    pad: 2
     kernel_size: 5
-    group: 1
   }
 }
 layer {
@@ -79,24 +66,13 @@ layer {
   top: "conv2"
 }
 layer {
-  name: "norm2"
-  type: "LRN"
-  bottom: "conv2"
-  top: "norm2"
-  lrn_param {
-    local_size: 5
-    alpha: 0.0001
-    beta: 0.75
-  }
-}
-layer {
   name: "pool2"
   type: "Pooling"
-  bottom: "norm2"
+  bottom: "conv2"
   top: "pool2"
   pooling_param {
     pool: MAX
-    kernel_size: 3
+    kernel_size: 2
     stride: 2
   }
 }
@@ -114,7 +90,7 @@ layer {
     decay_mult: 0
   }
   convolution_param {
-    num_output: 384
+    num_output: 512
     pad: 1
     kernel_size: 3
   }
@@ -139,10 +115,9 @@ layer {
     decay_mult: 0
   }
   convolution_param {
-    num_output: 384
+    num_output: 1024
     pad: 1
     kernel_size: 3
-    group: 1
   }
 }
 layer {
@@ -165,10 +140,9 @@ layer {
     decay_mult: 0
   }
   convolution_param {
-    num_output: 256
+    num_output: 1024
     pad: 1
     kernel_size: 3
-    group: 1
   }
 }
 layer {
@@ -184,7 +158,7 @@ layer {
   top: "pool5"
   pooling_param {
     pool: MAX
-    kernel_size: 3
+    kernel_size: 2
     stride: 2
   }
 }
@@ -194,7 +168,7 @@ layer {
   bottom: "pool5"
   top: "fc6"
   inner_product_param {
-    num_output: 4096
+    num_output: 3072
   }
 }
 layer {

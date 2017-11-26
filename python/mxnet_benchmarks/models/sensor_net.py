@@ -27,7 +27,8 @@ class SensorNet(Model):
         Model.check_parameters(
             params,
             {'name': 'SensorNet', 'input_shape':(784),
-             'num_classes': 16, 'phase': 'training'}
+             'num_classes': 16, 'phase': 'training',
+             'dtype': 'float32'}
         )
         Model.__init__(self, params)
 

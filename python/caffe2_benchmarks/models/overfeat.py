@@ -11,23 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-    http://ethereon.github.io/netscope/#/gist/5c94a074f4e4ac4b81ee28a796e04b5d
-    Reference AlexNet with grouped convolutions removed.
+""" 
+    Architecture described here https://arxiv.org/pdf/1312.6229.pdf
+    Based on Google's tf_cnn_benchmark implementation with dropout applied to
+    fully connected layers as described in the paper.
 """
 from __future__ import absolute_import
 from caffe2.python import brew
+from caffe2.python import workspace
 from caffe2_benchmarks.models.model import Model
 
-class AlexNet(Model):
-    """AlexNet neural network model."""
+class Overfeat(Model):
+    """Overfeat neural network model."""
 
-    implements = 'alexnet'
+    implements = 'overfeat'
 
     def __init__(self, params):
         Model.check_parameters(
             params,
-            {'name': 'AlexNet', 'input_shape':((3, 227, 227)),
+            {'name': 'Overfeat', 'input_shape':((3, 231, 231)),
              'num_classes': 1000, 'arg_scope': {'order': 'NCHW'}}
         )
         Model.__init__(self, params)
@@ -42,32 +44,30 @@ class AlexNet(Model):
         is_inference = self.phase == 'inference'
 
         v = 'data'
-
+        # Layer1
         v = brew.conv(model, v, 'conv1', 3, 96, kernel=11, stride=4)
         v = brew.relu(model, v, 'relu1')
-        v = brew.lrn(model, v, 'norm1', size=5, alpha=0.0001, beta=0.75)
-        v = brew.max_pool(model, v, 'pool1', kernel=3, stride=2)
-
-        v = brew.conv(model, v, 'conv2', 96, 256, kernel=5, pad=2, group=1)
+        v = brew.max_pool(model, v, 'pool1', kernel=2, stride=2)
+        # Layer2
+        v = brew.conv(model, v, 'conv2', 96, 256, kernel=5)
         v = brew.relu(model, v, 'relu2')
-        v = brew.lrn(model, v, 'norm2', size=5, alpha=0.0001, beta=0.75)
-        v = brew.max_pool(model, v, 'pool2', kernel=3, stride=2)
-
-        v = brew.conv(model, v, 'conv3', 256, 384, kernel=3, pad=1)
+        v = brew.max_pool(model, v, 'pool2', kernel=2, stride=2)
+        # Layer3
+        v = brew.conv(model, v, 'conv3', 256, 512, kernel=3, pad=1)
         v = brew.relu(model, v, 'relu3')
-
-        v = brew.conv(model, v, 'conv4', 384, 384, kernel=3, pad=1, group=1)
+        # Layer4
+        v = brew.conv(model, v, 'conv4', 512, 1024, kernel=3, pad=1)
         v = brew.relu(model, v, 'relu4')
-
-        v = brew.conv(model, v, 'conv5', 384, 256, kernel=3, pad=1, group=1)
+        # Layer5
+        v = brew.conv(model, v, 'conv5', 1024, 1024, kernel=3, pad=1)
         v = brew.relu(model, v, 'relu5')
-        v = brew.max_pool(model, v, 'pool5', kernel=3, stride=2)
-
-        v = brew.fc(model, v, 'fc6', dim_in=9216, dim_out=4096)
+        v = brew.max_pool(model, v, 'pool5', kernel=2, stride=2)
+        # Layer6
+        v = brew.fc(model, v, 'fc6', dim_in=6*6*1024, dim_out=3072)
         v = brew.relu(model, v, 'relu6')
         v = brew.dropout(model, v, 'drop6', ratio=0.5, is_test=is_inference)
-
-        v = brew.fc(model, v, 'fc7', dim_in=4096, dim_out=4096)
+        # Layer7
+        v = brew.fc(model, v, 'fc7', dim_in=3072, dim_out=4096)
         v = brew.relu(model, v, 'relu7')
         v = brew.dropout(model, v, 'drop7', ratio=0.5, is_test=is_inference)
 

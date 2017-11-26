@@ -48,6 +48,7 @@ class VGG(Model):
             is used to scale your loss to normalize for the number of GPUs.
             Signature: function(model, loss_scale)
         """
+        is_inference = self.phase == 'inference'
         layers, filters = VGG.specs[self.__model]['specs']
         v = 'data'
         dim_in = self.input_shape[0]
@@ -62,6 +63,7 @@ class VGG(Model):
         for i in range(2):
             v = brew.fc(model, v, 'fc%d' % (6+i), dim_in=dim_in, dim_out=4096)
             v = brew.relu(model, v, 'relu%d' % (6+i))
+            v = brew.dropout(model, v, 'drop%d' % (6+i), ratio=0.5, is_test=is_inference)
             dim_in = 4096
 
         return self.add_head_nodes(model, v, 4096, 'fc8', loss_scale=loss_scale)

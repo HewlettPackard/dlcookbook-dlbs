@@ -54,7 +54,8 @@ class GoogleNet(Model):
         Model.check_parameters(
             params,
             {'name': 'GoogleNet', 'input_shape':(3, 224, 224),
-             'num_classes': 1000, 'phase': 'training'}
+             'num_classes': 1000, 'phase': 'training',
+             'dtype': 'float32'}
         )
         Model.__init__(self, params)
         training = self.phase == 'training'

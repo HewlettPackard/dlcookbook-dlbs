@@ -16,13 +16,17 @@ if true; then
     rm -rf ./intel_caffe
 
     python $script $action --log-level=$loglevel\
+                           -Pexp.warmup_iters=10\
+                           -Pexp.bench_iters=100\
                            -Pexp.framework='"intel_caffe"'\
                            -Pexp.env='"docker"'\
+                           -Pexp.device_batch=16\
                            -Pexp.gpus='""'\
-                           -Pexp.model='"bvlc_alexnet"'\
-                           -Pexp.log_file='"${BENCH_ROOT}/${caffe.fork}_caffe/training.log"'
+                           -Vexp.model='["alexnet"]'\
+                           -Vexp.phase='["training"]'\
+                           -Pexp.log_file='"${BENCH_ROOT}/${caffe.fork}_caffe/${exp.model}.log"'\
 
-    python $DLBS_ROOT/python/dlbs/logparser.py ./intel_caffe/*.log --keys exp.framework_id exp.effective_batch results.training_time exp.model_title
+    python $DLBS_ROOT/python/dlbs/logparser.py ./intel_caffe/*.log --keys exp.framework_id exp.effective_batch results.training_time results.inference_time exp.model_title
 fi
 #------------------------------------------------------------------------------#
 # Example: this one runs tensorflow with several models and several batch sizes

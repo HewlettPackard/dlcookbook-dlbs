@@ -23,8 +23,8 @@ if true; then
                            -Pexp.env='"host"'\
                            -Pexp.gpus='0'\
                            -Pexp.phase='"inference"'\
-                           -Pexp.model='"deep_mnist"'\
-                           -Pexp.log_file='"${BENCH_ROOT}/tensorrt/deep_mnist.log"'
+                           -Vexp.model='["resnet269"]'\
+                           -Pexp.log_file='"${BENCH_ROOT}/tensorrt/${exp.model}.log"'
 
     python $DLBS_ROOT/python/dlbs/logparser.py ./tensorrt/*.log --keys exp.framework_id exp.effective_batch results.inference_time results.total_time exp.model_title
 fi

@@ -27,7 +27,8 @@ class DeepMNIST(Model):
         Model.check_parameters(
             params,
             {'name': 'DeepMNIST', 'input_shape':(784), 'num_classes': 10,
-             'phase': 'training'}
+             'phase': 'training',
+             'dtype': 'float32'}
         )
         Model.__init__(self, params)
 

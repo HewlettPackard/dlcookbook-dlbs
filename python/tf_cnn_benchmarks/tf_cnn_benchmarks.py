@@ -455,6 +455,78 @@ class ConvNetBuilder(object):
       self.top_layer = affine1
       self.top_size = num_out_channels
       return affine1
+  
+  def pad(self, p, input_layer=None):
+    if input_layer is None:
+      input_layer = self.top_layer
+    self.top_layer = tf.pad(input_layer,
+                            tf.constant([[0,0],[0,0],[p,p],[p,p]]),
+                            'CONSTANT')
+    return self.top_layer
+  
+  def residual_unit(self, num_filter, stride, dim_match, bottle_neck=True, 
+                    input_layer=None, in_size=None):
+    """ You must make sure you did:
+          cnn.use_batch_norm = True
+          cnn.batch_norm_config = {'decay': 0.9, 'epsilon': 2e-5, 'scale': True}
+        dim_match is basically true for every first unit (type A) in each stage.
+    """
+    assert self.use_batch_norm is True, "ResNets require cnn.use_batch_norm to be True"
+    if input_layer is None:
+      input_layer = self.top_layer
+    if in_size is None:
+      in_size = self.top_size
+    # Branch 1
+    if dim_match:
+      shortcut = input_layer
+    else:
+      # Will not use bias and will add batch norm
+      # Padding is always zero here.
+      shortcut = self.conv(
+        num_filter,                 # Number of output channels
+        1, 1,                       # Kernel
+        stride, stride,             # Stride
+        input_layer = input_layer,
+        num_channels_in = in_size,
+        activation = None,
+        mode='VALID'
+    )
+    # Branch 2
+    if bottle_neck:
+      interim_filters = int(num_filter * 0.25)
+      conv1 = self.conv(interim_filters, 1, 1, 1, 1,
+                        mode='VALID',
+                        input_layer=input_layer,
+                        num_channels_in=in_size,
+                        activation='relu')
+      pad2 = self.pad(p=1, input_layer=conv1)
+      conv2 = self.conv(interim_filters, 3, 3, stride, stride, 
+                        mode='VALID',
+                        input_layer=pad2,
+                        num_channels_in=interim_filters,
+                        activation='relu')
+      res = self.conv(num_filter, 1, 1, 1, 1,
+                      mode='VALID',
+                      input_layer=conv2,
+                      num_channels_in=interim_filters,
+                      activation=None)
+    else:
+      pad1 = self.pad(p=1, input_layer=input_layer)
+      conv1 = self.conv(num_filter, 3, 3, 1, 1,
+                        mode='VALID',
+                        input_layer=pad1,
+                        num_channels_in=in_size,
+                        activation='relu')
+      pad2 = self.pad(p=1, input_layer=conv1)
+      res = self.conv(num_filter, 3, 3, stride, stride, 
+                      mode='VALID',
+                      input_layer=pad2,
+                      num_channels_in=num_filter,
+                      activation=None)
+    # Element-wise summation and ReLU
+    self.top_layer = tf.nn.relu(shortcut + res)
+    self.top_size = num_filter
+    return self.top_layer
 
   def resnet_bottleneck_v1(self,
                            depth,

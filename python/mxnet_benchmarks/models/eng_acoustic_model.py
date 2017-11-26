@@ -27,7 +27,8 @@ class EngAcousticModel(Model):
         Model.check_parameters(
             params,
             {'name': 'EngAcousticModel', 'input_shape':(540),
-             'num_classes': 8192, 'phase': 'training'}
+             'num_classes': 8192, 'phase': 'training',
+             'dtype': 'float32'}
         )
         Model.__init__(self, params)
 

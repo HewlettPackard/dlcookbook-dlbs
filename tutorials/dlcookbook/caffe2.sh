@@ -16,13 +16,13 @@ if true; then
     rm -rf ./caffe2
 
     python $script $action --log-level=$loglevel\
-                           -Pexp.warmup_iters=0\
-                           -Pexp.bench_iters=200\
+                           -Pexp.warmup_iters=10\
+                           -Pexp.bench_iters=100\
                            -Pexp.framework='"caffe2"'\
                            -Pexp.gpus='0'\
                            -Pexp.env='"docker"'\
                            -Pexp.phase='"training"'\
-                           -Vexp.device_batch='[1]'\
+                           -Vexp.device_batch='[16]'\
                            -Vexp.model='["alexnet"]'\
                            -Pexp.log_file='"${BENCH_ROOT}/caffe2/${exp.model}_${exp.effective_batch}.log"'\
                            -Pcaffe2.docker.image='"hpe/caffe2:cuda9-cudnn7"'

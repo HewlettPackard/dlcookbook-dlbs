@@ -18,17 +18,18 @@ if true; then
     rm -rf ./$framework
 
     python $script $action --log-level=$loglevel \
-                           -Pexp.warmup_iters=0\
+                           -Pexp.warmup_iters=10\
                            -Pexp.bench_iters=100\
                            -Pexp.framework='"bvlc_caffe"'\
                            -Pexp.env='"docker"'\
                            -Pexp.gpus='0'\
                            -Vexp.model='["alexnet"]'\
-                           -Pexp.device_batch='"1"'\
+                           -Pexp.device_batch='"16"'\
+                           -Vexp.phase='["training"]'\
                            -Pexp.log_file='"${BENCH_ROOT}/${caffe.fork}_caffe/${exp.model}.log"'\
                            -Pcaffe.docker.image='"hpe/bvlc_caffe:cuda9-cudnn7"'
 
-    python $DLBS_ROOT/python/dlbs/logparser.py ./$framework/*.log --keys exp.framework_id exp.effective_batch results.training_time exp.model_title
+    python $DLBS_ROOT/python/dlbs/logparser.py ./$framework/*.log --keys exp.framework_id exp.effective_batch results.training_time results.inference_time exp.model_title
 fi
 #------------------------------------------------------------------------------#
 # Example: this one runs BVLC Caffe with several models and several batch sizes

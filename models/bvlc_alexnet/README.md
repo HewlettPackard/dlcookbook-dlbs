@@ -7,7 +7,16 @@ sha1: 9116a64c0fbe4459d18f4bb6b56d647b63920377
 caffe_commit: 709dc15af4a06bebda027c1eb2b3f3e3375d5077
 ---
 
+# Modifications
+
+This model is a replication of the model described in the [AlexNet](http://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks) publication __with the following modifications__:
+
+> All grouped convolutions are removed. These layers are affected: `conv2`, `conv4` and `conv5`.
+
+
+# Original message
 This model is a replication of the model described in the [AlexNet](http://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks) publication.
+
 
 Differences:
 - not training with the relighting data-augmentation;

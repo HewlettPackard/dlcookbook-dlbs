@@ -33,6 +33,7 @@ model_titles = {
     'eng_acoustic_model': 'EngAcousticModel',
     'sensor_net': 'SensorNet',
     'vgg11': 'VGG11',
+    'vgg13': 'VGG13',
     'vgg16': 'VGG16',
     'vgg19': 'VGG19',
     'lenet': 'LeNet',
@@ -42,9 +43,13 @@ model_titles = {
     'trivial': 'Trivial',
     'inception3': 'InceptionV3',
     'inception4': 'InceptionV4',
+    'resnet18': 'ResNet18',
+    'resnet34': 'ResNet34',
     'resnet50': 'ResNet50',
     'resnet101': 'ResNet101',
-    'resnet152': 'ResNet152'
+    'resnet152': 'ResNet152',
+    'resnet200': 'ResNet200',
+    'resnet269': 'ResNet269'
 }
 
 def get_model_config(model):
@@ -57,6 +62,8 @@ def get_model_config(model):
     mc = sensornet_model.SensorNetModel()
   elif model == 'vgg11':
     mc = vgg_model.Vgg11Model()
+  elif model == 'vgg13':
+    mc = vgg_model.Vgg13Model()    
   elif model == 'vgg16':
     mc = vgg_model.Vgg16Model()
   elif model == 'vgg19':
@@ -75,12 +82,8 @@ def get_model_config(model):
     mc = inception_model.Inceptionv3Model()
   elif model == 'inception4':
     mc = inception_model.Inceptionv4Model()
-  elif model == 'resnet50':
-    mc = resnet_model.Resnetv1Model(model, (3, 4, 6, 3))
-  elif model == 'resnet101':
-    mc = resnet_model.Resnetv1Model(model, (3, 4, 23, 3))
-  elif model == 'resnet152':
-    mc = resnet_model.Resnetv1Model(model, (3, 8, 36, 3))
+  elif model in ('resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'resnet200', 'resnet269'):
+    mc = resnet_model.ResNet(model)
   else:
     raise KeyError('Invalid model name \'%s\'' % model)
   return mc

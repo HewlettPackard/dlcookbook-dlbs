@@ -62,6 +62,15 @@ class Vgg11Model(model.Model):
     _construct_vgg(cnn, [1, 1, 2, 2, 2])
 
 
+class Vgg13Model(model.Model):
+
+  def __init__(self):
+    super(Vgg13Model, self).__init__('vgg11', 224, 64, 0.005)
+
+  def add_inference(self, cnn):
+    _construct_vgg(cnn, [2, 2, 2, 2, 2])
+
+
 class Vgg16Model(model.Model):
 
   def __init__(self):

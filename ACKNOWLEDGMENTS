@@ -44,3 +44,7 @@ Some of the components of this project are derived/inspired from/by the followin
 
 11. TensorRT benchmark C++ code is based on NVIDIA's `giexec.cpp` sample shipped with
     TensorRT distribution package.
+
+12. ResNet18 and ResNet34 inference/training Caffe's prototxt descriptors are based
+    on this Anting Shen's git hub repository (https://github.com/antingshen/resnet-protofiles).
+    They match reference implementations from Kaiming He's repository (see #5 above).

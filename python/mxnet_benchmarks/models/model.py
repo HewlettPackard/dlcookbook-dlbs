@@ -13,7 +13,7 @@
 # limitations under the License.
 """Base class for all models"""
 import mxnet as mx
-
+import numpy as np
 
 class Model(object):
     """Base class for all models"""
@@ -25,7 +25,7 @@ class Model(object):
             num_classes: size of output softmax (affine) operator
             phase: 'inference' or 'training'
         """
-        for param in ['name', 'input_shape', 'num_classes', 'phase']:
+        for param in ['name', 'input_shape', 'num_classes', 'phase', 'dtype']:
             assert param in params, "Missing mandatory neural net parameter '%s'" % param
         assert params['phase'] in ['inference', 'training'],\
                "Invalid phase: '%s'. Expecting 'inference' or 'training'" % (params['phase'])
@@ -33,6 +33,7 @@ class Model(object):
         self.__input_shape = params['input_shape']
         self.__num_classes = params['num_classes']
         self.__phase = params['phase']
+        self.__dtype = params['dtype']
 
     @staticmethod
     def check_parameters(params, default_params):
@@ -56,6 +57,8 @@ class Model(object):
             Output tensor
         """
         v = mx.sym.FullyConnected(data=v, num_hidden=self.num_classes)
+        if self.dtype == 'float16':
+            v = mx.sym.Cast(data=v, dtype=np.float32)
         if self.phase == 'training':
             labels = mx.sym.Variable(name="softmax_label")
             v = mx.symbol.SoftmaxOutput(data=v, label=labels, name='softmax')
@@ -83,3 +86,8 @@ class Model(object):
     def phase(self):
         """Get current phase ('training' or 'inference')"""
         return self.__phase
+
+    @property
+    def dtype(self):
+        """Get type of data ('float32' or 'float16' or 'int8')"""
+        return self.__dtype

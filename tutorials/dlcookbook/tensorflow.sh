@@ -17,14 +17,15 @@ if true; then
     rm -rf ./tensorflow
 
     python $script $action --log-level=$loglevel\
-                           -Pexp.warmup_iters=0\
+                           -Pexp.warmup_iters=10\
                            -Pexp.bench_iters=100\
-                           -Pexp.device_batch=1\
+                           -Pexp.device_batch=16\
                            -Pexp.framework='"tensorflow"'\
                            -Pexp.gpus='0'\
-                           -Pexp.model='"alexnet"'\
-                           -Pexp.log_file='"${BENCH_ROOT}/tensorflow/training.log"'\
+                           -Vexp.model='["alexnet"]'\
+                           -Pexp.log_file='"${BENCH_ROOT}/tensorflow/${exp.model}.log"'\
                            -Pexp.env='"docker"'\
+                           -Pexp.phase='"training"'\
                            -Ptensorflow.docker.image='"hpe/tensorflow:cuda9-cudnn7"'
 
     python $DLBS_ROOT/python/dlbs/logparser.py ./tensorflow/*.log --keys exp.framework_id exp.effective_batch results.training_time exp.model_title
