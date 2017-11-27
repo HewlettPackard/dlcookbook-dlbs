@@ -75,21 +75,17 @@ on it now. The source code for the models contains references of the original im
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/googlenet.py)</td>
   </tr>
   <tr>
-    <td>inception3</td><td>Inception3</td>
-    <td></td><td></td>
+    <td>inception3</td><td>[Inception3](http://ethereon.github.io/netscope/#/gist/04a797f778a7d513a9b52af4c1dbee4e)</td>
+    <td>23,869,094</td><td>91</td>
     <td rowspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/inception_model.py)</td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
+    <td colspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/inception3)</td>
+    <td rowspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/inception.py)</td>
+    <td rowspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/inception.py)</td>
   </tr>
   <tr>
-    <td>inception4</td><td>Inception4</td>
-    <td></td><td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
+    <td>inception4</td><td>[Inception4](http://ethereon.github.io/netscope/#/gist/8fdab7a3ea5bceb9169832dfd73b5e31)</td>
+    <td>42,743,133</td><td>163</td>
+    <td colspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/inception4)</td>
   </tr>
   <tr>
     <td>overfeat</td><td>[Overfeat](http://ethereon.github.io/netscope/#/gist/ebfeff824393bcd66a9ceb851d8e5bde)</td>

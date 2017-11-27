@@ -48,3 +48,9 @@ Some of the components of this project are derived/inspired from/by the followin
 12. ResNet18 and ResNet34 inference/training Caffe's prototxt descriptors are based
     on this Anting Shen's git hub repository (https://github.com/antingshen/resnet-protofiles).
     They match reference implementations from Kaiming He's repository (see #5 above).
+
+13. Caffe's InceptionV3 descriptors are based on this deployment config:
+    https://github.com/soeaver/caffe-model/blob/master/cls/inception/deploy_inception-v3.prototxt
+
+14. Caffe's InceptionV3 descriptors are based on this deployment config:
+    https://github.com/soeaver/caffe-model/blob/master/cls/inception/deploy_inception-v4.prototxt
