@@ -24,6 +24,7 @@ Some of the components of this project are derived/inspired from/by the followin
 
 6.  Caffe's VGG16 and VGG19 models are taken from here:
     https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md
+    https://gist.github.com/ksimonyan/3785162f95cd2d5fee77#file-readme-md
 
 7.  Frameworks' docker files are based on docker files from respective repositories:
       BVLC Caffe:    https://github.com/BVLC/caffe/tree/master/docker/gpu
@@ -52,5 +53,5 @@ Some of the components of this project are derived/inspired from/by the followin
 13. Caffe's InceptionV3 descriptors are based on this deployment config:
     https://github.com/soeaver/caffe-model/blob/master/cls/inception/deploy_inception-v3.prototxt
 
-14. Caffe's InceptionV3 descriptors are based on this deployment config:
+14. Caffe's InceptionV4 descriptors are based on this deployment config:
     https://github.com/soeaver/caffe-model/blob/master/cls/inception/deploy_inception-v4.prototxt

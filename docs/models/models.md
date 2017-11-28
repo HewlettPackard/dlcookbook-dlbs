@@ -59,7 +59,7 @@ on it now. The source code for the models contains references of the original im
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/deep_mnist.py)</td>
   </tr>
   <tr>
-    <td>eng_acoustic_model</td><td>[EngAcousticModel]()</td>
+    <td>eng_acoustic_model</td><td>[EngAcousticModel](http://ethereon.github.io/netscope/#/gist/10f5dee56b6f7bbb5da26749bd37ae16)</td>
     <td>34,678,784</td><td>133</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/engacoustic_model.py)</td>
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/eng_acoustic_model)</td>
@@ -152,7 +152,7 @@ on it now. The source code for the models contains references of the original im
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/vgg16)</td>
   </tr>
   <tr>
-    <td>vgg19</td><td>[VGG19]()</td>
+    <td>vgg19</td><td>[VGG19](http://ethereon.github.io/netscope/#/gist/f9e55d5947ac0043973b32b7ff51b778)</td>
     <td>143,667,240</td><td>548</td>
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/vgg19)</td>
   </tr>
@@ -162,7 +162,10 @@ The experimenter script accepts ``--model`` command line argument that specifies
 
 1. __AlexNet__ Same as [BVLC Caffe's version](https://github.com/BVLC/caffe/tree/master/models/bvlc_alexnet) _without_ grouped convolutions in layers 2, 4 and 5 (`group=1`). This does not significantly change number of  trainable parameters but does change computational profile - roughly from 0.7 gFLOP to 1.14 gFLOP for forward pass.
 2. __DeepMNIST__ A fully-connected architecture mentioned [here](http://yann.lecun.com/exdb/mnist/) described in this [paper](http://arxiv.org/abs/1003.0358).
-3. __EngAcousticModel__ A fully-connected architecture that's typically used in hybrid HMM-DNN speech recognition systems (English language) for acoustic modeling.
-4. __Overfeat__ A model described in this [paper](https://arxiv.org/pdf/1312.6229.pdf). Based on Google's tf_cnn_benchmarks with additional dropout operators applied to 6th and 7th layers as described in the paper.
-5. __ResNets__ are the reference implementations. ResNet18 and ResNet34 are based on this [implementation](https://github.com/antingshen/resnet-protofiles).
+3. __EngAcousticModel__ A fully-connected architecture that's typically used in hybrid HMM-DNN speech recognition systems (English language) for acoustic modeling. Similar to a speech network described in Large Scale Distributed Deep Networks [paper](https://research.google.com/archive/large_deep_networks_nips2012.html).
+4. __GoogleNet__ Same as version implemented in BVLC Caffe [here](https://github.com/BVLC/caffe/tree/master/models/bvlc_googlenet). Reference publication is [here](http://arxiv.org/abs/1409.4842).
+5. __Inception3__ and __Inception4__ are based on original implementation in [tf_cnn_benchmarks](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/inception_model.py). Inception3 model publication is [here](http://arxiv.org/abs/1512.00567). Inception4 publication is [here](http://arxiv.org/abs/1602.07261).
+6. __Overfeat__ A model described in this [paper](https://arxiv.org/pdf/1312.6229.pdf). Based on Google's tf_cnn_benchmarks with additional dropout operators applied to 6th and 7th layers as described in the paper.
+7. __ResNets__ are the reference implementations. ResNet18 and ResNet34 are based on this [implementation](https://github.com/antingshen/resnet-protofiles).
 ResNet50, 101 and 152 are based on this [implementation](https://github.com/KaimingHe/deep-residual-networks). ResNet200 and 269 are based on ResNet152's descriptor. I re-implemented ResNets in tf_cnn_benchmarks. See details [here](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/resnet_model.py).
+8. __VGGs__ VGG16 and VGG19 models are taken from [here](https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md) and [here](https://gist.github.com/ksimonyan/3785162f95cd2d5fee77#file-readme-md). They are improved versions of architectures described in this [paper](http://arxiv.org/pdf/1409.1556). VGG11 and VGG13 descriptors are based on VGG16.
