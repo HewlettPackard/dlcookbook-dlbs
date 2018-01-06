@@ -1,5 +1,6 @@
 bvlc_caffe:   "c430690aa5528e94e019971b94de325539984e77"
 nvidia_caffe: "cdb3d9a5d46774a3be3cc4c4ecc0bcd760901cc1"
+intel_caffe:  "f6a2a6b05defab4b637028ce4f7719cac340a86d"
 mxnet:        "079fc45383c2dad588ad6a1d779c33b738d514f8"
 caffe2:       "f075a2b55f93c6c9c7e5cca0c4279406a03b8653"
 tensorflow:   "d752244fbaad5e4268243355046d30990f59418f"

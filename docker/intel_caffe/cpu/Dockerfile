@@ -28,7 +28,8 @@ WORKDIR $CAFFE_ROOT
 
 # BVLC Caffe's version to clone
 ARG version=master
-RUN git clone -b ${version} https://github.com/intel/caffe.git . && \
+RUN git clone https://github.com/intel/caffe.git . && \
+    git reset --hard ${version} &&\
     for req in $(cat python/requirements.txt) pydot; do pip install $req; done && \
     mkdir build && cd build && \
     cmake -DCPU_ONLY=1 -DUSE_MKL2017_AS_DEFAULT_ENGINE=1 -DCMAKE_BUILD_TYPE=Release .. && \
