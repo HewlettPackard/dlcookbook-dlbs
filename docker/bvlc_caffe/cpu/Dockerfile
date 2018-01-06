@@ -33,7 +33,8 @@ ENV CAFFE_ROOT=/opt/caffe
 
 # BVLC Caffe's version to clone
 ARG version=master
-RUN git clone -b ${version} https://github.com/BVLC/caffe.git bvlc_caffe && cd ./bvlc_caffe && \
+RUN git clone https://github.com/BVLC/caffe.git bvlc_caffe && cd ./bvlc_caffe && \
+    git reset --hard ${version} &&\
     pip install --upgrade pip && \
     cd python && for req in $(cat requirements.txt) pydot; do pip install $req; done && cd .. && \
     mkdir build && cd build && \
