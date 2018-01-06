@@ -156,9 +156,7 @@ for dockerfile_dir in "$@"; do
             logwarn "Framework version for docker file  '${name}/${tag}' not found in ./versions (trying general framework version)."
             version=$(get_value_by_key ./versions  "${name}")
             if [ "${version}XXX" == "XXX" ]; then
-                logwarn "Framework version '${name}' not found in ./versions."
-                status=1
-                continue
+                logwarn "Framework version '${name}' not found in ./versions. Will use default defined in docker file for this framework:tag"
             fi
         fi
     fi
@@ -166,7 +164,8 @@ for dockerfile_dir in "$@"; do
     img_name=$prefix/$name:$tag                     # something like hpe/caffe:gpu
     assert_files_exist $dockerfile_dir/Dockerfile
     dockerfile_dir=$DLBS_ROOT/docker/$name/$tag     # something like caffe/gpu (dir)
-    args="--build-arg version=${version} --build-arg cuda_arch_bin=${cuda_arch_bin} --build-arg cuda_arch_ptx=${cuda_arch_ptx}"
+    [ "${version}XXX" == "XXX" ] && args="" || args="--build-arg version=${version}"
+    args="${args} --build-arg cuda_arch_bin=${cuda_arch_bin} --build-arg cuda_arch_ptx=${cuda_arch_ptx}"
     [ -n "$http_proxy" ] && args="$args --build-arg http_proxy=$http_proxy"
     [ -n "$https_proxy" ] && args="$args --build-arg https_proxy=$https_proxy"
 
@@ -181,7 +180,7 @@ for dockerfile_dir in "$@"; do
     exec="docker build -t $img_name $args $dockerfile_dir"
 
     loginfo "new docker image build started"
-    loginfo "framework version: ${version} [if applicable]"
+    loginfo "framework version: '${version}' [if provided externally or defined in 'versions' file]"
     loginfo "cuda BIN architecture: ${cuda_arch_bin} [if applicable]"
     loginfo "cuda PTX architecture: ${cuda_arch_ptx} [if applicable]"
     loginfo "image name: $img_name"
