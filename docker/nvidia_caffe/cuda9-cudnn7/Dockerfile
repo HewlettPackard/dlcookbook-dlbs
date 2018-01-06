@@ -41,7 +41,7 @@ ARG cuda_arch_ptx="50"
 #         You will need this if you get bunch of errors saying nvml* functions are not resolved.
 #cmake -DUSE_CUDNN=1 -DUSE_NCCL=1 -DNDEBUG=1 -DNVML_FOUND=1 -DNVML_LIBRARY=/usr/local/cuda/lib64/stubs/libnvidia-ml.so -DNVML_INCLUDE_DIR=/usr/local/cuda/include .. && \
 #cmake -DUSE_CUDNN=1 -DUSE_NCCL=1 -DNDEBUG=1 -DNVML_FOUND=0 .. && \
-RUN git clone --depth 1 https://github.com/NVIDIA/caffe nvidia_caffe && cd ./nvidia_caffe && \
+RUN git clone https://github.com/NVIDIA/caffe nvidia_caffe && cd ./nvidia_caffe && \
     git reset --hard ${version} &&\
     pip install --upgrade pip && \
     cd python && for req in $(cat requirements.txt) pydot; do pip install $req; done && pip install scikit-image && cd .. && \

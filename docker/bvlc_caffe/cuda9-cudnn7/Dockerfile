@@ -35,7 +35,7 @@ ENV CAFFE_ROOT=/opt/caffe
 ARG version=master
 ARG cuda_arch_bin="30 35 50 60 61 70"
 ARG cuda_arch_ptx="50"
-RUN git clone --depth 1 https://github.com/BVLC/caffe.git bvlc_caffe && cd ./bvlc_caffe && \
+RUN git clone https://github.com/BVLC/caffe.git bvlc_caffe && cd ./bvlc_caffe && \
     git reset --hard ${version} &&\
     pip install --upgrade pip && \
     cd python && for req in $(cat requirements.txt) pydot; do pip install $req; done && cd .. && \
