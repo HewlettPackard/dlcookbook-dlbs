@@ -44,7 +44,12 @@ if [ "${exp_phase}" == "training" ]; then
         sed -i "s/__BACKWARD_MATH___/${nvidia_caffe_backward_math_precision}/g" ${host_model_dir}/${caffe_model_file}
     fi
 fi
-sed -i "s/__EXP_DEVICE_BATCH__/${exp_device_batch}/g" ${host_model_dir}/${caffe_model_file}
+# For NVIDIA Caffe, protobuf must contain effective batch size.
+if [ "${caffe_fork}" == "nvidia" ]; then
+    sed -i "s/__EXP_DEVICE_BATCH__/${exp_effective_batch}/g" ${host_model_dir}/${caffe_model_file}
+else
+    sed -i "s/__EXP_DEVICE_BATCH__/${exp_device_batch}/g" ${host_model_dir}/${caffe_model_file}
+fi
 #
 net_name=$(get_value_by_key "${host_model_dir}/${caffe_model_file}" "name")
 [ "${exp_phase}" = "training" ] && echo -e "${caffe_solver}" > ${host_model_dir}/${caffe_solver_file}
