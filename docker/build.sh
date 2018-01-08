@@ -19,91 +19,48 @@
 # Those tags should be meaningful, specifying, for instance, target device (cpu/gpu)
 # or specific enironment settings like cuda or cudnn versions.
 
-# Get GPU name
-# nvidia-smi --query-gpu=name --format=csv,noheader -i 0
-
-# Usage: sudo build.sh framework/tag
-
-# Default compute capabilities for various NVIDIA architectures.
-# They are used if user specifies fermi/kepler/maxwell/pascal/volta
-# as value for 'cuda_arch_bin'
-fermi_cc="20,21(20)"
-kepler_cc="30,35,37"
-maxwell_cc="50,52"
-pascal_cc="60,61"
-volta_cc="70"
-
 # Source common paths
 . ../scripts/environment.sh
 
 prefix=hpe                          # Name prefix for all containers i.e. hpe/tensorflow:cuda8-cudnn7
 version=                            # Version or SHA commit to fetch. Must be defined in ./versions
-cuda_arch_bin="30,35,50,60,61"      # Defaul list of compute capabilities to use [if supported by a framework]
-cuda_arch_ptx="EMPTY"               # PTX values (virtual architectures). Default is same as 'cuda_arch_bin'.
-os=ubuntu                           # Reserved for future use
-cuda=8                              # Reserved for future use
-cudnn=6                             # Reserved for future use
 help_message="Usage: $0 [OPTION]... [IMAGE]...\n\
 Build docker IMAGE that is located in one of the subfolders.\n\
-If no IMAGE specified, list available images.\n\
-IMAGE format is 'framework/tag' e.g:\n\
-  bvlc_caffe/cuda8-cudnn7\n\
-  intel_caffe/cpu\n\
-  tensorrt/cuda8-cudnn6\n\
-
-\
+If no IMAGEs are specified, list available images. IMAGE format is 'framework/tag' e.g:\n\
+    bvlc_caffe/cuda8-cudnn7\n\
+    intel_caffe/cpu\n\
+    tensorrt/cuda8-cudnn6\n\
+The 'framework' is a folder in this directory. The 'tag' is a subfolder in a particular\n\
+framework's folder.
+\n\
 Optional arguments:\n\
-  --help             Print his help.\n\
-  --prefix           Set image prefix 'prefix/..'.\n\
-                     Default is '${prefix}'.\n\
-  --version          If supported by a docker file,\n\
-                     framework version to clone from github.\n\
-                     Default is taken from 'versions' file\n\
-                     located in this directory.\n\
-  --cuda_arch_bin    CUDA architecture to build framework for.\n\
-                     Same as cmake arg CUDA_ARCH_BIN.\n\
-                     Default is '${cuda_arch_bin}'. Can be a GPU arch:\n\
-                       fermi     '${fermi_cc}'\n\
-                       kepler    '${kepler_cc}'\n\
-                       maxwell   '${maxwell_cc}'\n\
-                       pascal    '${pascal_cc}'\n\
-                       volta     '${volta_cc}'\n\
-  --cuda_arch_ptx    CUDA PTX intermidiate architecture.\n\
-                     Same as cmake arg CUDA_ARCH_PTX.\n\
-                     Default is same as 'cuda_arch_bin'.
+  --help                   Print his help.\n\
+  --prefix PREFIX          Set image prefix 'prefix/..'. Default is '${prefix}'. By default,\n\
+                           all images have the following name: 'prefix/framework:tag' where\n\
+                           framework is a folder in this directory and tag is a subfolder in\n\
+                           framework's folder. If prefix is empty, no prefix will be used and\n\
+                           image name will be set to 'framework:tag'. Default values for docker\n\
+                           images in benchmarking suite assume the prefix exists (hpe/). If you\n\
+                           want to use different prefix, make sure to override image name when\n\
+                           running experimenter.
+  --version COMMIT         If supported by a docker file, framework COMMIT to clone from github.\n\
+                           Default value is taken from 'versions' file located in this directory.\n\
+                           This is not a specific version like 1.4.0, rather it is a commit tag.\n\
+                           All docker files will execute the 'git reset --hard \$version' to \n\
+                           use particular project state. Default is set to 'master' in docker files.\n\
+                           If user provides this command line argument, this commit will be used\n\
+                           for ALL builds (user can provide more than one image to build). So, this\n\
+                           may be useful when building one docker image or building docker images for\n\
+                           one particular framework.\n\
+\
+Depending on framework and/or tag different sets of compute capabilities will be used to build\n\
+framework for. In general case, with CUDA 9 images Volta GPUs are supported (and others that\n\
+include at least Pascal). In some cases, the architecture is autodetected (Caffe2, MXNet). In\n\
+other cases, docker files list compute capabilities explicitly (Caffe, TensorFlow).
 "
-#Reserved for future use :\n\
-#  -o,  --os           Container OS. Default is '${os}'.\n\
-#  -c,  --cuda         CUDA version. Influences base docker image.\n\
-#                      Default is '${cuda}'.\n\
-#  -n,  --cudnn        CUDNN version. Influences base docker image.\n\
-#                      Default is '${cudnn}'.
-#"
 
 # Parse command line options
 . $DLBS_ROOT/scripts/parse_options.sh
-
-# https://en.wikipedia.org/wiki/CUDA
-# https://docs.opencv.org/2.4/modules/gpu/doc/introduction.html
-if [ "${_bin}" == "fermi" ]; then
-    cuda_arch_bin=${fermi_cc}
-elif [ "${cuda_arch_bin}" == "kepler" ]; then
-    cuda_arch_bin=${kepler_cc}
-elif [ "${cuda_arch_bin}" == "maxwell" ]; then
-    cuda_arch_bin=${maxwell_cc}
-elif [ "${cuda_arch_bin}" == "pascal" ]; then
-    cuda_arch_bin=${pascal_cc}
-elif [ "${cuda_arch_bin}" == "volta" ]; then
-    cuda_arch_bin=${volta_cc}
-else
-    # This must be a sequence of compute capabilities
-    # TODO: add regular epression check and range
-    :
-fi
-
-if [ "${cuda_arch_ptx}" == "EMPTY" ]; then
-    cuda_arch_ptx=${cuda_arch_bin}
-fi
 
 # If no path specified, print list of supported images
 if [ "$#" -eq 0 ]; then
@@ -165,7 +122,6 @@ for dockerfile_dir in "$@"; do
     assert_files_exist $dockerfile_dir/Dockerfile
     dockerfile_dir=$DLBS_ROOT/docker/$name/$tag     # something like caffe/gpu (dir)
     [ "${version}XXX" == "XXX" ] && args="" || args="--build-arg version=${version}"
-    args="${args} --build-arg cuda_arch_bin=${cuda_arch_bin} --build-arg cuda_arch_ptx=${cuda_arch_ptx}"
     [ -n "$http_proxy" ] && args="$args --build-arg http_proxy=$http_proxy"
     [ -n "$https_proxy" ] && args="$args --build-arg https_proxy=$https_proxy"
 
@@ -176,13 +132,10 @@ for dockerfile_dir in "$@"; do
         cp -r ../src/tensorrt  $dockerfile_dir   # Copy project
     fi
 
-
     exec="docker build -t $img_name $args $dockerfile_dir"
 
     loginfo "new docker image build started"
     loginfo "framework version: '${version}' [if provided externally or defined in 'versions' file]"
-    loginfo "cuda BIN architecture: ${cuda_arch_bin} [if applicable]"
-    loginfo "cuda PTX architecture: ${cuda_arch_ptx} [if applicable]"
     loginfo "image name: $img_name"
     loginfo "image location: $dockerfile_dir/Dockerfile"
     loginfo "build args: $args"
