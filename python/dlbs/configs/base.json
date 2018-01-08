@@ -23,7 +23,7 @@
         "exp.force_rerun": "false",
         "exp.docker.launcher": "$('nvidia-docker' if '${exp.device}' == 'gpu' else 'docker')$",
         "exp.docker.image": "${${exp.framework_id}.docker.image}",
-        "exp.docker.args": "",
+        "exp.docker.args": "--rm",
 
         "resource_monitor.enabled": "false",
         "resource_monitor.pid_file_folder": "/dev/shm/dl",
