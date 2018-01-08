@@ -109,13 +109,19 @@ class Worker(threading.Thread):
             logging.warn(traceback.format_exc())
             self.ret_code = -1
 
-    def work(self):
+    def work(self, resource_monitor):
         """Runs experiment as subprocess and waits for its completion.
 
         :return: Status code.
         """
         self.start()
         self.join()
+        if resource_monitor is not None:
+            resource_monitor.empty_pid_file()
+            metrics = resource_monitor.get_measurements()
+            with open(self.params['exp.log_file'], 'a+') as log_file:
+                for key in metrics:
+                    log_file.write('__results.use.%s__=%s\n' % (key, json.dumps(metrics[key])))
         if self.is_alive():
             self.process.terminate()
             self.join()

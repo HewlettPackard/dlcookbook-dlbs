@@ -25,11 +25,11 @@
         "exp.docker.image": "${${exp.framework_id}.docker.image}",
         "exp.docker.args": "--rm",
 
-        "resource_monitor.enabled": "false",
-        "resource_monitor.pid_file_folder": "/dev/shm/dl",
-        "resource_monitor.launcher": "${DLBS_ROOT}/scripts/resource_monitor.sh",
-        "resource_monitor.data_file": "${exp.bench_root}/resource_consumption.csv",
-        "resource_monitor.frequency": 0.1,
+        "monitor.frequency": 0,
+        "monitor.timeseries": "time:str:1,mem_virt:float:2,mem_res:float:3,mem_shrd:float:4,cpu:float:5,mem:float:6,power:float:7,gpus:float:8:",
+        "monitor.pid_folder": "/dev/shm/monitor",
+        "monitor.backend_pid_folder": "$('${monitor.pid_folder}' if '${exp.env}' == 'host' else '/workspace/tmp')$",
+        "monitor.launcher": "${DLBS_ROOT}/scripts/resource_monitor.sh",
 
         "runtime.bind_proc": "",
         "runtime.limit_resources": "",

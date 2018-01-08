@@ -90,6 +90,7 @@ If `results.training_time` is not there, study ./benchmarks/my_experiment/tf.log
   - [MXNet](/frameworks/mxnet.md?id=mxnet)
   - [TensorFlow](/frameworks/tensorflow.md?id=tensorflow)
 - [Extending DLBS](/extend/dlbs.md?id=extending-deep-learning-benchmarking-suite)
+- [Resource monitor](/monitor/monitor.md?id=resource-monitor)
 
 ## Contact us
 

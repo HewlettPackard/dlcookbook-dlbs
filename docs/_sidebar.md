@@ -16,6 +16,7 @@
   - [TensorFlow](/frameworks/tensorflow.md?id=tensorflow)
   - [TensorRT](/frameworks/tensorrt.md?id=tensorrt)
 - [Extending DLBS](/extend/dlbs.md?id=extending-deep-learning-benchmarking-suite)
+- [Resource monitor](/monitor/monitor.md?id=resource-monitor)
 - [API Documentation](/apidoc/apidoc.md)
 [//]: # (  - [DLBS](http://fastsim-demo.ad.labs.hpecorp.net:8080/dlbs/apidoc/dlbs/dlbs.html))
 [//]: # (  - [Caffe2 Benchmarks](http://fastsim-demo.ad.labs.hpecorp.net:8080/dlbs/apidoc/caffe2_benchmarks/caffe2_benchmarks.html))

@@ -19,6 +19,9 @@ import copy
 import json
 import re
 import logging
+import subprocess
+from multiprocessing import Process
+from multiprocessing import Queue
 from glob import glob
 from dlbs.exceptions import ConfigurationError
 
@@ -289,3 +292,174 @@ class ConfigurationLoader(object):
                 else:
                     assert both_lists or both_primitive, "Members of configuration must be either lists or primitive types"
                     obj1[key] = copy.deepcopy(obj2[key]) if both_lists else obj2[key]
+
+
+class ResourceMonitor(object):
+    """The class is responsible for launching/shutting down/communicating with
+    external resource manager that monitors system resource consumption.
+
+    proc_pid date virt res shrd cpu mem power gpus_power
+    """
+    def __init__(self, launcher, pid_folder, frequency, fields_specs):
+        """Initializes resource monitor but does not create queue and process.
+
+        :param str launcher: A full path to resource monitor script.
+        :param str pid_folder: A full path to folder where pid file is created. The
+                               file name is fixed and its value is `proc.pid`.
+        :param float frequency: A sampling frequency in seconds. Can be something like
+                                0.1 seconds
+        """
+        self.launcher = launcher
+        self.pid_file = os.path.join(pid_folder, 'proc.pid')
+        self.frequency = frequency
+        self.queue = None
+        self.monitor_process = None
+        # Parse fields specs
+        # time:str:1,mem_virt:float:2,mem_res:float:3,mem_shrd:float:4,cpu:float:5,mem:float:6,power:float:7,gpus:float:8:
+        self.fields = {}
+        raw_fields = fields_specs.split(',')
+        for raw_field in raw_fields:
+            fields_split = raw_field.split(':')
+            assert len(fields_split) in (3, 4),\
+                   "Invalid format of field specification (%s). Must be name:type:index, name:type:index: or name:type:index:count" % raw_field
+            field_name = fields_split[0]
+            assert field_name not in self.fields,\
+                   "Found duplicate timeseries field (%s)" % field_name
+            field_type = fields_split[1]
+            assert field_type in ('str', 'int', 'float', 'bool'),\
+                   "Invalid field type (%s). Must be one of ('str', 'int', 'float', 'bool')" % field_type
+            index = int(fields_split[2])
+            if len(fields_split) == 3:
+                count = -1
+            elif fields_split[3] == '':
+                count = 0
+            else:
+                count = int(fields_split[3])
+            self.fields[field_name] = { 
+                'type': field_type,
+                'index': index, 
+                'count': count
+            }                        
+
+    @staticmethod
+    def monitor_function(launcher, pid_file, frequency, queue):
+        """A main monitor worker function.
+
+        :param str launcher: A full path to resource monitor script.
+        :param str pid_folder: A full path to folder where pid file is created. The
+                               file name is fixed and its value is `proc.pid`.
+        :param float frequency: A sampling frequency in seconds. Can be something like
+                                0.1 seconds
+        :param multiprocessing.Queue queue: A queue to communicate measurements.
+
+        A resource monitor is launched as a subprocess. The thread is reading its
+        output and will put the data into a queue. A main thread will then dequeue all
+        data at once once experiment is completed.
+        """
+        cmd = [
+            launcher,
+            pid_file,
+            '',
+            str(frequency)
+        ]
+        process = subprocess.Popen(cmd, universal_newlines=True, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT)
+        while True:
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                # The 'output' is a string printed out by a resource monitor
+                # script. It's a whitespace separated string of numbers.
+                queue.put(output.strip())
+
+    @staticmethod
+    def str_to_type(str_val, val_type):
+        if val_type == 'str':
+            return str_val
+        elif val_type == 'int':
+            return int(str_val)
+        elif val_type == 'float':
+            return float(str_val)
+        elif val_type == 'bool':
+            v = str_val.lower()
+            assert v in ('true', 'false', '1', '0', 'on', 'off'),\
+                   "Invalid boolean value in string (%s)" % str_val
+            return v in ('true', 1, 'on')
+        else:
+            assert False, "Invalid value type %s" % val_type
+
+    def get_measurements(self):
+        """Dequeue all data, put it into lists and return them.
+        time:str:1,mem_virt:float:2,mem_res:float:3,mem_shrd:float:4,cpu:float:5,mem:float:6,power:float:7,gpus:float:8-
+
+        :return: Dictionary that maps metric field to a time series of its value.
+        """
+        metrics = {}
+        for key in self.fields.keys():
+            metrics[key] = []
+        # What's in output:
+        #  proc_pid date virt res shrd cpu mem power gpus_power
+        while not self.queue.empty():
+            data = self.queue.get().strip().split()
+            for field in self.fields:
+                tp = self.fields[field]['type']
+                idx = self.fields[field]['index']
+                count = self.fields[field]['count']
+                if count == -1:
+                    metrics[field].append(ResourceMonitor.str_to_type(data[idx], tp))
+                elif count == 0:
+                    metrics[field].append([ResourceMonitor.str_to_type(data[idx], tp)])
+                else:
+                    metrics[field].append([
+                        ResourceMonitor.str_to_type(data[index], tp) for index in xrange(idx, idx+count)
+                    ])
+        return metrics
+
+    def remove_pid_file(self):
+        """Deletes pif file from disk."""
+        try:
+            os.remove(self.pid_file)
+        except OSError:
+            pass
+
+    def empty_pid_file(self):
+        """Empty pid file."""
+        try:
+            with open(self.pid_file, 'w'):
+                pass
+        except IOError:
+            pass
+
+    def write_pid_file(self, pid):
+        """Write the pid into pid file.
+
+        :param int pid: A pid to write.
+
+        This is a debugging function and most likely should not be used.
+        """
+        with open(self.pid_file, 'w') as fhandle:
+            fhandle.write('%d' % pid)
+
+    def run(self):
+        """Create queue and start resource monitor in background thread.
+
+        Due to possible execution of benchmarks in containers, we must not delete
+        file here, but create or empty it in host OS.
+        """
+        self.empty_pid_file()
+        self.queue = Queue()
+        self.monitor_process = Process(
+            target=ResourceMonitor.monitor_function,
+            args=(self.launcher, self.pid_file, self.frequency, self.queue)
+        )
+        self.monitor_process.start()
+
+    def stop(self):
+        """Closes queue and waits for resource monitor to finish."""
+        with open(self.pid_file, 'w') as fhandle:
+            fhandle.write('exit')
+        self.queue.close()
+        self.queue.join_thread()
+        self.monitor_process.join()
+        self.remove_pid_file()

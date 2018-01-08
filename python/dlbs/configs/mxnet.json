@@ -24,7 +24,7 @@
             "--volume=${DLBS_ROOT}/python/mxnet_benchmarks:/workspace/mxnet_benchmarks",
             "$('--volume=${CUDA_CACHE_PATH}:/workspace/cuda_cache' if '${CUDA_CACHE_PATH}' else '')$",
             "$('--volume=${mxnet.data_dir}:/workspace/data' if '${mxnet.data_dir}' else '')$",
-            "$('--volume=${resource_monitor.pid_file_folder}:/workspace/tmp' if '${resource_monitor.enabled}' == 'true' else '')$",
+            "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
             "${exp.docker.args}",
             "${mxnet.docker.image}"
         ],

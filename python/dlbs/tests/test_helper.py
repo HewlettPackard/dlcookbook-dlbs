@@ -42,7 +42,7 @@ class TestHelper(unittest.TestCase):
         """dlbs  ->  TestHelper::test_help_with_params_02                [Tests for parameter helper #2]"""
         self.assertEqual(len(self.helper.help_with_params(None, ['cuda'])), 3)
         self.assertEqual(len(self.helper.help_with_params(None, ['^cuda'])), 1)
-        self.assertEqual(len(self.helper.help_with_params(None, ['docker'])), 20)
+        self.assertEqual(len(self.helper.help_with_params(None, ['docker'])), 21)
 
     def test_help_with_params_03(self):
         """dlbs  ->  TestHelper::test_help_with_params_03                [Tests for parameter helper #3]"""

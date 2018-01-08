@@ -28,11 +28,33 @@
     "exp.force_rerun": "If log file exists and false, benchmark will not be ran.",
     "exp.docker.launcher": "One of 'nvidia-docker' or 'docker' depending on a ${exp.device} value.",
 
-    "resource_monitor.enabled": "If true, in-process monitor is started that logs system resource consumption.",
-    "resource_monitor.pid_file_folder": "A folder that contains file that is used to commonicate process identifier to monitor.",
-    "resource_monitor.launcher": "A resource montor launcher script.",
-    "resource_monitor.data_file": "A resource monitor log file",
-    "resource_monitor.frequency": "Sampling frequency in seconds.",
+    "monitor.frequency": [
+        "A sampling frequency in seconds of embedded resource monitor. By default (0) resource monitor is disabled. If this value is",
+        "> 0, experimenter will start embedded resource monitor (kind of a reference implementation) that will log system parameters",
+        "with this frequency. This parameters include cpu and memory consumption, power, GPU metrics etc.",
+        "Assumption: in current implementation, if resource monitor is enabled for a first benchmark, it's considered to be enabled",
+        "for rest of benchmarks and vice versa."
+    ],
+    "monitor.timeseries": [
+        "A string that specifies which timeseries metrics must go into a log file. Metrics are separated with comma (,). Each",
+        "metric specification consists of three or four fields separated with colon (:) - 'name:type:index_range'. The name",
+        "specifies timeseries name. The field in log file will be composed as 'results.use.$name'. Type specifies how values",
+        "that come from monitor need to be cast (std, int, float or bool).",
+        "Values from resource monitor come as a whitespace separated string. The index range specifies how that maps to a timeseries",
+        "name. It can be a single integer(for instance time:str:1) specfying exact index or a index and number of elements that should",
+        "be appended to a timeseries item. Number of elements may not be present what means scan until the end of list is reached ",
+        "(for instance gpu:float:8:2 or gpu:float:8:). If number of elements is specified, a timeseries will contain items that will",
+        "be lists event though number of elements may be 1."
+    ],
+    "monitor.pid_folder": [
+        "A host folder that will be used by a resource monitor and benchmarking scripts to communicate process id that should be monitored.",
+        "Users need to specify this parameter of they want to change default path."
+    ],
+    "monitor.backend_pid_folder": [
+        "This is a host or docker folder that will be used by a benchmarking scripts. Will be different from `monitor.pid_folder` if",
+        "containerized benchmark is performed. Users must not change this parameter."
+    ],
+    "monitor.launcher": "A path to an embedded resource monitor.",
 
     "runtime.limit_resources": "Something that limits process resources. It's used like ${runtime.limit_resources} ${runtime.bind_proc} command with parameters.",
     "runtime.bind_proc": [

@@ -37,7 +37,7 @@
             "--volume=${DLBS_ROOT}/models/${exp.model}:/workspace/model",
             "$('--volume=${CUDA_CACHE_PATH}:/workspace/cuda_cache' if '${CUDA_CACHE_PATH}' else '')$",
             "$('--volume=${caffe.data_dir}:/workspace/data' if '${caffe.data_dir}' else '')$",
-            "$('--volume=${resource_monitor.pid_file_folder}:/workspace/tmp' if '${resource_monitor.enabled}' == 'true' else '')$",
+            "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
             "${exp.docker.args}",
             "${caffe.docker.image}"
         ],

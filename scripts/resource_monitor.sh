@@ -9,11 +9,12 @@
 # In a loop read that file for a PID to monitor
 # Read PID and monitor usage
 # If PID changes, add me
+# Usage: resource_monitor.sh pid_file log_file interval_seconds
 
 # PID file (must be created by parent script)
 pid_file=$1
 # Stats file
-stats_file=$2
+log_file=$2
 # Interval in seconds
 interval=$3
 
@@ -67,7 +68,11 @@ do
     fi
     # ipmitool dcmi power reading
     #echo "Printing results"
-    echo $proc_pid $date $stats $power $gpus_power >> $stats_file
+    if [ "${log_file}XXX" = "XXX" ]; then
+        echo $proc_pid $date $stats $power $gpus_power
+    else
+        echo $proc_pid $date $stats $power $gpus_power >> $log_file
+    fi
     sleep $interval
 done
 

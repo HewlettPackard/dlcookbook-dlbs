@@ -26,6 +26,8 @@ import json
 from dlbs.processor import Processor
 from dlbs.worker import Worker
 from dlbs.utils import DictUtils
+from dlbs.utils import ResourceMonitor
+from dlbs.utils import IOUtils
 
 class Launcher(object):
     """Launcher runs experiments."""
@@ -66,6 +68,21 @@ class Launcher(object):
             "launcher.disabled_experiments": 0,
             "launcher.start_time": str(start_time)
         }
+
+        # See if resource monitor needs to be run. Now, the assumption is that
+        # if it's enabled for a first experiments ,it's enabled for all others.
+        resource_monitor = None
+        if num_experiments > 0 and 'monitor.frequency' in plan[0] and plan[0]['monitor.frequency'] > 0:
+            if not os.path.isdir(plan[0]['monitor.pid_folder']):
+                os.makedirs(plan[0]['monitor.pid_folder'])
+            resource_monitor = ResourceMonitor(
+                plan[0]['monitor.launcher'], plan[0]['monitor.pid_folder'],
+                plan[0]['monitor.frequency'], plan[0]['monitor.timeseries']
+            )
+            # The file must be created beforehand - this is required for docker to
+            # to keep correct access rights.
+            resource_monitor.empty_pid_file()
+            resource_monitor.run()
 
         for idx in range(num_experiments):
             experiment = plan[idx]
@@ -111,13 +128,16 @@ class Launcher(object):
             ))
             # Run experiment in background and wait for complete
             worker = Worker(command, env_vars, experiment, idx+1, num_experiments)
-            worker.work()
+            worker.work(resource_monitor)
             if worker.ret_code != 0:
                 stats['launcher.failed_experiments'] += 1
 
         end_time = datetime.datetime.now()
         stats['launcher.end_time'] = str(end_time)
         stats['launcher.hours'] = (end_time - start_time).total_seconds() / 3600
+
+        if resource_monitor is not None:
+            resource_monitor.stop()
 
         for key, val in stats.items():
             print('__%s__=%s' % (key, json.dumps(val)))

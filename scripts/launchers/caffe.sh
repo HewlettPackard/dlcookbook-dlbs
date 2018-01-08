@@ -65,7 +65,7 @@ script="\
     ${runtime_limit_resources}\
     ${runtime_bind_proc} caffe ${caffe_action} ${caffe_args} &\
     proc_pid=\$!;\
-    [ "${resource_monitor_enabled}" = "true" ] && echo -e \"\${proc_pid}\" > ${resource_monitor_pid_file_folder}/proc.pid;\
+    [ \"${monitor_frequency}\" != \"0\" ] && echo -e \"\${proc_pid}\" > ${monitor_backend_pid_folder}/proc.pid;\
     wait \${proc_pid};\
     echo -e \"__results.end_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
     echo -e \"__results.proc_pid__= \${proc_pid}\";\

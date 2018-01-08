@@ -25,7 +25,7 @@
             "--pid=host",
             "--volume=${DLBS_ROOT}/python/caffe2_benchmarks:/workspace/caffe2_benchmarks",
             "$('--volume=${CUDA_CACHE_PATH}:/workspace/cuda_cache' if '${CUDA_CACHE_PATH}' else '')$",
-            "$('--volume=${resource_monitor.pid_file_folder}:/workspace/tmp' if '${resource_monitor.enabled}' == 'true' else '')$",
+            "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
             "$('--volume=${caffe2.data_dir}:/workspace/data' if '${caffe2.data_dir}' else '')$",
             "${exp.docker.args}",
             "${caffe2.docker.image}"

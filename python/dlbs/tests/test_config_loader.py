@@ -33,8 +33,8 @@ class TestConfigurationLoader(unittest.TestCase):
         'sys': [
             "plan_builder.var_order", "plan_builder.method"
         ],
-        'resource_monitor': [
-            "enabled", "pid_file_folder", "launcher", "data_file", "frequency"
+        'monitor': [
+            "frequency", "timeseries", "pid_folder", "backend_pid_folder", "launcher"
         ],
         'tensorflow': [
             "launcher", "python_path", "env", "var_update", "use_nccl",
