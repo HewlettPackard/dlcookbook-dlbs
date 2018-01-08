@@ -93,7 +93,7 @@ from dlbs.utils import ConfigurationLoader
 from dlbs.validator import Validator
 from dlbs.processor import Processor
 from dlbs.help.helper import Helper
-
+from dlbs.sysinfo.systemconfig import SysInfo
 
 
 class Experimenter(object):
@@ -319,6 +319,8 @@ if __name__ == '__main__':
     assert len(sys.argv) >= 2, "Minimal number of arguments is 1"
     if sys.argv[1] == 'help':
         Helper.main()
+    elif sys.argv[1] == 'sysinfo':
+        print(json.dumps(SysInfo().collect(), indent=2))
     else:
         experimenter = Experimenter()
         experimenter.init(init_logger=True, load_default_config=True, load_config=True)

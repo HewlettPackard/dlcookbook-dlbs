@@ -22,6 +22,7 @@ import subprocess
 import traceback
 from dlbs.utils import IOUtils
 from dlbs.utils import DictUtils
+from dlbs.sysinfo.systemconfig import SysInfo
 
 class Worker(threading.Thread):
     """This class runs one benchmarking experiment.
@@ -119,4 +120,9 @@ class Worker(threading.Thread):
             self.process.terminate()
             self.join()
             time.sleep(1)
+        if 'exp.sys_info' in self.params and self.params['exp.sys_info']:
+            info = SysInfo(self.params['exp.sys_info']).collect()
+            with open(self.params['exp.log_file'], 'a+') as log_file:
+                for key in info:
+                    log_file.write('__%s__=%s\n' % (key, json.dumps(info[key])))
         return self.ret_code

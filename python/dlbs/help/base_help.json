@@ -43,5 +43,19 @@
     "runtime.cuda_cache": "CUDA cache path. May significantly speedup slow startup when a large number of experuments are ran. Set to somewhere in /dev/shm.",
 
     "sys.plan_builder.var_order": "Order in which plan builder varies variables doing Cartesian product.",
-    "sys.plan_builder.method": "Method to build multiple experiments, the only supported value is 'cartesian_product'."
+    "sys.plan_builder.method": "Method to build multiple experiments, the only supported value is 'cartesian_product'.",
+    "exp.sys_info": [
+        "A comma separated string that defines what tools should be used to collect system wide information. A default empty",
+        "value means no system information is collected. To collect all information use:",
+        "    -Pexp.sys_info='\"inxi,cpuinfo,meminfo,lscpu,nvidiasmi\"'",
+        "The following source of information are supported:",
+        "    inxi       The inxi must be available (https://github.com/smxi/inxi). It is an output of 'inxi -Fbfrlp'.",
+        "    cpuinfo    Content of /proc/cpuinfo",
+        "    meminfo    Content of /proc/meminfo",
+        "    lscpu      Output of 'lscpu'",
+        "    nvidiasmi  Output of '/usr/bin/nvidia-smi -q'",
+        "The information is stored in a 'hw' namespace i.e. hw.inxi, hw.cpuinfo, hw.meminfo, hw.lscpu and hw.nvidiasmi.",
+        "In addition, a complete output in a json format can be obtained with:",
+        "    python ./python/dlbs/experimenter.py sysinfo"
+    ]
 }

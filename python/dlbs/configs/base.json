@@ -36,6 +36,7 @@
         "runtime.cuda_cache": "$('${CUDA_CACHE_PATH}' if '${exp.env}' == 'host' else '/workspace/cuda_cache')$",
 
         "sys.plan_builder.var_order": ["exp.framework", "exp.phase", "exp.model", "exp.gpus"],
-        "sys.plan_builder.method": "cartesian_product"
+        "sys.plan_builder.method": "cartesian_product",
+        "exp.sys_info": ""
     }
 }

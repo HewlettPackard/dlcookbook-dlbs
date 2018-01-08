@@ -25,7 +25,7 @@ class TestConfigurationLoader(unittest.TestCase):
             "framework", "model", "env", "warmup_iters", "bench_iters", "phase",
             "device_batch", "gpus", "num_gpus", "device", "dtype", "enable_tensor_core",
             "simulation", "bench_root", "framework_id", "id", "effective_batch",
-            "exp_path", "log_file", "force_rerun", "docker.launcher"
+            "exp_path", "log_file", "force_rerun", "docker.launcher", "sys_info"
         ],
         'runtime': [
             "limit_resources", "cuda_cache", "bind_proc"
