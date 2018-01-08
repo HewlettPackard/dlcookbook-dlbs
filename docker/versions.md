@@ -8,15 +8,15 @@ Users may provide their specific commit via a command line argument `--version` 
 
 ## Brief summary
 
-| Framework | Commit | Date | GPU Architecture detection | Volta support |
-|-----------|--------|------|----------------------------|---------------|
-| Intel Caffe | [f6a2a6b](https://github.com/intel/caffe/commit/f6a2a6b05defab4b637028ce4f7719cac340a86d) | Dec 13, 2017 | CPU only version | Not applicable |
-| BVLC Caffe | [c430690](https://github.com/BVLC/caffe/commit/c430690aa5528e94e019971b94de325539984e77) | Nov 7, 2017 | Docker files | yes (CUDA 9 images) |
-| NVIDIA Caffe | [cdb3d9a](https://github.com/NVIDIA/caffe/commit/cdb3d9a5d46774a3be3cc4c4ecc0bcd760901cc1) | Sep 7, 2017 | Docker files | yes (CUDA 9 images) |
-| MXNET | [079fc45](https://github.com/apache/incubator-mxnet/commit/079fc45383c2dad588ad6a1d779c33b738d514f8) | Nov 15, 2017 | [Autodetection](https://github.com/apache/incubator-mxnet/blob/079fc45383c2dad588ad6a1d779c33b738d514f8/Makefile#L250) | yes (CUDA 9 images) |
-| Caffe2 | [f075a2b](https://github.com/caffe2/caffe2/commit/f075a2b55f93c6c9c7e5cca0c4279406a03b8653) | Oct 10, 2017 | [Autodetection](https://github.com/caffe2/caffe2/blob/f075a2b55f93c6c9c7e5cca0c4279406a03b8653/cmake/Cuda.cmake) | yes (CUDA 9 images) |
-| TensorFlow | [d752244](https://github.com/tensorflow/tensorflow/commit/d752244fbaad5e4268243355046d30990f59418f) | Nov 1, 2017 | Docker files | yes (CUDA 9 images) |
-| TensorRT | 2.0.0 | - | CUDA 8, cuDNN 5 | no |
+| Framework | Commit | Date | Version |
+|-----------|--------|------|---------|
+| Intel Caffe | [f6a2a6b](https://github.com/intel/caffe/commit/f6a2a6b05defab4b637028ce4f7719cac340a86d) | Dec 13, 2017 | 1.0.0-rc3 |
+| BVLC Caffe | [c430690](https://github.com/BVLC/caffe/commit/c430690aa5528e94e019971b94de325539984e77) | Nov 7, 2017 | 1.0.0 |
+| NVIDIA Caffe | [cdb3d9a](https://github.com/NVIDIA/caffe/commit/cdb3d9a5d46774a3be3cc4c4ecc0bcd760901cc1) | Sep 7, 2017 | 0.16.4 |
+| MXNET | [079fc45](https://github.com/apache/incubator-mxnet/commit/079fc45383c2dad588ad6a1d779c33b738d514f8) | Nov 15, 2017 | 1.0.0 |
+| Caffe2 | [f075a2b](https://github.com/caffe2/caffe2/commit/f075a2b55f93c6c9c7e5cca0c4279406a03b8653) | Oct 10, 2017 | 0.8.1 |
+| TensorFlow | [d752244](https://github.com/tensorflow/tensorflow/commit/d752244fbaad5e4268243355046d30990f59418f) | Nov 1, 2017 | 1.4.0 |
+| TensorRT | - | - | 2.0.0 |
 
 #### Intel Caffe
 - [f6a2a6b05defab4b637028ce4f7719cac340a86d](https://github.com/intel/caffe/commit/f6a2a6b05defab4b637028ce4f7719cac340a86d)
