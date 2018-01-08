@@ -13,7 +13,7 @@
         ],
         "tensorrt.model_file": "${exp.id}.model.prototxt",
         "tensorrt.model_dir": "$('${DLBS_ROOT}/models/${exp.model}' if '${exp.env}' == 'host' else '/workspace/model')$",
-        "tensorrt.docker.image": "hpe/tensorrt:cuda8-cudnn6",
+        "tensorrt.docker.image": "hpe/tensorrt:cuda8-cudnn5",
         "tensorrt.docker.args": [
             "-i",
             "--security-opt seccomp=unconfined",
