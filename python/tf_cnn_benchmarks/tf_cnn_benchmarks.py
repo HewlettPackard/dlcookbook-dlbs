@@ -26,6 +26,7 @@ import os
 import threading
 import time
 import timeit
+import json
 
 import numpy as np
 
@@ -1145,6 +1146,19 @@ class BenchmarkCNN(object):
       log_fn('total images/sec: %.2f' %
              (global_step_watcher.steps_per_second() * self.batch_size))
       log_fn('-' * 64)
+      # Sergey Serebryakov - printing out array of times and average time
+      mean_time = np.mean(step_train_times) 
+      print("__results.time__=%s" % (json.dumps(1000.0 * mean_time)))
+      num_workers = len(self.worker_hosts)
+      effective_batch_size = self.batch_size * num_workers
+      if num_workers > 1:
+          print("WARNING: Number of workers is > 1, Check that effective batch size %d has been computed correctly" % effective_batch_size)
+      mean_throughput = effective_batch_size / mean_time
+      print("__results.throughput__=%s" % (json.dumps(int(mean_throughput))))
+      milliseconds = [1000.0 * tm for tm in step_train_times]
+      print("__results.time_data__=%s" % (json.dumps(milliseconds)))
+      # Sergey Serebryakov - end of updates
+      
       # Save the model checkpoint.
       if FLAGS.train_dir is not None and is_chief:
         checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')

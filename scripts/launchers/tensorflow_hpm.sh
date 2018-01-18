@@ -40,13 +40,15 @@ if tf_error ${exp_log_file}; then
     update_error_file "${__batch_file__}" "${exp_replica_batch}";
     echo "__exp.status__=\"failure\"" >> ${exp_log_file}
 else
+    :;
     # If everything's OK, we now can get IPS (throughput):
     # What needs be done: check for error
-    ips=$(grep "total images/sec:" ${exp_log_file}  | awk '{print $3}')
-    is_positive=$(echo "print($ips > 0)" | python)
-    if [ "$is_positive" == "True" ]; then
-      tm=$(echo "print (${exp_effective_batch} * 1000.0 / $ips)" | python)
-      echo -e "__results.time__= $tm" >> ${exp_log_file}
-      echo -e "__results.throughput__= $ips" >> ${exp_log_file}
-    fi
+    # Update - we do not need to do it since it was moved to tf_cnn_benchmarks.py file
+    #ips=$(grep "total images/sec:" ${exp_log_file}  | awk '{print $3}')
+    #is_positive=$(echo "print($ips > 0)" | python)
+    #if [ "$is_positive" == "True" ]; then
+    #  tm=$(echo "print (${exp_effective_batch} * 1000.0 / $ips)" | python)
+    #  echo -e "__results.time__= $tm" >> ${exp_log_file}
+    #  echo -e "__results.throughput__= $ips" >> ${exp_log_file}
+    #fi
 fi
