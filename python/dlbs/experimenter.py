@@ -106,6 +106,7 @@ class Experimenter(object):
         self.__action = None             # Action to perform (build, run, ...)
         self.__config_file = None        # Configuration file to load
         self.__config = {}               # Loaded configuration
+        self.__param_info = {}           # Parameter meta-info such as type and value domain
         self.__plan_file = None          # File with pre-built plan
         self.__plan = []                 # Loaded or generated plan
         self.__params = {}               # Override env variables from files
@@ -160,6 +161,16 @@ class Experimenter(object):
     def config(self, config):
         """Set configuration."""
         self.__config = config
+
+    @property
+    def param_info(self):
+        """Get prameters info dictionary."""
+        return self.__param_info
+
+    @param_info.setter
+    def param_info(self, param_info):
+        """Set parameters info dictionary."""
+        self.__param_info = param_info
 
     @property
     def plan_file(self):
@@ -242,7 +253,9 @@ class Experimenter(object):
         # Load default configuration
         if load_default_config and not args.discard_default_config:
             logging.debug("Loading default configuration")
-            _, self.config = ConfigurationLoader.load(os.path.join(os.path.dirname(__file__), 'configs'))
+            _, self.config, self.param_info = ConfigurationLoader.load(
+                os.path.join(os.path.dirname(__file__), 'configs')
+            )
 
         # Load configurations specified on a command line
         if load_config:
@@ -270,7 +283,9 @@ class Experimenter(object):
         if self.config_file is not None:
             logging.debug('Loading configuration from: %s', self.config_file)
             with open(self.config_file) as file_obj:
-                ConfigurationLoader.update(self.config, json.load(file_obj))
+                user_config = json.load(file_obj)
+                ConfigurationLoader.update_param_info(self.param_info, user_config)
+                ConfigurationLoader.update(self.config, ConfigurationLoader.remove_info(user_config))
         if self.plan_file is not None and self.action == 'run':
             logging.debug('Loading plan from: %s', self.plan_file)
             with open(self.plan_file) as plan_file:
@@ -286,10 +301,10 @@ class Experimenter(object):
         elif self.action == 'run':
             self.build_plan()
             logging.info("Plan was built with %d experiments", len(self.plan))
-            Processor().compute_variables(self.plan)
+            Processor(self.param_info).compute_variables(self.plan)
             if self.validation:
                 validator = Validator(self.plan)
-                validator.validate(compute_variables=False)
+                validator.validate()
                 if not validator.plan_ok:
                     validator.report()
                     logging.warn("Plan has not been validated. See reason (s) above.")
@@ -297,9 +312,10 @@ class Experimenter(object):
                 else:
                     logging.info("Plan has been validated")
             if not self.validation or validator.plan_ok:
-                Launcher.run(self.plan, compute_variables=False)
+                Launcher.run(self.plan)
         elif self.action == 'validate':
             self.build_plan()
+            Processor(self.param_info).compute_variables(self.plan)
             validator = Validator(self.plan)
             validator.validate()
             validator.report()

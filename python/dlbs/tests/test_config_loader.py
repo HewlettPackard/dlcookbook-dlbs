@@ -22,54 +22,56 @@ class TestConfigurationLoader(unittest.TestCase):
 
     params = {
         'exp': [
-            "framework", "model", "env", "warmup_iters", "bench_iters", "phase",
-            "device_batch", "gpus", "num_gpus", "device", "dtype", "enable_tensor_core",
-            "simulation", "bench_root", "framework_id", "id", "effective_batch",
-            "exp_path", "log_file", "force_rerun", "docker.launcher", "sys_info"
+            "status", "status_msg", "proj", "framework", "framework_title", 
+            "framework_family", "framework_ver", "framework_commit", "model", 
+            "model_title", "num_warmup_batches", "num_batches", "phase", "data", 
+            "data_store", "dtype", "use_tensor_core", "effective_batch", 
+            "replica_batch", "gpus", "num_local_replicas", "num_local_gpus",
+            "num_replicas", "num_gpus", "device_type", "device_title", "cuda",
+            "cudnn", "id", "log_file", "rerun", "node_id", "num_nodes", "node_nic",
+            "docker", "docker_launcher", "docker_image", "docker_args"
         ],
         'runtime': [
-            "limit_resources", "cuda_cache", "bind_proc"
-        ],
-        'sys': [
-            "plan_builder.var_order", "plan_builder.method"
+            "launcher", "cuda_cache", "visible_gpus",
+            "EXPORT_CUDA_VISIBLE_DEVICES", "EXPORT_CUDA_CACHE_PATH"
         ],
         'monitor': [
-            "frequency", "timeseries", "pid_folder", "backend_pid_folder", "launcher"
+            "frequency", "pid_folder", "launcher"
         ],
         'tensorflow': [
             "launcher", "python_path", "env", "var_update", "use_nccl",
             "local_parameter_device", "data_dir", "data_name", "distortions",
-            "num_intra_threads", "resize_method", "args", "docker.image",
-            "docker.args", "host.libpath"
+            "num_intra_threads", "resize_method", "args", "docker_image",
+            "docker_args", "host_libpath"
         ],
         'mxnet': [
             "launcher", "bench_path", "cudnn_autotune", "kv_store", "data_dir",
-            "args", "host.python_path", "host.libpath"
+            "args", "host_python_path", "host_libpath"
         ],
         'caffe2': [
-            "launcher", "data_dir", "data_backend", "dtype", "enable_tensor_core",
-            "args", "docker.image", "docker.args", "bench_path", "host.python_path",
-            "host.libpath"
+            "launcher", "data_dir", "data_backend", "args", "docker_image",
+            "docker_args", "bench_path", "host_python_path","host_libpath"
         ],
         'caffe': [
-            "launcher", "fork", "phase", "action", "model_file", "solver_file",
+            "launcher", "env", "fork", "action", "model_file", "solver_file",
             "model_dir", "solver", "args", "data_dir", "mirror", "data_mean_file",
-            "data_backend", "host.path", "docker.image", "docker.args",
+            "data_backend", "host_path", "docker_image", "docker_args",
         ],
         'bvlc_caffe': [
-            "host.path", "host.libpath", "docker.image",
+            "host_path", "host_libpath", "docker_image",
         ],
         'intel_caffe': [
-            "host.path", "host.libpath", "docker.image",
+            "host_path", "host_libpath", "docker_image",
         ],
         'nvidia_caffe': [
-            "host.path", "host.libpath", "docker.image", "solver_precision",
+            "host_path", "host_libpath", "docker_image", "solver_precision",
             "forward_precision", "forward_math_precision",
-            "backward_precision", "backward_math_precision"
+            "backward_precision", "backward_math_precision",
+            "precision"
         ],
         'tensorrt': [
-            "launcher", "args", "model_file", "model_dir", "docker.image", 
-            "docker.args", "profile", "input", "output", "host.path", "host.libpath"
+            "launcher", "args", "model_file", "model_dir", "docker_image", 
+            "docker_args", "profile", "input", "output", "host_path", "host_libpath"
         ]
     }
 
@@ -79,21 +81,76 @@ class TestConfigurationLoader(unittest.TestCase):
                              'tensorflow.json', 'tensorrt.json']
         self.config_files.sort()
 
+    def test_update_param_info(self):
+        pi = {}
+        ConfigurationLoader.update_param_info(
+            pi,
+            {'parameters':{
+                'p1': 1, 'p2': u'2', 'p3': '3', 'p4': ['1', '2', '3', '4'],
+                'p5': False, 'p6': -3.33,
+                'p7': {'val': '34', 'type': 'str', 'desc': 'Some desc'}
+            }}
+        )
+        for p in ('p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'):
+            self.assertIn(p, pi)
+            for f in ('val', 'type', 'desc'):
+                self.assertIn(f, pi[p])
+        for s in (('p1', 'int', 1), ('p2', 'str', u'2'), ('p3', 'str', '3'),
+                  ('p4', 'str', ['1', '2', '3', '4']), ('p5', 'bool', False),
+                  ('p6', 'float', -3.33), ('p7', 'str', '34')):
+            self.assertEqual(pi[s[0]]['type'], s[1])
+            self.assertEqual(pi[s[0]]['val'],  s[2])
+
+    def test_remove_info(self):
+        config = ConfigurationLoader.remove_info(
+            {'parameters':{
+                'p1': 1, 'p2': u'2', 'p3': '3', 'p4': ['1', '2', '3', '4'],
+                'p5': False, 'p6': -3.33,
+                'p7': {'val': '34', 'type': 's3tr', 'desc': 'Some desc'}
+            }}
+        )
+        for p in ('p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'):
+            self.assertIn(p, config['parameters'])
+        for s in (('p1', 1), ('p2', u'2'), ('p3', '3'),
+                  ('p4', ['1', '2', '3', '4']), ('p5', False),
+                  ('p6', -3.33), ('p7', '34')):
+            self.assertEqual(config['parameters'][s[0]], s[1])
+
     def test(self):
         """dlbs  ->  TestConfigurationLoader::test                       [Loading default configuration.]"""
-        files, config = ConfigurationLoader.load(self.config_path)
+        files, config, param_info = ConfigurationLoader.load(self.config_path)
+        # Check method returns object of expected type
+        self.assertIs(type(files), list)
         self.assertIs(type(config), dict)
-        #
+        self.assertIs(type(param_info), dict)
+        # Check we load all configuration files
         file_names = [os.path.basename(f) for f in files]
         file_names.sort()
         self.assertEqual(file_names, self.config_files)
-        #
+        # Check we have parameters and extensions sections
         self.assertIn('parameters', config)
         self.assertIn('extensions', config)
-        #
+        # Check presence of standard parameters
         for ns in TestConfigurationLoader.params:
             for param in TestConfigurationLoader.params[ns]:
                 self.assertIn(ns + '.' + param, config['parameters'])
+        # Check that values in configuration are not dictionaries and always have
+        # a parameter info object for every parameter
+        for param in config['parameters']:
+            self.assertFalse(
+                isinstance(config['parameters'][param], dict),
+                "In configuration dictionary parameter value cannot be a ditionary"
+            )
+            self.assertIn(param, param_info, "Missing parameter in parameter info dictionary.")
+        # Check values in paramter info object are always dictionaries containing
+        # three mandatory fields.
+        for param in param_info:
+            self.assertTrue(
+                isinstance(param_info[param], dict),
+                "In parameter info dictionary a value must be a ditionary."
+            )
+            for field in ('val', 'type', 'desc'):
+                self.assertIn(field, param_info[param])
 
 
 if __name__ == '__main__':

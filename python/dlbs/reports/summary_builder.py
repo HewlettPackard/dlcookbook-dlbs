@@ -290,12 +290,11 @@ if __name__ == '__main__':
     parser.add_argument('--summary-file', required=True, help="File name (json) with experiment results. This file is produced by a log parser.")
     parser.add_argument('--report-file', required=False, default=None, help="File name of the report to be generated.")
     parser.add_argument('--type', help="Type of the report ('exploration', 'weak-scaling', 'strong-scaling')")
-    parser.add_argument('--target-variable', help="Target variable for the report.\
-                                                   In most cases it's either 'results.training_time' or 'results.inference_time'.")
+    parser.add_argument('--target-variable', help="Target variable for the report. In most cases it's 'results.time'.")
     parser.add_argument('--query', required=False, type=str, default="{}",
                                    help="Optional JSON flat dictionary. Specifies query that selects experiments to build summary for.\
                                          A typical use case is to select specific framework. For instance:\
-                                         --query='{\"exp.framework_id\": \"tensorflow\"}'. Should be json parsable string")
+                                         --query='{\"exp.framework\": \"tensorflow\"}'. Should be json parsable string")
     args = parser.parse_args()
 
     query = json.loads(args.query)

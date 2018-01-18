@@ -278,7 +278,7 @@ int get_binding_size(ICudaEngine* engine, const int idx);
 void report_bindings(ICudaEngine* engine);
 
 // Compute and print results. At the exit, vec will be sorted.
-void report_results(std::vector<float>& vec, const std::string& info_string);
+void report_results(std::vector<float>& vec, const std::string& name_prefix);
 
 /**
  * exec <config> <model> <batch-size> <num-iters> [input_name] [output_name] [data_type]
@@ -432,8 +432,8 @@ int main(int argc, char **argv) {
     g_profiler.printLayerTimes(num_batches);
   }
   g_logger.log_info("[main] Reporting results");
-  report_results(total, "total");           // Total, true, time including data transfers.
-  report_results(inference, "inference");   // Pure inference time.
+  report_results(total, "total_");           // Total, true, time including data transfers.
+  report_results(inference, "");             // Pure inference time.
   
   g_logger.log_info("[main] Cleaning buffers");
   if (data_type == DataType::kINT8) {
@@ -473,24 +473,24 @@ void report_bindings(ICudaEngine* engine) {
   }
 }
 
-void report_results(std::vector<float>& v, const std::string& what) {
+void report_results(std::vector<float>& v, const std::string& name_prefix) {
   std::sort(v.begin(), v.end());
   const float sum = std::accumulate(v.begin(), v.end(), 0.0f);
   const float mean = sum / v.size();
   const float sq_sum = std::inner_product(v.begin(), v.end(), v.begin(), 0.0f);
   const float stdev = std::sqrt(sq_sum / v.size() - mean * mean);
   
-  std::cout << "__results." << what << "_time__= " << mean  << std::endl;
-  std::cout << "__results." << what << "_times__=[";
+  std::cout << "__results." << name_prefix << "time__= " << mean  << std::endl;
+  std::cout << "__results." << name_prefix << "time_data__=[";
   for (int i=0; i<v.size(); ++i) {
     if (i != 0) { std::cout << ","; }
     std::cout << v[i];
   }
   std::cout << "]" << std::endl;
   
-  std::cout << "__results." << what << "_time_std__= " << stdev  << std::endl;
-  std::cout << "__results." << what << "_time_min__= " << v.front()  << std::endl;
-  std::cout << "__results." << what << "_time_max__= " << v.back()  << std::endl;
+  std::cout << "__results." << name_prefix << "time_stdev__= " << stdev  << std::endl;
+  std::cout << "__results." << name_prefix << "time_min__= " << v.front()  << std::endl;
+  std::cout << "__results." << name_prefix << "time_max__= " << v.back()  << std::endl;
 }
 
 // Asynch version:

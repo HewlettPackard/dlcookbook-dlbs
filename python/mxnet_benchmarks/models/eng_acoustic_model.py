@@ -32,7 +32,7 @@ class EngAcousticModel(Model):
         )
         Model.__init__(self, params)
 
-        v = mx.sym.Variable(name="data")
+        v = self.add_data_node()
 
         for _ in range(5):
             v = mx.sym.FullyConnected(data=v, num_hidden=2048)

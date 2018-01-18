@@ -3,43 +3,50 @@
 export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
 export CUDA_CACHE_PATH=/dev/shm/cuda_cache
 . ${BENCH_ROOT}/../../scripts/environment.sh
+#------------------------------------------------------------------------------#
 script=$DLBS_ROOT/python/dlbs/experimenter.py
-
+parser=$DLBS_ROOT/python/dlbs/logparser.py
 action=run
+framework=intel_caffe
 loglevel=warning
 #------------------------------------------------------------------------------#
-# Example: a minimal working example to run INTEL Caffe. Run one experiment and
+# For more detailed comments see './bvlc_caffe.sh' script.
+#------------------------------------------------------------------------------#
+# Example: a minimal working example to run Intel Caffe. Run one experiment and
 # store results in a file.
 # If you run multiple experiments, you really want to make sure that experiment
 # log file is different for every experiment.
 if true; then
-    rm -rf ./intel_caffe
-
+    rm -rf ./$framework
     python $script $action --log-level=$loglevel\
-                           -Pexp.warmup_iters=10\
-                           -Pexp.bench_iters=100\
+                           -Pexp.num_warmup_batches=10\
+                           -Pexp.num_batches=100\
                            -Pexp.framework='"intel_caffe"'\
-                           -Pexp.env='"docker"'\
-                           -Pexp.device_batch=16\
+                           -Pexp.docker=true\
+                           -Pexp.replica_batch=16\
                            -Pexp.gpus='""'\
                            -Vexp.model='["alexnet"]'\
                            -Vexp.phase='["training"]'\
-                           -Pexp.log_file='"${BENCH_ROOT}/${caffe.fork}_caffe/${exp.model}.log"'\
-
-    python $DLBS_ROOT/python/dlbs/logparser.py ./intel_caffe/*.log --keys exp.framework_id exp.effective_batch results.training_time results.inference_time exp.model_title
+                           -Pexp.log_file='"${BENCH_ROOT}/${caffe.fork}_caffe/${exp.model}.log"'
+    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
+                                             results.time results.throughput exp.model_title\
+                                             exp.phase
 fi
 #------------------------------------------------------------------------------#
-# Example: this one runs tensorflow with several models and several batch sizes
+# Example: this one runs Intel Caffe with several models and several batch sizes.
+# It also runs Intel Caffe in container and host OS, so, make sure you have both.
 if false; then
-    rm -rf ./intel_caffe
-
+    rm -rf ./$framework
     python $script $action --log-level=$loglevel\
                            -Pexp.framework='"intel_caffe"'\
-                           -Vexp.env='["docker", "host"]'\
+                           -Vexp.docker='[true, false]'\
                            -Pexp.gpus='""'\
-                           -Pexp.log_file='"${BENCH_ROOT}/${caffe.fork}_caffe/${exp.env}/${exp.model}_${exp.effective_batch}.log"'\
+                           -Pexp.log_file='"${BENCH_ROOT}/${caffe.fork}_caffe/$(\"docker\" if ${exp.docker} else \"host\")$/${exp.model}_${exp.effective_batch}.log"'\
                            -Vexp.model='["alexnet", "googlenet"]'\
-                          -Vexp.device_batch='[2, 4]'
-
-    python $DLBS_ROOT/python/dlbs/logparser.py ./intel_caffe/*.log --keys exp.framework_id exp.effective_batch results.training_time exp.model_title exp.env
+                           -Vexp.replica_batch='[2, 4]'
+    python $parser --log-dir ./$framework/\
+                   --recursive\
+                   --keys exp.status exp.framework_title exp.effective_batch\
+                          results.time results.throughput exp.model_title\
+                          exp.phase exp.docker
 fi

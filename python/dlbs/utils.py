@@ -20,6 +20,7 @@ import json
 import re
 import logging
 import subprocess
+import importlib
 from multiprocessing import Process
 from multiprocessing import Queue
 from glob import glob
@@ -175,8 +176,8 @@ class DictUtils(object):
             try:
                 value = match.group(2).strip()
                 value = json.loads(value) if len(value) > 0 else None
-            except ValueError:
-                raise ConfigurationError("Cannot parse JSON string '%s' with key '%s' (key-value definition: '%s')" % (value, key, line))
+            except ValueError as e:
+                raise ConfigurationError("Cannot parse JSON string '%s' with key '%s' (key-value definition: '%s'). Error is %s" % (value, key, line, str(e)))
             if add_only_keys is None or key in add_only_keys:
                 dictionary[key] = value
                 logging.debug("Key-value item (%s=%s) has been parsed and added to dictionary", key, str(value))
@@ -244,54 +245,121 @@ class ConfigurationLoader(object):
     """Loads experimenter configuration from multiple files."""
 
     @staticmethod
-    def load(path):
+    def load(path, files=None):
         """Loads configurations (normally in `conigs`) folder.
 
         :param str path: Path to load configurations from
-        :return: A tuple consisting of a list of config files and configuration 
-                 object (dictionary)
+        :param list files: List of file names to load. If None, all files with
+                           JSON extension in **path** are loaded.
+        :return: A tuple consisting of a list of config files, configuration
+                 object (dictionary) and dictionary of parameters info
         """
-        config_files = [os.path.join(path, f) for f in os.listdir(path) if f.endswith('.json')]
-        config = {}
+        if files is not None:
+            config_files = [os.path.join(path, f) for f in files]
+        else:
+            config_files = [os.path.join(path, f) for f in os.listdir(path) if f.endswith('.json')]
+        config = {}         # Configuration with params/vars/extensions
+        param_info = {}     # Information on params such as type and help messages
         for config_file in config_files:
             logging.debug('Loading configuration from: %s', config_file)
             with open(config_file) as file_obj:
                 try:
-                    ConfigurationLoader.update(config, json.load(file_obj))
+                    # A part of global configuration from this particular file
+                    config_section = json.load(file_obj)
+                    # Update param info.
+                    ConfigurationLoader.update_param_info(param_info, config_section)
+                    #
+                    ConfigurationLoader.update(config, ConfigurationLoader.remove_info(config_section))
                 except ValueError as error:
                     logging.error("Invalid JSON configuration in file %s", config_file)
                     raise error
-        return config_files, config
+        return (config_files, config, param_info)
+
 
     @staticmethod
-    def update(obj1, obj2, is_root=True):
-        """Merge **obj2** into **obj1** assuming obj1 and obj2 are JSON
-        configuration configs or their members.
+    def update_param_info(param_info, config):
+        """Update parameter info dictionary based on configurationi in **config**
 
-        :param dict obj1: Merge data to this dictionary.
-        :param dict obj2: Merge data from this dictionary.
-        :param bool is_root: True if **obj1** and *obj2** are root configuration
+        :param dict param_info: A parameter info dictionary that maps parameter
+                                name to its description dictionary that contains
+                                such fileds as value, help message, type, constraints
+                                etc.
+        :param dict config: A dictionary with configuration section that may contain
+                            parameters, variables and extensions. The **config** is
+                            a result of parsing a JSON configuration file.
+
+        We are interested here only in parameters section
+        """
+        if 'parameters' not in config:
+            return
+        params = config['parameters']
+        for name in params:
+            val = params[name]
+            assert name not in param_info, "Trying to redefine parameter (%s). Cur val is '%s', new val is '%s'" % (name, str(param_info[name]), val)
+            if isinstance(val, dict):
+                assert 'val' in val, "Invalid parameter (%s) definition. In case of dictionary, it must define a 'val' field." % name
+                param_info[name] = copy.deepcopy(val)
+            else:
+                val_type = 'str' if isinstance(val, basestring) or isinstance(val, list) else type(val).__name__
+                assert val_type in ('int', 'str', 'float', 'bool'),\
+                       "Unsupported type of a parameter %s" % val_type
+                param_info[name] = {
+                    'val': val,
+                    'type': val_type,
+                    'desc': "No description for this parameter provided (it was automatically converted from its value)."
+                }
+
+    @staticmethod
+    def remove_info(config):
+        """In parameter section of a **config** the function removes parameter info
+        leaving only their values
+
+        :param dict config: A dictionary with configuration section that may contain
+                            parameters, variables and extensions. The **config** is
+                            a result of parsing a JSON configuration file.
+        :return: A copy of **config** with info removed
+        """
+        clean_config = copy.deepcopy(config)
+
+        if 'parameters' in clean_config:
+            params = clean_config['parameters']
+            for name in params:
+                val = params[name]
+                if isinstance(val, dict):
+                    assert 'val' in val, "Invalid parameter (%s) definition. In case of dictionary, it must define a 'val' field." % name
+                    params[name] = val['val']
+
+        return clean_config
+
+    @staticmethod
+    def update(dest, source, is_root=True):
+        """Merge **source** dictionary into **dest** dictionary assuming source
+        and dest are JSON configuration configs or their members.
+
+        :param dict dest: Merge data to this dictionary.
+        :param dict source: Merge data from this dictionary.
+        :param bool is_root: True if **dest** and *source** are root configuration
                              objects. False if these objects are members.
         """
-        for key in obj2:
-            if key not in obj1:
-                obj1[key] = copy.deepcopy(obj2[key])
+        for key in source:
+            if key not in dest:
+                dest[key] = copy.deepcopy(source[key])
             else:
-                both_dicts = isinstance(obj1[key], dict) and isinstance(obj2[key], dict)
-                both_lists = isinstance(obj1[key], list) and isinstance(obj2[key], list)
-                both_primitive = type(obj1[key]) is type(obj2[key]) and isinstance(obj1[key], (basestring, int, float, long))
+                both_dicts = isinstance(dest[key], dict) and isinstance(source[key], dict)
+                both_lists = isinstance(dest[key], list) and isinstance(source[key], list)
+                both_primitive = type(dest[key]) is type(source[key]) and isinstance(dest[key], (basestring, int, float, long))
 
                 if is_root:
                     assert both_dicts or both_lists, "In root configuration objects, only dictionaries and lists are allowed."
                     if both_dicts:
                         # This is for parameters and variables section
-                        ConfigurationLoader.update(obj1[key], obj2[key], is_root=False)
+                        ConfigurationLoader.update(dest[key], source[key], is_root=False)
                     else:
                         # This works for extensions
-                        obj1[key].extend(obj2[key])
+                        dest[key].extend(source[key])
                 else:
                     assert both_lists or both_primitive, "Members of configuration must be either lists or primitive types"
-                    obj1[key] = copy.deepcopy(obj2[key]) if both_lists else obj2[key]
+                    dest[key] = copy.deepcopy(source[key]) if both_lists else source[key]
 
 
 class ResourceMonitor(object):
@@ -335,11 +403,11 @@ class ResourceMonitor(object):
                 count = 0
             else:
                 count = int(fields_split[3])
-            self.fields[field_name] = { 
+            self.fields[field_name] = {
                 'type': field_type,
-                'index': index, 
+                'index': index,
                 'count': count
-            }                        
+            }
 
     @staticmethod
     def monitor_function(launcher, pid_file, frequency, queue):
@@ -463,3 +531,34 @@ class ResourceMonitor(object):
         self.queue.join_thread()
         self.monitor_process.join()
         self.remove_pid_file()
+
+
+class _ModuleImporter(object):
+    """A private class that imports a particular models and return boolean
+    variable indicating if import has been succesfull or not. Used by a Modules
+    class to identify if optional python modules are available.
+    """
+    @staticmethod
+    def try_import(module_name):
+        """Tries to import module.
+
+        :param str module_name: A name of a module to try to import, something like
+                                'numpy', 'pandas', 'matplotlib' etc.
+        :return: True if module has been imported, False otherwise.
+        """
+        have_module = True
+        try:
+            importlib.import_module(module_name)
+        except ImportError:
+            logging.warn("Module '%s' cannot be imported, certain system information will not be available", module_name)
+            have_module = False
+        return have_module
+
+
+class Modules(object):
+    """A class that enumerates non-standard python modules this project depends on.
+    They are optional, so we can disable certain functionality if something is missing.
+    """
+    HAVE_NUMPY = _ModuleImporter.try_import('numpy')
+    HAVE_PANDAS = _ModuleImporter.try_import('pandas')
+    HAVE_MATPLOTLIB = _ModuleImporter.try_import('matplotlib')

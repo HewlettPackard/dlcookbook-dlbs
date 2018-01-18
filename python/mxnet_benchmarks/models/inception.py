@@ -254,7 +254,7 @@ class Inception4(BaseInceptionModel):
         Model.check_parameters(params, {'name': 'InceptionV4'})
         BaseInceptionModel.__init__(self, params)
 
-        v = mx.sym.Variable(name="data")
+        v = self.add_data_node()
         # Input conv modules
         v = self.conv('conv', v, num_filters=32, kernel=(3, 3), stride=(2, 2), pad=(0, 0))
         v = self.conv('conv', v, num_filters=32, kernel=(3, 3), stride=(1, 1), pad=(0, 0))

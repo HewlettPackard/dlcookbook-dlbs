@@ -18,7 +18,8 @@ Mac OS due to slightly different command line API of some of the tools we use
    ```bash
    git clone https://github.com/HewlettPackard/dlcookbook-dlbs dlbs
    ```
-3. Build/pull docker images for containerized benchmarks or build/install host frameworks for bare metal benchmarks.
+3. The benchmarking suite mostly uses modules from standard python library (python 2.7). Optional dependencies that do not influence the benchmarking process are listed in `python/requirements.txt`. If they are not found, the code that uses it will be disabled.
+4. Build/pull docker images for containerized benchmarks or build/install host frameworks for bare metal benchmarks.
     1. [TensorFlow](http://tensorflow.org)
     2. [BVLC Caffe](http://caffe.berkeleyvision.org/)
     3. [NVIDIA Caffe](https://github.com/NVIDIA/caffe)
@@ -27,7 +28,7 @@ Mac OS due to slightly different command line API of some of the tools we use
     6. [MXNet](http://mxnet.io)
     7. [TensorRT](https://developer.nvidia.com/tensorrt)
 
-   There are several ways to get Docker images. Read [here](/docker/pull_build_images.md?id=buildpull-docker-images) about various options including images from [NVIDIA GPU Cloud](https://www.nvidia.com/en-us/gpu-cloud/).
+   There are several ways to get Docker images. Read [here](/docker/pull_build_images.md?id=buildpull-docker-images) about various options including images from [NVIDIA GPU Cloud](https://www.nvidia.com/en-us/gpu-cloud/). We may not support the newest framework versions due to API change.
 
 ## Quick start
 Assuming TensorFlow is installed and CUDA enabled GPU is present, execute the following commands to run simple experiment with ResNet50 model  (if you do not have GPUs, see below):
@@ -39,9 +40,9 @@ export PYTHONPATH=$(pwd)/python:$PYTHONPATH
 # Create folder for experiment results
 mkdir -p ./benchmarks/my_experiment
 # Run experiment
-python ./python/dlbs/experimenter.py run -Pexp.framework='"tensorflow"' -Pexp.model='"resnet50"' -Pexp.gpus='"0"' -Pexp.bench_root='"./benchmarks/my_experiment"' -Pexp.log_file='"${exp.bench_root}/tf.log"'
+python ./python/dlbs/experimenter.py run -Pexp.framework='"tensorflow"' -Pexp.model='"resnet50"' -Pexp.gpus='"0"' -Pexp.log_file='"./benchmarks/my_experiment/tf.log"'
 # Print some results
-python ./python/dlbs/logparser.py --keys exp.device results.training_time exp.framework_title exp.model_title exp.device_batch -- ./benchmarks/my_experiment/tf.log
+python ./python/dlbs/logparser.py --keys exp.device_type exp.phase results.time exp.framework_title exp.model_title exp.replica_batch exp.framework_ver -- ./benchmarks/my_experiment/tf.log
 ```
 
 If you do not have NVIDIA GPUs, run TensorFlow in CPU mode (the only difference is that
@@ -54,9 +55,9 @@ export PYTHONPATH=$(pwd)/python:$PYTHONPATH
 # Create folder for experiment results
 mkdir -p ./benchmarks/my_experiment
 # Run experiment
-python ./python/dlbs/experimenter.py run -Pexp.framework='"tensorflow"' -Pexp.model='"resnet50"' -Pexp.gpus='""' -Pexp.bench_root='"./benchmarks/my_experiment"' -Pexp.log_file='"${exp.bench_root}/tf.log"'
+python ./python/dlbs/experimenter.py run -Pexp.framework='"tensorflow"' -Pexp.model='"resnet50"' -Pexp.device_type='"cpu"' -Pexp.log_file='"./benchmarks/my_experiment/tf.log"'
 # Print some results
-python ./python/dlbs/logparser.py --keys exp.device results.training_time exp.framework_title exp.model_title exp.device_batch -- ./benchmarks/my_experiment/tf.log
+python ./python/dlbs/logparser.py --keys exp.device_type exp.phase results.time exp.framework_title exp.model_title exp.replica_batch exp.framework_ver -- ./benchmarks/my_experiment/tf.log
 ```
 
 If everything is OK, you should expect seeing this JSON (training time - an average batch time - of course will be different):
@@ -64,17 +65,19 @@ If everything is OK, you should expect seeing this JSON (training time - an aver
 {
     "data": [
         {
-            "exp.device": "gpu",
-            "exp.device_batch": "16",
+            "exp.device_type": "gpu",
             "exp.framework_title": "TensorFlow",
+            "exp.framework_ver": "1.4.0",
             "exp.model_title": "ResNet50",
-            "results.training_time": 255.59105431309905
+            "exp.phase": "training",
+            "exp.replica_batch": 16,
+            "results.time": 273.27070879590093
         }
     ]
 }
 ```
 
-If `results.training_time` is not there, study ./benchmarks/my_experiment/tf.log for error messages.
+If `results.time` is not there, study ./benchmarks/my_experiment/tf.log for error messages.
 
 ## Further reading
 

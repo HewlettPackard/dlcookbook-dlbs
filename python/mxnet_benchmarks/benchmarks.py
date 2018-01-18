@@ -362,8 +362,8 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', type=str, required=False, default='', help='Path to the image RecordIO (.rec) file or a directory path. Created with tools/im2rec.py.')
     args = parser.parse_args()
 
-    if args.dtype == 'float32':
-        args.dtype = 'float'
+    if args.dtype == 'float':
+        args.dtype = 'float32'
 
     try:
         opts = vars(args)
@@ -380,9 +380,9 @@ if __name__ == '__main__':
     if len(times) > 0:
         mean_time = np.mean(times)                                   # seconds
         mean_throughput = get_effective_batch_size(opts) / mean_time # images / sec
-        print("__results.%s_time__=%s" % (opts['phase'], json.dumps(1000.0 * mean_time)))
-        print("__results.%s_throughput__=%s" % (opts['phase'], json.dumps(int(mean_throughput))))
+        print("__results.time__=%s" % (json.dumps(1000.0 * mean_time)))
+        print("__results.throughput__=%s" % (json.dumps(int(mean_throughput))))
         print("__exp.model_title__=%s" % (json.dumps(model_title)))
-        print("__results.%s_times__=%s" % (opts['phase'], json.dumps((1000.0*times).tolist())))
+        print("__results.time_data__=%s" % (json.dumps((1000.0*times).tolist())))
     else:
-        print("__results.status__=%s" % (json.dumps("fail")))
+        print("__results.status__=%s" % (json.dumps("failure")))

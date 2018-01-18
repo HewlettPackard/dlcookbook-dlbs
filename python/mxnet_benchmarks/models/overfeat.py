@@ -38,7 +38,7 @@ class Overfeat(Model):
         Model.__init__(self, params)
         training = self.phase == 'training'
 
-        data = mx.sym.Variable(name="data")
+        data = self.add_data_node()
         # Layer1
         conv1 = mx.symbol.Convolution(name='conv1', data=data, kernel=(11, 11), stride=(4, 4), num_filter=96)
         relu1 = mx.symbol.Activation(name='relu1', data=conv1, act_type='relu')

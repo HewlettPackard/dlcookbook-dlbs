@@ -55,15 +55,14 @@ class BenchStats(object):
             'failed_exps': {}
         }
         for exp in exps:
-            time_key = 'results.inference_time' if exp['exp.phase'] == 'inference' else 'results.training_time'
-            time_val = str(exp[time_key]).strip() if time_key in exp else ''
+            time_val = str(exp['results.time']).strip() if 'results.time' in exp else ''
             if not time_val:
                 stats['num_failed_exps'] += 1
                 stats['failed_exps'][exp['exp.id']] = {
                     'msg': 'No %s time found in log file.' % exp['exp.phase'],
                     'log_file': exp['exp.log_file'],
                     'phase': exp['exp.phase'],
-                    'framework_id': exp['exp.framework_id']
+                    'framework_title': exp['exp.framework_title']
                 }
             else:
                 stats['num_successful_exps'] += 1
@@ -76,7 +75,7 @@ if __name__ == "__main__":
                         help="Scan this folder for *.log files. "\
                              "Scan recursively if --recursive is set.")
     parser.add_argument('--recursive', required=False, default=False, action='store_true',
-                        help='Scan --log-dir folder recursively for log files.')
+                        help='Scan --log_dir folder recursively for log files.')
     args = parser.parse_args()
 
     stats = BenchStats.compute(args.log_dir, args.recursive)

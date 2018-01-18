@@ -37,10 +37,11 @@ import subprocess
 import string
 import copy
 from collections import defaultdict
-from dlbs.processor import Processor
 
 class Validator(object):
-    """ Validates plan for various errors like log files collision, availability of docker images etc."""
+    """ Validates plan for various errors like log files collision, availability
+    of docker images etc.
+    """
 
     def __init__(self, plan):
         self.plan = copy.deepcopy(plan)    # Plan - we will compute variables here - so it's a machine dependent validation.
@@ -59,24 +60,16 @@ class Validator(object):
         self.framework_host_checks = {}    # Temporary storage for the mapping "framework -> env". Env is the env
                                            # variables that we have already checked.
 
-    def validate(self, compute_variables=True):
-        """Performs all checks for provided plan.
-        
-        :param bool compute_variables: If true, variables need to be comptued.
-        """
-        if compute_variables:
-            Processor().compute_variables(self.plan)
-
+    def validate(self):
+        """Performs all checks for provided plan."""
         log_files = set()
         for experiment in self.plan:
             # Check log files for collision
-            log_file = experiment['exp.log_file']
-            if log_file in log_files:
-                self.log_files_collisions.add(log_file)
-            log_files.add(log_file)
-            # Check if experiment is disabled
-            if 'exp.disabled' in experiment and experiment['exp.disabled'] == 'true':
-                self.num_disabled += 1
+            if 'exp.log_file' in experiment:
+                log_file = experiment['exp.log_file']
+                if log_file in log_files:
+                    self.log_files_collisions.add(log_file)
+                log_files.add(log_file)
             # Update framework statistics
             self.update_framework_stats(experiment)
 
@@ -115,10 +108,11 @@ class Validator(object):
                 print("Other errors:")
                 print(json.dumps(self.errors, sort_keys=False, indent=4))
         print("========================= PLAN SUMMARY =========================")
-        print("Is plan OK .......................... %s" % (str(self.plan_ok)))
-        print("Number of experiments ............... %d" % (len(self.plan)))
-        print("Number of disabled experiments ...... %d" % (self.num_disabled))
-        print("Log files collisions ................ %s" % ('YES' if self.log_files_collisions else 'NO'))
+        print("Is plan OK ................................ %s" % (str(self.plan_ok)))
+        print("Total number of experiments (plan size).....%d" % (len(self.plan)))
+        print("Number of disabled experiments ............ %d" % (self.num_disabled))
+        print("Number of active experiments .............. %d" % (len(self.plan) - self.num_disabled))
+        print("Log files collisions ...................... %s" % ('YES' if self.log_files_collisions else 'NO'))
         print("================================================================")
 
     def update_framework_stats(self, exp):
@@ -128,7 +122,10 @@ class Validator(object):
 
         :param dict exp: An experiment item from :py:meth:`~dlbs.Validator.plan` list.
         """
-        framework_id = exp['exp.framework_id']
+        if 'exp.framework' not in exp:
+            framework_id = 'UNK'
+        else:
+            framework_id = exp['exp.framework']
         if framework_id not in self.frameworks:
             self.frameworks[framework_id] = {
                 'num_exps': 0,
@@ -141,36 +138,36 @@ class Validator(object):
             }
         stats = self.frameworks[framework_id]
         # Update number of disabled exps
-        if 'exp.disabled' in exp and exp['exp.disabled'] == 'true':
+        if 'exp.status' in exp and exp['exp.status'] == 'disabled':
             stats['num_disabled'] += 1
             self.num_disabled += 1
             return
         stats['num_exps'] += 1
         # Update docker/host stats
         docker_img_key = ""
-        if exp['exp.env'] == 'docker':
-            stats['num_docker_exps'] += 1
-            docker_img_key = '%s.docker.image' % (exp['exp.framework'])
-            if exp[docker_img_key] not in stats['docker_images']:
-                stats['docker_images'].append(exp[docker_img_key])
-        elif exp['exp.env'] == 'host':
-            stats['num_host_exps'] += 1
-            self.check_host_framework(exp['exp.framework'], exp['%s.env' % (exp['exp.framework'])])
-        else:
-            self.errors.append("Unknown experiment environment: '%s'. Expecting 'docker' or 'host'" % (exp['exp.env']))
+        if 'exp.docker' in exp:
+            if exp['exp.docker'] is True:
+                stats['num_docker_exps'] += 1
+                docker_img_key = '%s.docker_image' % (exp['exp.framework'])
+                if exp[docker_img_key] not in stats['docker_images']:
+                    stats['docker_images'].append(exp[docker_img_key])
+            else:
+                stats['num_host_exps'] += 1
+                self.check_host_framework(exp['exp.framework'], exp['%s.env' % (exp['exp.framework_family'])])
         # Update CPU/GPU stats
-        if exp['exp.device'] == 'gpu':
-            stats['num_gpu_exps'] += 1
-            if exp['exp.env'] == 'docker':
-                self.need_nvidia_docker = True
-                self.add_docker_image(exp['exp.framework'], 'gpu', exp[docker_img_key])
-        elif exp['exp.device'] == 'cpu':
-            stats['num_cpu_exps'] += 1
-            if exp['exp.env'] == 'docker':
-                self.need_docker = True
-                self.add_docker_image(exp['exp.framework'], 'cpu', exp[docker_img_key])
-        else:
-            stats['errors'].append("Unknown device: '%s'. Expecting 'gpu' or 'cpu'" % (exp['exp.device']))
+        if 'exp.device_type' in exp:
+            if exp['exp.device_type'] == 'gpu':
+                stats['num_gpu_exps'] += 1
+                if exp['exp.docker'] is True:
+                    self.need_nvidia_docker = True
+                    self.add_docker_image(exp['exp.framework'], 'gpu', exp[docker_img_key])
+            elif exp['exp.device_type'] == 'cpu':
+                stats['num_cpu_exps'] += 1
+                if exp['exp.docker'] is True:
+                    self.need_docker = True
+                    self.add_docker_image(exp['exp.framework'], 'cpu', exp[docker_img_key])
+            else:
+                stats['errors'].append("Unknown device: '%s'. Expecting 'gpu' or 'cpu'" % (exp['exp.device']))
 
     def add_docker_image(self, framework, device, docker_img):
         """Adds CPU or GPU docker image to list of images.

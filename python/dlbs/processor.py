@@ -36,8 +36,12 @@ class Processor(object):
     # Pattern that matches ${variable_name} and returns as group(1) variable_name
     VAR_PATTERN = re.compile(r'\$\{([^\}\4\{]+)\}', re.UNICODE)
 
-    def __init__(self):
+    def __init__(self, param_info=None):
         """ Constructor
+
+        :param dict param_info: A dictionary that maps parameter name to its description.
+                                This description should include default value, type, help
+                                message and optional constraints such as value domain.
 
         Forward index (self.fwd_index) is an updateable dictionary that maps
         variable name to the following object:
@@ -50,6 +54,7 @@ class Processor(object):
                                     # instance, ${${exp.fork}_caffe.host.libpath}.
             }
         """
+        self.param_info = param_info
         self.fwd_index = {}
     #
     def report_unsatisfied_deps(self, experiment):
@@ -190,7 +195,7 @@ class Processor(object):
 
         :return: computed (list), partially_computed(list)
         :rtype: tuple (list, list)
-        
+
         The computed variables are those that have been computed and their
         values can be used. The partially computed variables are those that
         contain nested references (`finalized` is set to False for them).
@@ -211,7 +216,13 @@ class Processor(object):
                     elif ref_var in os.environ:
                         replace_value = str(os.environ[ref_var])
                     else:
-                        raise LogicError("Variable '%s' not found. This must never happen." % (ref_var))
+                        msg = [
+                            "Variable '%s' not found. This may happen if variable's name depend",
+                            "on other variable that's empty or set to an incorrect value. For instance,",
+                            "the ${${exp.framework}.docker.image} variable depends on ${exp.framework}",
+                            "value. If it's empty, the variable name becomes '.docker.image' what's wrong."
+                        ]
+                        raise LogicError(' '.join(msg) % (ref_var))
                     experiment[var] = experiment[var].replace(replace_pattern, replace_value)
 
             # Search for computable components
@@ -225,22 +236,79 @@ class Processor(object):
                 try:
                     eval_res = eval(experiment[var][idx+2:end_idx])
                 except NameError as err:
-                    logging.error("Cannot evaluate python expression: %s" % (experiment[var][idx+2:end_idx]))
+                    logging.error("Cannot evaluate python expression: %s", experiment[var][idx+2:end_idx])
                     raise err
                 logging.debug("\"%s\" -> \"%s\"", experiment[var][idx+2:end_idx], str(eval_res))
                 experiment[var] = experiment[var][:idx] + str(eval_res) + experiment[var][end_idx+2:]
 
             if self.fwd_index[var]['finalized'] is True:
                 computed.append(var)
+                self.cast_variable(experiment, var)
+                self.check_variable_value(experiment, var)
             else:
                 partially_computed.append(var)
 
         return (computed, partially_computed)
 
+    def cast_variable(self, experiment, var):
+        """Cast varaible **var** defined in **experiment** to its true type.
+
+        The cast operation is only defined for variables that are 'string' variables
+        by default. The reason why we want to have this op is because in JSON configs
+        we can define variables that depend on other variables and/or that are python
+        computable expressions. The result is always a string, so we need to be able to
+        cast it to an appropriate type to be able to use such variables in a standard
+        way to define other variables.
+
+
+        """
+        # Type of this parameter must be string:
+        if not isinstance(experiment[var], basestring):
+            return
+        # Parameter info dictionary msut present and contain info on this
+        # parameter
+        if self.param_info is None or var not in self.param_info:
+            return
+        # An information object must contain type info:
+        if 'type' not in self.param_info[var]:
+            return
+        # 
+        var_type = self.param_info[var]['type']
+        if var_type == 'int':
+            experiment[var] = int(experiment[var])
+        elif var_type == 'float':
+            experiment[var] = float(experiment[var])
+        elif var_type == 'bool':
+            true_vals = ('true', 'on', '1')
+            false_vals = ('false', 'off', '0')
+            val = experiment[var].lower()
+            assert val in true_vals or val in false_vals,\
+                   "Invalid boolean value '%s'" % (experiment[var])
+            experiment[var] = val in true_vals
+        elif var_type == 'str':
+            pass
+        else:
+            assert False, "Invalid type of parameter '%s'" % (var_type)
+
+    def check_variable_value(self, experiment, var):
+        """ Check if variable contains correct value according to parameter info"""
+        if self.param_info is None or var not in self.param_info:
+            return
+        # Value domain check
+        if 'val_domain' in self.param_info[var]:
+            val_domain = self.param_info[var]['val_domain']
+            assert experiment[var] in val_domain,\
+                   "Value domain violation. Variable %s=%s must have value from %s" % (var, experiment[var], val_domain)
+        # Check of regular expression has been provided
+        if 'val_regex' in self.param_info[var]:
+            match = re.match(self.param_info[var]['val_regex'], experiment[var])
+            assert match is not None,\
+                   "Value domain violation. Variable %s=%s must match this regex %s" % (var, experiment[var], self.param_info[var]['val_regex'])
+
     @staticmethod
     def is_param_constant(param_value):
         """ Returns True if **param_value** is a constant value
-        
+
         :param obj param_value: A value that must be checked for constness.
         :return: True if param_value is constant or False otherwise.
         """

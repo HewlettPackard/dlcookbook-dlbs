@@ -47,6 +47,13 @@ class Model(object):
             if param not in params:
                 params[param] = value
 
+    def add_data_node(self, name='data'):
+        """Add data node casting it to float16 is required"""
+        data = mx.sym.Variable(name=name)
+        if self.dtype == 'float16':
+            data = mx.sym.Cast(data=data, dtype=np.float16)
+        return data
+
     def add_head_nodes(self, v):
         """Adds dense and softmax head nodes.
 

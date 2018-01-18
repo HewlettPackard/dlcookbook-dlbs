@@ -1,2 +1,16 @@
+## [0.0.2] - 2018-01-18
+  - Breaking changes in naming input/output parameters.
+      - Single file to store parameters and their help messages
+      - Parameters now have types
+  - Support for half precision in Caffe and MXNet.
+  - Various documentation updates.
+  - New Help module.
+  - Python script that automatically generates markdown docs for parameters.
+  - Updated tutorial files.
+  - Various bug-fixes.
+  - Making non python modules to be optional. If they not present, certain non critical functionality becomes unavailable.
+  - Added graceful shutdown of benchmarking process.
+  - Removed dependency on 'bc' tool.
+  - Added VERSION file.
 ## [0.0.1] - 2017-11-20
-  - Initial release
+  - Initial release.

@@ -27,8 +27,13 @@ from __future__ import print_function
 import argparse
 from dlbs.logparser import LogParser
 from dlbs.utils import IOUtils
-import matplotlib.pyplot as plt
-import numpy as np
+from dlbs.utils import Modules
+
+if Modules.HAVE_MATPLOTLIB:
+    import matplotlib.pyplot as plt
+if Modules.HAVE_NUMPY:
+    import numpy as np
+
 
 def simple_moving_average(times, window_size):
     """Smoothes time series with simple moving average
@@ -37,16 +42,22 @@ def simple_moving_average(times, window_size):
     :param int window_size: Size of a moving window.
     :return: Tuple of x and y values (x, y). Length of these lists is `len(times) - window_size`.
     """
+    if window_size >= len(times):
+        return (None, None)
     xs = range(window_size, len(times))
     ys = [0] * len(xs)
     # Compute first  value
     ys[0] = np.mean(times[0:window_size])
     for i in xrange(1, len(ys)):
         ys[i] = ys[i-1] + (times[window_size + i - 1] - times[i-1])/window_size
-    return (xs,ys)
+    return (xs, ys)
 
 
 if __name__ == "__main__":
+    if not Modules.HAVE_NUMPY or not Modules.HAVE_MATPLOTLIB:
+        print ("This script needs Numpy (available=%s) and Matplotlib (available=%s)" % (Modules.HAVE_NUMPY, Modules.HAVE_MATPLOTLIB))
+        exit(1)
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--log-dir', type=str, required=False, default=None,
                         help="Scan this folder for *.log files. "\
@@ -66,23 +77,25 @@ if __name__ == "__main__":
 
     exps = LogParser.parse_log_files(files)
     for exp in exps:
-        key = 'results.%s_times' % (exp['exp.phase'])
+        key = 'results.time_data'
         if key not in exp:
             continue
         times = exp[key]
         xs = range(len(times))
         # Plot moving averages for different windows
-        if exp['exp.device'] == 'gpu':
-            title="%s / %s / GPU batch %s / GPUs count %s" % (exp['exp.framework_title'], exp['exp.model_title'], exp['exp.device_batch'], exp['exp.num_gpus'])
+        if exp['exp.device_type'] == 'gpu':
+            title = "%s / %s / GPU batch %s / GPUs count %s" % (exp['exp.framework_title'], exp['exp.model_title'], exp['exp.replica_batch'], exp['exp.num_gpus'])
         else:
-            title="%s / %s / CPU batch %d" % (exp['exp.framework_title'], exp['exp.model_title'], exp['exp.effective_batch'])
+            title = "%s / %s / CPU batch %d" % (exp['exp.framework_title'], exp['exp.model_title'], exp['exp.effective_batch'])
         plt.title(title)
         plt.xlabel('#iteration')
         plt.ylabel('batch time')
         plt.plot(xs, times)
         labels = ['Original']
         for window_size in [10, 30, 50, 70, 100]:
-            xs,ys = simple_moving_average(times, window_size)
+            xs, ys = simple_moving_average(times, window_size)
+            if xs is None or ys is None:
+                continue
             line, = plt.plot(xs, ys)
             labels.append('Window=%d' % (window_size))
         legend = plt.legend(labels)

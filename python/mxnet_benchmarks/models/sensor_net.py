@@ -32,7 +32,7 @@ class SensorNet(Model):
         )
         Model.__init__(self, params)
 
-        v = mx.sym.Variable(name="data")
+        v = self.add_data_node()
 
         for layer_size in [1024, 1024, 1024]:
             v = mx.sym.FullyConnected(data=v, num_hidden=layer_size)

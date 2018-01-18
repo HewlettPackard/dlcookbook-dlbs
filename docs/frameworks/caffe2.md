@@ -29,35 +29,49 @@ To add new model, several steps need to be performed:
     2. Implement the `forward_pass_builder` method (see existing implementations in `models` folder for examples).
 
 ## Commonly used configuration parameters
+#### __caffe2.docker_image__
 
-### __caffe2.docker.image__ = `hpe/caffe2:cuda9-cudnn7`
-The name of a docker image for Caffe2 if containerized benchmark is requested.
-### __caffe2.host.python_path__ = `${HOME}/projects/caffe2/build`
-Path to a Caffe2's python folder in case of a bare metal run.
-### __caffe2.host.libpath__ = `${HOME}/projects/caffe2/build/caffe2`
-Basically, it's a LD_LIBRARY_PATH for MXNet in case of a bare metal run.
+* __default value__ `"hpe/caffe2:cuda9-cudnn7"`
+* __description__ The name of a docker image for Caffe2 if containerized benchmark is requested.
+
+#### __caffe2.host_libpath__
+
+* __default value__ `"${HOME}/projects/caffe2/build/caffe2"`
+* __description__ Basically, it's a LD_LIBRARY_PATH for Caffe2 in case of a bare metal run.
+
+#### __caffe2.host_python_path__
+
+* __default value__ `"${HOME}/projects/caffe2/build"`
+* __description__ Path to a Caffe2's python folder in case of a bare metal run.
+
 
 ## Other parameters
+#### __caffe2.args__
 
-### __caffe2.data_dir__ = `""`
-A data directory if real data should be used. If empty, synthetic data is used
-(no data ingestion pipeline).
-### __caffe2.data_backend__ = `lmdb`
-In case of real data, specifies its storage backend ('lmdb').
-### __caffe2.dtype__ = `${exp.dtype}`
-Precision to use - `float32`(`float`) or `float16`.
-### __caffe2.enable_tensor_core__ = `${exp.enable_tensor_core}`
-Enable/disable tensor core operations (only for VOLTA generation NVIDIA GPUs
-with CUDA 9).
+* __default value__ `[u'--model=${exp.model}', u"$('--forward_only' if '${exp.phase}'=='inference' else '')$", u'--batch_size=${exp.replica_batch}', u'--num_batches=${exp.num_batches}', u'--num_warmup_batches=${exp.num_warmup_batches}', u'--num_gpus=${exp.num_local_gpus}', u'--device=${exp.device_type}', u"--data_dir=$('' if not '${caffe2.data_dir}' else '${caffe2.data_dir}' if ${exp.docker} is True else '/workspace/data')$", u'--data_backend=${caffe2.data_backend}', u'--dtype=${exp.dtype}', u"$('--enable_tensor_core' if ${exp.use_tensor_core} is True else '')$"]`
+* __description__ Command line arguments that launcher uses to launch caffe2_benchmark script.
 
-## Internal parameters
+#### __caffe2.bench_path__
 
-### __caffe2.launcher__ = `${DLBS_ROOT}/scripts/launchers/caffe2.sh`
-Path to script that launches Caffe2 benchmarks.
-### __caffe2.args__ = ..
-Command line arguments that launcher uses to launch caffe2_benchmark script.
-### __caffe2.docker.args__ = ..
-In case if containerized benchmarks, this are the docker parameters for Caffe2.
-### __caffe2.bench_path__ = `$('${DLBS_ROOT}/python' if '${exp.env}' == 'host' else '/workspace')$`
-Python path to where mxnet_benchmarks project is located. Depends on bare
-metal/docker benchmark.
+* __default value__ `"$('${DLBS_ROOT}/python' if not ${exp.docker} else '/workspace')$"`
+* __description__ Python path to where mxnet_benchmarks project is located. Depends on bare metal/docker benchmark.
+
+#### __caffe2.data_backend__
+
+* __default value__ `"lmdb"`
+* __description__ In case of real data, specifies its storage backend \('lmdb'\).
+
+#### __caffe2.data_dir__
+
+* __default value__ `""`
+* __description__ A data directory if real data should be used. If empty, synthetic data is used \(no data ingestion pipeline\).
+
+#### __caffe2.docker_args__
+
+* __default value__ `[u'-i', u'--security-opt seccomp=unconfined', u'--pid=host', u'--volume=${DLBS_ROOT}/python/caffe2_benchmarks:/workspace/caffe2_benchmarks', u"$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$", u"$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$", u"$('--volume=${caffe2.data_dir}:/workspace/data' if '${caffe2.data_dir}' else '')$", u'${exp.docker_args}', u'${exp.docker_image}']`
+* __description__ In case if containerized benchmarks, this are the docker parameters for Caffe2.
+
+#### __caffe2.launcher__
+
+* __default value__ `"${DLBS_ROOT}/scripts/launchers/caffe2.sh"`
+* __description__ Path to script that launches Caffe2 benchmarks.

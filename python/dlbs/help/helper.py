@@ -102,11 +102,13 @@ class Helper(object):
         It's easier to do it manually. The format of command line is:
         experimenter.py action command command_parameters
         """
-        _, self.config = ConfigurationLoader.load(os.path.join(os.path.dirname(__file__), '..', 'configs'))
-        self.help = Helper.load_dicts(os.path.dirname(__file__))
-        for key in self.help:
-            if isinstance(self.help[key], list):
-                self.help[key] = ' '.join(self.help[key])
+        _, _, self.param_info = ConfigurationLoader.load(
+            os.path.join(os.path.dirname(__file__), '..', 'configs')
+        )
+        for key in self.param_info:
+            pi = self.param_info[key]
+            if 'desc' in pi and isinstance(pi['desc'], basestring):
+                pi['desc'] = [pi['desc']]
         with open(os.path.join(os.path.dirname(__file__), 'frameworks.json')) as file_obj:
             self.frameworks_help = json.load(file_obj)
 
@@ -130,15 +132,15 @@ class Helper(object):
         """
         param_patterns = [] if param_patterns is None else param_patterns
         text_patterns = [] if text_patterns is None else text_patterns
-        # Step 1: Match parameter names
+        # Step 1: Match parameter names.
         if not param_patterns:
             # If parameters not given, pretend we have a complete list.
-            matched_params = set(self.help.keys())
+            matched_params = set(self.param_info.keys())
         else:
             matched_params = set()
             for param_pattern in param_patterns:
                 regex = re.compile(param_pattern, re.I)
-                for param in self.help.keys():
+                for param in self.param_info.keys():
                     if regex.search(param):
                         matched_params.add(param)
         # Step 2: If text_patterns given, filter matched parameters
@@ -149,14 +151,20 @@ class Helper(object):
             for text_pattern in text_patterns:
                 regex = re.compile(text_pattern, re.I)
                 for matched_param in matched_params:
-                    if matched_param not in filtered_params and regex.search(self.help[matched_param]):
-                        filtered_params.add(matched_param)
+                    if matched_param not in filtered_params:
+                        matched = False
+                        for line in self.param_info[matched_param]['desc']:
+                            if regex.search(line):
+                                matched = True
+                                break
+                        if matched:
+                            filtered_params.add(matched_param)
         # Step 3: Build response
         params_help = {}
         for filtered_param in filtered_params:
             params_help[filtered_param] = {
-                'def_val': self.config['parameters'][filtered_param],
-                'help_msg': self.help[filtered_param]
+                'def_val': self.param_info[filtered_param]['val'],
+                'help_msg': self.param_info[filtered_param]['desc']
             }
         return params_help
 
@@ -175,8 +183,8 @@ class Helper(object):
             """Add all params in **params** associated with **framework**."""
             for param in params:
                 frameworks_help[framework][param] = {
-                    'def_val': self.config['parameters'][param],
-                    'help_msg': self.help[param]
+                    'def_val': self.param_info[param]['val'],
+                    'help_msg': self.param_info[param]['desc']
                 }
 
         for framework in frameworks:
@@ -196,7 +204,8 @@ class Helper(object):
         """
         for param in sorted(params.keys()):
             print("%s = %s"% (param, params[param]['def_val']))
-            print("\t" + str(params[param]['help_msg']))
+            for line in params[param]['help_msg']:
+                print("\t" + line)
 
     @staticmethod
     def load_dicts(path):

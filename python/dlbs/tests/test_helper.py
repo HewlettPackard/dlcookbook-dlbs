@@ -25,9 +25,9 @@ class TestHelper(unittest.TestCase):
 
     def test_help_with_params_01(self):
         """dlbs  ->  TestHelper::test_help_with_params_01                [Tests for parameter helper #1]"""
-        self.assertEqual(len(self.helper.help_with_params(['exp.device'], None)), 2)
-        self.assertEqual(len(self.helper.help_with_params(['^exp.device$'], None)), 1)
-        self.assertEqual(len(self.helper.help_with_params(['^exp.device$', '^exp.num_gpus$'], None)), 2)
+        self.assertEqual(len(self.helper.help_with_params(['exp.status'], None)), 2)
+        self.assertEqual(len(self.helper.help_with_params(['^exp.status$'], None)), 1)
+        self.assertEqual(len(self.helper.help_with_params(['^exp.status$', '^exp.num_gpus$'], None)), 2)
         # These may not be required in general.
         for ns in TestConfigurationLoader.params:
             for param in TestConfigurationLoader.params[ns]:
@@ -40,13 +40,13 @@ class TestHelper(unittest.TestCase):
 
     def test_help_with_params_02(self):
         """dlbs  ->  TestHelper::test_help_with_params_02                [Tests for parameter helper #2]"""
-        self.assertEqual(len(self.helper.help_with_params(None, ['cuda'])), 3)
-        self.assertEqual(len(self.helper.help_with_params(None, ['^cuda'])), 1)
-        self.assertEqual(len(self.helper.help_with_params(None, ['docker'])), 21)
+        self.assertEqual(len(self.helper.help_with_params(None, ['cuda'])), 4)
+        self.assertEqual(len(self.helper.help_with_params(None, ['cudnn'])), 2)
+        self.assertEqual(len(self.helper.help_with_params(None, ['docker'])), 23)
 
     def test_help_with_params_03(self):
         """dlbs  ->  TestHelper::test_help_with_params_03                [Tests for parameter helper #3]"""
-        self.assertEqual(len(self.helper.help_with_params(['exp.device'], ['batch'])), 1)
+        self.assertEqual(len(self.helper.help_with_params(['docker'], ['TensorRT'])), 1)
 
     def test_frameworks_help_01(self):
         """dlbs  ->  TestHelper::test_frameworks_help_01                 [Tests for framework helper #1]"""
@@ -57,7 +57,7 @@ class TestHelper(unittest.TestCase):
         """dlbs  ->  TestHelper::test_frameworks_help_02                 [Tests for framework helper #2]"""
         for framework in self.helper.frameworks_help:
             for param in self.helper.frameworks_help[framework]:
-                self.assertIn(param, self.helper.help)
+                self.assertIn(param, self.helper.param_info)
 
 
 if __name__ == '__main__':

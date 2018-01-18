@@ -22,12 +22,12 @@ There are several components in DLBS:
 
 
 ## Benchmark specification
-Every benchmark is specified by a set of parameters. Some of those parameters have specific meaning. Otherwise, arbitrary parameters can be used. For instance, the following json object defines a benchmark to run GoogleNet in TensorFlow with batch equal to 8 images per device:
+Every benchmark is specified by a set of parameters. Some of those parameters have specific meaning. Otherwise, arbitrary parameters can be used. For instance, the following json object defines a benchmark to run GoogleNet in TensorFlow with batch equal to 8 images per model replica (device if no model parallelism is used):
 ```json
 {
     'exp.model': 'googlenet',
     'exp.framework': 'tensorflow',
-    'exp.device_batch': 8
+    'exp.replica_batch': 8
 }
 ```
 It is assumed that for every framework (`exp.framework`) there must be a parameter with name `framework-name.launcher`, for instance, `tensorflow.launcher`, `caffe.launcher`, `caffe2.launcher` etc. Experimenter will run this script and will pass all parameters from current experiment as command line arguments. Since we cannot use '.' in parameter names, all dots will be converted to underscores '\_'. For instance, if TensorFlow is configured with the following launcher:
@@ -38,7 +38,7 @@ It is assumed that for every framework (`exp.framework`) there must be a paramet
 then the experimenter will launch the following process:
 
 ```bash
-tensorflow_hpm.sh --exp_model 'googlenet'  --exp_framework 'tensorflow' --exp_device_batch 8
+tensorflow_hpm.sh --exp_model 'googlenet'  --exp_framework 'tensorflow' --exp_replica_batch 8
 ```
 The script `tensorflow_hpm.sh` can then parse command line arguments and access these parameters. In general, there can be many parameters passed to a particular launcher. You should only use those that are required to run benchmark in a specific framework.
 
@@ -66,8 +66,8 @@ Typical examples for such parameters are number of warm-up and benchmark iterati
 ```json
 {
     'parametes':{
-        'exp.warmup_iters': 2,
-        'exp.bench_iters': 100,
+        'exp.num_warmup_batches': 2,
+        'exp.num_batches': 100,
         'exp.phase': 'training'
     }
 }
@@ -79,7 +79,7 @@ Typical examples for such parameters are number of warm-up and benchmark iterati
 {
     'variables':{
         'exp.framework': ['tensorflow', 'caffe2', 'tensorrt'],
-        'exp.device_batch': [8, 16, 32, 64],
+        'exp.replica_batch': [8, 16, 32, 64],
         'exp.phase': ['training', 'inference']
     }
 }
@@ -98,16 +98,16 @@ Every extension has `condition`, `parameters` and `cases` sections. Let's consid
         {
             "condition":{ "exp.framework": "bvlc_caffe" },
             "parameters": {
-                "exp.framework_id":"bvlc_caffe",
-                "exp.framework": "caffe",
+                "exp.framework_title":"BVLC Caffe",
+                "exp.framework_family": "caffe",
                 "caffe.fork": "bvlc"
             }
         },
         {
             "condition":{ "exp.framework": "nvidia_caffe" },
             "parameters": {
-                "exp.framework_id":"nvidia_caffe",
-                "exp.framework": "caffe",
+                "exp.framework_title":"NVIDIA Caffe",
+                "exp.framework_family": "caffe",
                 "caffe.fork": "nvidia"
             }
         }
@@ -119,11 +119,11 @@ The `cases` section, an array, contains sets of parameters that should be used t
 
 ## Parameter specifications
 
-Parameters are defined as key-value pairs. To some extent, values can reference other parameters, similar to what it is possible in shell scripts. The experimenter will then try to expand these variables. One parameter can reference other parameter with a standard `${}` notation. It will be resolved to (1) other parameter defined in current experiment and if failed (no parameter with given name), experimenter will try to find this  parameter in a set of environmental variables. If not found, exception is thrown and program terminates. For instance, the  following parameters after evaluation will have the same value:
+Parameters are defined as key-value pairs. To some extent, values can reference other parameters, similar to what it is possible in shell scripts. The experimenter will then try to expand these variables. One parameter can reference other parameter with a standard `${}` notation (but not `$name`). It will be resolved to (1) other parameter defined in current experiment and if failed (no parameter with given name), experimenter will try to find this  parameter in a set of environmental variables. If not found, exception is thrown and program terminates. For instance, the  following parameters after evaluation will have the same value:
 ```json
 {
     'exp.framework': 'tensorflow',
-    'exp.framework_id': '${exp.framework}'
+    'exp.framework_family': '${exp.framework}'
 }
 ```
 We do not support `$name` expansion. It is ignored. One use case for such behavior is to, for instance, generate unique log files:
@@ -134,8 +134,8 @@ The second option to define values dynamically is python statements. The format 
 ```json
 {
     "exp.log_file": "${exp.exp_path}/exp/$('${exp.gpus}'.replace(',','.'))$_${exp.model}_${exp.effective_batch}.log",
-	"exp.effective_batch": "$(${exp.num_gpus}*${exp.device_batch})$",
-	"exp.num_gpus": "$(len('${exp.gpus}'.replace(',', ' ').split()))$",
+	"exp.effective_batch": "$(${exp.num_replicas}*${exp.replica_batch} if '${exp.device_type}' == 'gpu' else ${exp.num_nodes} * ${exp.replica_batch})$",
+	"exp.num_local_gpus": "$(len(re.sub('[:,]', ' ', '${exp.gpus}').split()))$",
 	"exp.device": "$('gpu' if ${exp.num_gpus} > 0 else 'cpu')$",
 	"exp.id": "$(uuid.uuid4().__str__().replace('-',''))$"
 }
@@ -153,11 +153,11 @@ It is not required to provide json specification to experimenter. Majority of be
 
 Parameters are defined with `-P` argument and variables are defined with `-V` argument:
 ```bash
-python $script build -Pexp.bench_iters=1000\
+python $script build -Pexp.num_batches=1000\
                      -Vexp.framework='["tensorflow", "caffe2"]'\
-                     -Vexp.device_batch='[1, 2, 4, 8]'
+                     -Vexp.replica_batch='[1, 2, 4, 8]'
 ```
-In this example we define one parameter `exp.bench_iters` with value `1000` and variable parameters `exp.framework` and `exp.device_batch`.
+In this example we define one parameter `exp.num_batches` with value `1000` and variable parameters `exp.framework` and `exp.replica_batch`.
 
 Extensions can also be defined on a command line though complex extensions may be quite long and that may lead to errors:
 ```bash
@@ -165,9 +165,9 @@ python $script build   --discard-default-config --log-level=debug\
                        -Vexp.framework='"dummy"'\
                        -Vexp.greeting='["Hello!", "How are you?"]'\
                        -Pdummy.launcher='"${DLBS_ROOT}/scripts/launchers/dummy.sh"'\
-                       -E'{"condition":{"exp.greeting":"Hello!"}, "parameters": {"exp.greeting.extention": "You should see me only when exp.greeting is Hello!"}}'
+                       -E'{"condition":{"exp.greeting":"Hello!"}, "parameters": {"exp.greeting.extension": "You should see me only when exp.greeting is Hello!"}}'
 ```
-In this example we define one condition that will fire when `exp.greeting` is equal to `Hello!`. If so, it will add parameter `exp.greeting.extention` with value `You should see me only when exp.greeting is Hello!` to current set of parameters. Basically, extension in this example is a json parsable string.
+In this example we define one condition that will fire when `exp.greeting` is equal to `Hello!`. If so, it will add parameter `exp.greeting.extension` with value `You should see me only when exp.greeting is Hello!` to current set of parameters. Basically, extension in this example is a json parsable string.
 
 > Make sure that parameter/variable values are JSON parseable.
 

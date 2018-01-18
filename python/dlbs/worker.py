@@ -88,13 +88,9 @@ class Worker(threading.Thread):
             # Other output of the launching script will be printed by this pyhton code
             # to a stanard output.
             col_width = int(math.floor(math.log10(self.total_jobs))+1)
-            logging.info(
-                "Running job %s out of %s: '%s' (+ arguments that have been dumped to '%s')",
-                str(self.job_number).rjust(col_width),
-                str(self.total_jobs).rjust(col_width),
-                self.command[0],
-                self.params['exp.log_file']
-            )
+            if self.job_number%10 == 0:
+                print("Doing %s benchmark out of %s" % (str(self.job_number).rjust(col_width),
+                                                        str(self.total_jobs).rjust(col_width)))
             self.process = subprocess.Popen(self.command, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=self.environ)
             while True:
                 output = self.process.stdout.readline()

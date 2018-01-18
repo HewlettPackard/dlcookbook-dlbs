@@ -1,58 +1,94 @@
 {
-    "parameters": {
-        "caffe2.launcher": "${DLBS_ROOT}/scripts/launchers/caffe2.sh",
-        "caffe2.data_dir": "",
-        "caffe2.data_backend": "lmdb",
-        "caffe2.dtype": "${exp.dtype}",
-        "caffe2.enable_tensor_core": "${exp.enable_tensor_core}",
-        "caffe2.args": [
-            "--model=${exp.model}",
-            "$('--forward_only' if '${exp.phase}'=='inference' else '')$",
-            "--batch_size=${exp.device_batch}",
-            "--num_batches=${exp.bench_iters}",
-            "--num_warmup_batches=${exp.warmup_iters}",
-            "--num_gpus=${exp.num_gpus}",
-            "--device=${exp.device}",
-            "--data_dir=$('' if not '${caffe2.data_dir}' else '${caffe2.data_dir}' if '${exp.env}' == 'host' else '/workspace/data')$",
-            "--data_backend=${caffe2.data_backend}",
-            "--dtype=${caffe2.dtype}",
-            "$('--enable_tensor_core' if '${caffe2.enable_tensor_core}'=='true' else '')$"
-        ],
-        "caffe2.docker.image": "hpe/caffe2:cuda9-cudnn7",
-        "caffe2.docker.args": [
-            "-i",
-            "--security-opt seccomp=unconfined",
-            "--pid=host",
-            "--volume=${DLBS_ROOT}/python/caffe2_benchmarks:/workspace/caffe2_benchmarks",
-            "$('--volume=${CUDA_CACHE_PATH}:/workspace/cuda_cache' if '${CUDA_CACHE_PATH}' else '')$",
-            "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
-            "$('--volume=${caffe2.data_dir}:/workspace/data' if '${caffe2.data_dir}' else '')$",
-            "${exp.docker.args}",
-            "${caffe2.docker.image}"
-        ],
-        "caffe2.bench_path": "$('${DLBS_ROOT}/python' if '${exp.env}' == 'host' else '/workspace')$",
-        "caffe2.host.python_path": "${HOME}/projects/caffe2/build",
-        "caffe2.host.libpath": "${HOME}/projects/caffe2/build/caffe2"
+  "parameters": {
+    "caffe2.launcher": {
+      "val": "${DLBS_ROOT}/scripts/launchers/caffe2.sh",
+      "type": "str",
+      "desc": "Path to script that launches Caffe2 benchmarks."
     },
-    "extensions": [
-        {
-            "condition":{ "exp.framework": "caffe2", "exp.env": "docker" },
-            "parameters": { "caffe2.env": [
-                "PYTHONPATH=$('${caffe2.bench_path}:\\$PYTHONPATH'.strip(' \t:'))$",
-                "$('CUDA_CACHE_PATH=${runtime.cuda_cache}' if '${CUDA_CACHE_PATH}' else '')$",
-                "CUDA_VISIBLE_DEVICES=${exp.gpus}"
-            ]}
-        },
-        {
-            "condition":{ "exp.framework": "caffe2", "exp.env": "host" },
-            "parameters": { 
-                "caffe2.env": [
-                    "PYTHONPATH=$('${caffe2.bench_path}:${caffe2.host.python_path}:\\$PYTHONPATH'.strip(' \t:'))$",
-                    "LD_LIBRARY_PATH=$('${caffe2.host.libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
-                    "$('CUDA_CACHE_PATH=${runtime.cuda_cache}' if '${CUDA_CACHE_PATH}' else '')$",
-                    "CUDA_VISIBLE_DEVICES=${exp.gpus}"
-                ]
-            }
-        }
-    ]
+    "caffe2.data_dir": {
+      "val": "",
+      "type": "str",
+      "desc": "A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline)."
+    },
+    "caffe2.data_backend": {
+      "val": "lmdb",
+      "type": "str",
+      "desc": "In case of real data, specifies its storage backend ('lmdb')."
+    },
+    "caffe2.args": {
+      "val": [
+        "--model=${exp.model}",
+        "$('--forward_only' if '${exp.phase}'=='inference' else '')$",
+        "--batch_size=${exp.replica_batch}",
+        "--num_batches=${exp.num_batches}",
+        "--num_warmup_batches=${exp.num_warmup_batches}",
+        "--num_gpus=${exp.num_local_gpus}",
+        "--device=${exp.device_type}",
+        "--data_dir=$('' if not '${caffe2.data_dir}' else '${caffe2.data_dir}' if ${exp.docker} is True else '/workspace/data')$",
+        "--data_backend=${caffe2.data_backend}",
+        "--dtype=${exp.dtype}",
+        "$('--enable_tensor_core' if ${exp.use_tensor_core} is True else '')$"
+      ],
+      "type": "str",
+      "desc": "Command line arguments that launcher uses to launch caffe2_benchmark script."
+    },
+    "caffe2.docker_image": {
+      "val": "hpe/caffe2:cuda9-cudnn7",
+      "type": "str",
+      "desc": "The name of a docker image for Caffe2 if containerized benchmark is requested."
+    },
+    "caffe2.docker_args": {
+      "val": [
+        "-i",
+        "--security-opt seccomp=unconfined",
+        "--pid=host",
+        "--volume=${DLBS_ROOT}/python/caffe2_benchmarks:/workspace/caffe2_benchmarks",
+        "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
+        "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
+        "$('--volume=${caffe2.data_dir}:/workspace/data' if '${caffe2.data_dir}' else '')$",
+        "${exp.docker_args}",
+        "${exp.docker_image}"
+      ],
+      "type": "str",
+      "desc": "In case if containerized benchmarks, this are the docker parameters for Caffe2."
+    },
+    "caffe2.bench_path": {
+      "val": "$('${DLBS_ROOT}/python' if not ${exp.docker} else '/workspace')$",
+      "type": "str",
+      "desc": "Python path to where mxnet_benchmarks project is located. Depends on bare metal/docker benchmark."
+    },
+    "caffe2.host_python_path": {
+      "val": "${HOME}/projects/caffe2/build",
+      "type": "str",
+      "desc": "Path to a Caffe2's python folder in case of a bare metal run."
+    },
+    "caffe2.host_libpath": {
+      "val": "${HOME}/projects/caffe2/build/caffe2",
+      "type": "str",
+      "desc": "Basically, it's a LD_LIBRARY_PATH for Caffe2 in case of a bare metal run."
+    }
+  },
+  "extensions": [
+    {
+      "condition":{ "exp.framework": "caffe2"},
+      "parameters": { "exp.framework_title": "Caffe2" }
+    },
+    {
+      "condition":{ "exp.framework": "caffe2", "exp.docker": true },
+      "parameters": { "caffe2.env": [
+        "PYTHONPATH=$('${caffe2.bench_path}:\\$PYTHONPATH'.strip(' \t:'))$",
+        "${runtime.EXPORT_CUDA_CACHE_PATH}",
+        "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}"
+      ]}
+    },
+    {
+      "condition":{ "exp.framework": "caffe2", "exp.docker": false },
+      "parameters": { "caffe2.env": [
+        "PYTHONPATH=$('${caffe2.bench_path}:${caffe2.host_python_path}:\\$PYTHONPATH'.strip(' \t:'))$",
+        "LD_LIBRARY_PATH=$('${caffe2.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
+        "${runtime.EXPORT_CUDA_CACHE_PATH}",
+        "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}"
+      ]}
+    }
+  ]
 }

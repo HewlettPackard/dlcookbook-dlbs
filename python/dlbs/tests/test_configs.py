@@ -32,6 +32,7 @@ class TestConfigs(unittest.TestCase):
             with open(config_file) as f:
                 try:
                     json.load(f)
+                    #print("OK: " + config_file)
                 except ValueError as error:
                     print("JSON Configuration file is invalid: %s" % (config_file))
                     raise error

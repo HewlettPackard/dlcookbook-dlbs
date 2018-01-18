@@ -1,42 +1,371 @@
 {
-    "parameters": {
-        "exp.framework": "",
-        "exp.model": "",
-        "exp.env": "host",
-        "exp.warmup_iters": 2,
-        "exp.bench_iters": 100,
-        "exp.phase": "training",
-        "exp.device_batch": 16,
-        "exp.gpus": "0",
-        "exp.num_gpus": "$(len('${exp.gpus}'.replace(',', ' ').split()))$",
-        "exp.device": "$('gpu' if ${exp.num_gpus} > 0 else 'cpu')$",
-        "exp.dtype": "float",
-        "exp.enable_tensor_core": "false",
-
-        "exp.simulation": "false",
-        "exp.bench_root": "${BENCH_ROOT}",
-        "exp.framework_id": "${exp.framework}",
-        "exp.id": "$(uuid.uuid4().__str__().replace('-',''))$",                        
-        "exp.effective_batch": "$(${exp.num_gpus}*${exp.device_batch} if '${exp.device}' == 'gpu' else ${exp.device_batch})$",    
-        "exp.exp_path": "${exp.bench_root}/${exp.framework}/${exp.env}/${exp.device}/${exp.phase}",
-        "exp.log_file": "${exp.exp_path}/exp/$('${exp.gpus}'.replace(',','.'))$_${exp.model}_${exp.effective_batch}.log",
-        "exp.force_rerun": "false",
-        "exp.docker.launcher": "$('nvidia-docker' if '${exp.device}' == 'gpu' else 'docker')$",
-        "exp.docker.image": "${${exp.framework_id}.docker.image}",
-        "exp.docker.args": "--rm",
-
-        "monitor.frequency": 0,
-        "monitor.timeseries": "time:str:1,mem_virt:float:2,mem_res:float:3,mem_shrd:float:4,cpu:float:5,mem:float:6,power:float:7,gpus:float:8:",
-        "monitor.pid_folder": "/dev/shm/monitor",
-        "monitor.backend_pid_folder": "$('${monitor.pid_folder}' if '${exp.env}' == 'host' else '/workspace/tmp')$",
-        "monitor.launcher": "${DLBS_ROOT}/scripts/resource_monitor.sh",
-
-        "runtime.bind_proc": "",
-        "runtime.limit_resources": "",
-        "runtime.cuda_cache": "$('${CUDA_CACHE_PATH}' if '${exp.env}' == 'host' else '/workspace/cuda_cache')$",
-
-        "sys.plan_builder.var_order": ["exp.framework", "exp.phase", "exp.model", "exp.gpus"],
-        "sys.plan_builder.method": "cartesian_product",
-        "exp.sys_info": ""
+  "parameters": {
+    "exp.status": {
+      "val":  "ok",
+      "type": "str",
+      "desc": [
+        "If 'disabled' on input, experimenter will not run this benchmark. In other cases, it will contain status code. The parameter 'exp.status_msg'",
+        "may contain additional textual description. Possible values:",
+        "  On input:",
+        "    disabled   Experiment will not run (probably, disabled by an extension).",
+        "    simulate   Print command line arguments and do not run. Useful to debug computations of parameters.",
+        "  On output:",
+        "    ok         Experiment has been completed successfully.",
+        "    skipped    Experiment has not been conducted. Possible reasons - log file exists (and not force to rerun) or batch size is too large",
+        "               (this may be known based on previous benchmarks for similar configurations).",
+        "               UPDATE: This code is not set if experiment has already been done (log file exists). In this case whatever code is in this",
+        "                       log file is returned.",
+        "    failure    Experiment has failed. See parameter 'exp.status_msg' that may contain additional details."
+      ]
+    },
+    "exp.status_msg": {
+      "val":  "",
+      "type": "str",
+      "desc": [
+        "A textual description for a status code stored in parameter 'exp.status'. This may be empty if certain log parsers have not been implemented",
+        "yet. In future releases, this may become an object that will contain textual description and advanced information such as thrown exceptions."
+      ]
+    },
+    "exp.proj": {
+      "val":  "",
+      "type": "str",
+      "desc": [
+        "An optional project identifier. Can be used to logically group invidual benchmarks. It enables clean and easy way to retrieve result from log",
+        "files / database. To select all benchmarks logically grouped under 'my_project_identifier' project, one may use something like:",
+        "  select ... from ... where exp.proj = 'my_project_identifier'.",
+        "To identify individial benchmarks within series of benchmarks in one project, use 'exp.id' parameter."
+      ]
+    },
+    "exp.framework": {
+      "val":  "",
+      "type": "str",
+      "desc": [
+        "Framework to benchmark. Supported frameworks: 'tensorflow', 'caffe2', 'mxnet', 'tensorrt', 'nvidia_caffe', 'intel_caffe', 'bvlc_caffe'."
+      ]
+    },
+    "exp.framework_title": {
+      "val":  "",
+      "type": "str",
+      "desc": [
+        "Human readable framework title that goes into reports. Something like 'TensorFlow', 'Caffe2', 'MXNet', 'TensorRT', 'NVIDIA Caffe',",
+        "'Intel Caffe' and 'BVLC Caffe'"
+      ]
+    },
+    "exp.framework_family": {
+      "val":  "${exp.framework}",
+      "type": "str",
+      "desc": [
+        "A framework family identifier. In most situations this is the same as a framework identifier ('exp.framework'). For Caffe's forks",
+        "(bvlc_caffe, nvidia_caffe and intel_caffe) it is 'caffe'. This parameter is used to identify what launcher is responsible for",
+        "running benchmarks. All Caffe's forks share the same launcher."
+      ]
+    },
+    "exp.framework_ver": {
+      "val" :  "",
+      "type": "str",
+      "desc": [
+        "Framework version. Usually, the value is automatically identified based on actual framework used in benchmarks (either bare metal",
+        "or docker)."
+      ]
+    },
+    "exp.framework_commit": {
+      "val":  "",
+      "type": "str",
+      "desc": [
+        "A head commit of a framework that's used in benchmarks. Can be useful for reproducible experiments. The support for automatic",
+        "identification of the head commit is limited now."
+      ]
+    },
+    "exp.model": {
+      "val":  "",
+      "type": "str",
+      "desc": [
+        "A neural network model to benchmark. Valid values include 'alexnet', 'googlenet', 'resnet50' etc. In general, not all frameworks",
+        "can support all models. Refer to documentation (section 'models') on what frameworks support what models."
+      ]
+    },
+    "exp.model_title": {
+      "val":  "",
+      "type": "str",
+      "desc": [
+        "A human readable neural network model that goes into reports. Possible values are 'AlexNet', 'GoogleNet', 'ResNet50' etc."
+      ]
+    },
+    "exp.num_warmup_batches": {
+      "val":  1,
+      "type": "int",
+      "desc": [
+        "Number of warmup batches to process before starting measuring performance. May not be supported by all frameworks."
+      ]
+    },
+    "exp.num_batches": {
+      "val":  100,
+      "type": "int",
+      "desc": [
+        "Number of benchmark batches to perform. Based on average batch time, experimenter will compute performance."
+      ]
+    },
+    "exp.phase": {
+      "val":  "training",
+      "type": "str",
+      "val_domain": ["training", "inference"],
+      "desc": "Phase to benchmark. Possible values - 'inference' or 'training'."
+    },
+    "exp.data": {
+      "val":  "synthetic",
+      "type": "str",
+      "val_domain": ["synthetic", "real"],
+      "desc": [
+        "Indicator if real or synthetic data was used in experiment. Real data means the presence of input injection pipeline",
+        "synthetic data means no injection pipeline. Input tensors are initialized with random numbers. The data specificatio is usually a",
+        "framework specific and typically specified by a 'data_dir' parameter in a respective framework namespace i.e. 'tensorflow.data_dir'."
+      ]
+    },
+    "exp.data_store": {
+      "val": "",
+      "type": "str",
+      "desc": [
+        "An identifier of a data location. May include such values as 'mem' (in memory), 'local-hdd' (data is located on a locally attached",
+        " hdd), 'local-ssd', 'remote-hdd' etc. This value needs to be provided by a user. Only useful if real data was used (see 'exp.data')"
+      ]
+    },
+    "exp.dtype": {
+      "val":  "float32",
+      "type": "str",
+      "val_domain": ["float", "float32", "float16", "int8"],
+      "desc": [
+        "Type of data to use if supported by a framework. Possible values 'float', 'float32', 'float16' or 'int8'. The 'float' and 'float32' means",
+        "the same - 32 bit floating point numbers."
+      ]
+    },
+    "exp.use_tensor_core": {
+      "val":  true,
+      "type": "bool",
+      "desc": "If true, enable tensor core operations for NVIDIA V100 and CUDA >= 9.0 if supported by a framework."
+    },
+    "exp.effective_batch": {
+      "val":  "$(${exp.num_replicas}*${exp.replica_batch} if '${exp.device_type}' == 'gpu' else ${exp.num_nodes} * ${exp.replica_batch})$",
+      "type": "int",
+      "desc": "Effective batch size. By default, it is computed based on 'exp.replica_batch' what makes weak scaling exploration a default choice."
+    },
+    "exp.replica_batch": {
+      "val":  16,
+      "type": "int",
+      "desc": [
+        "A replica batch size. This is something that's called a device batch size. Assuming we will in future be able to benchmark models",
+        "that do not fit into one GPU and single replica will require multiple GPUs, a device batch does not clearly represent situation in this",
+        "case."
+      ]
+    },
+    "exp.gpus": {
+      "val":  "0",
+      "type": "str",
+      "val_regex": "^$|([0-9]+)([:,]([0-9]+))*",
+      "desc": [
+        "A list of GPUs to use. If empty, CPUs should be used instead. Replicas are separated by a ',' character while GPUs within single replica",
+        "are separated with ':' character, for instance for single node benchmark:",
+        "  O         No distributed training. Use one model replica on GPU 0",
+        "  0,1,2,3   Use distributed training with 4 model replicas each occupying one GPU",
+        "  0:1,2:3   Use distributed training with 2 model replicas. Replica 1 is on GPUs 0 and 1, replica 2 is on GPU 2 and 3. This placement must",
+        "            be supported by a benchmarking script and specific model.",
+        "In case of multi-node training, this parameter defines a model placement on one node assuming each node uses the same model to GPU placement."
+      ]
+    },
+    "exp.num_local_replicas": {
+      "val":  "$(len('${exp.gpus}'.replace(',', ' ').split()) if '${exp.device_type}' == 'gpu' else 1)$",
+      "type": "int",
+      "desc": ["Number of model replicas in distributed benchmark on one node."]
+    },
+    "exp.num_local_gpus": {
+      "val":  "$(len(re.sub('[:,]', ' ', '${exp.gpus}').split()))$",
+      "type": "int",
+      "desc": ["Total number of GPUs to use on one node."]
+    },
+    "exp.num_replicas": {
+      "val": "$(${exp.num_local_replicas} * ${exp.num_nodes})$",
+      "type": "int",
+      "desc": ["Total number of replicas on all nodes in distributed benchmark."]
+    },
+    "exp.num_gpus": {
+      "val": "$(${exp.num_local_gpus} * ${exp.num_nodes})$",
+      "type": "int",
+      "desc": ["Total number of all GPUs on all nodes in distributed training."]
+    },
+    "exp.device_type": {
+      "val": "$('gpu' if ${exp.num_gpus} > 0 else 'cpu')$",
+      "type": "str",
+      "val_domain": ["gpu", "cpu"],
+      "desc": ["Type of main compute device - 'gpu' or 'cpu'."]
+    },
+    "exp.device_title": {
+      "val": "",
+      "type": "str",
+      "desc": ["A title (name, model) of a main compute device. Something like 'P100 PCIe', 'V100 NVLINK', 'P4', 'E5-2650 v2' etc."]
+    },
+    "exp.cuda": {
+      "val": "",
+      "type": "str",
+      "desc": ["In case of NVIDIA GPUs, the version of CUDA."]
+    },
+    "exp.cudnn": {
+      "val": "",
+      "type": "str",
+      "desc": ["In case of NVIDIA GPUs, the version of cuDNN."]
+    },
+    "exp.id": {
+      "val": "$(uuid.uuid4().__str__().replace('-', ''))$",
+      "type": "str",
+      "desc": ["Unique identifier (UUID) of an experiment. Can be used to uniqely identify individual benchmarks."]
+    },
+    "exp.log_file": {
+      "val": "$('${exp.gpus}'.replace(',', '.'))$_${exp.model}_${exp.effective_batch}.log",
+      "type": "str",
+      "desc": ["The name of a log file for this experiment."]
+    },
+    "exp.rerun": {
+      "val": false,
+      "type": "str",
+      "desc": [
+        "By default, if experimenter finds existing file for an experiment (see 'exp.log_file'), it will not run experiment again.",
+        "Set the value of this parameter to 'true' to force rerun benchmarks in this case."
+      ]
+    },
+    "exp.node_id": {
+      "val": "",
+      "type": "str",
+      "desc": ["The name of a node. Should be used to identify various servers. Something like 'apollo6500', 'DL380', 'DGX1' etc."]
+    },
+    "exp.num_nodes": {
+      "val": 1,
+      "type": "int",
+      "desc": ["Number of nodes in case of multi-node benchmark."]
+    },
+    "exp.node_nic": {
+      "val": "",
+      "type": "str",
+      "desc": ["If distributed benchmark, a string description of an interconnect. Something like 'EDR', 'FDR', '1GB Ethernet' etc."]
+    },
+    "exp.docker": {
+      "val": true,
+      "type": "bool",
+      "desc": [
+        "If true, use docker container to run benchmark. See 'exp.docker_image' for more details.."
+      ]
+    },
+    "exp.docker_launcher": {
+      "val": "$('nvidia-docker' if '${exp.device_type}' == 'gpu' else 'docker')$",
+      "type": "str",
+      "val_domain": ["nvidia-docker", "docker"],
+      "desc": [
+        "A launcher for docker containers - 'nvidia-docker' for GPU workloads and 'docker' for CPU ones."
+      ]
+    },
+    "exp.docker_image": {
+      "val": "${${exp.framework}.docker_image}",
+      "type": "str",
+      "desc": ["Docker image to use for current benchmark. Must exist in the system."]
+    },
+    "exp.docker_args": {
+      "val": "--rm",
+      "type": "str",
+      "desc": [
+        "Additional arguments to pass to docker. For instance, you may want to pass these NVIDIA reccommended parameters:",
+        "  --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864"
+      ]
+    },
+    "monitor.timeseries": {
+        "val": "time:str:1,mem_virt:float:2,mem_res:float:3,mem_shrd:float:4,cpu:float:5,mem:float:6,power:float:7,gpus:float:8:",
+        "type": "str",
+        "desc":[
+          "A string that specifies which timeseries metrics must go into a log file. Metrics are separated with comma (,). Each",
+          "metric specification consists of three or four fields separated with colon (:) - 'name:type:index_range'. The name",
+          "specifies timeseries name. The field in log file will be composed as 'results.use.$name'. Type specifies how values",
+          "that come from monitor need to be cast (std, int, float or bool).",
+          "Values from resource monitor come as a whitespace separated string. The index range specifies how that maps to a timeseries",
+          "name. It can be a single integer(for instance time:str:1) specfying exact index or a index and number of elements that should",
+          "be appended to a timeseries item. Number of elements may not be present what means scan until the end of list is reached ",
+          "(for instance gpu:float:8:2 or gpu:float:8:). If number of elements is specified, a timeseries will contain items that will",
+          "be lists event though number of elements may be 1."
+        ]
+    },
+    "monitor.frequency": {
+      "val": 0,
+      "type": "float",
+      "desc": [
+        "A sampling frequency in seconds of embedded resource monitor. By default (0) resource monitor is disabled. If this value is",
+        "> 0, experimenter will start embedded resource monitor (kind of a reference implementation) that will log system parameters",
+        "with this frequency. This parameters include cpu and memory consumption, power, GPU metrics etc.",
+        "Assumption: in current implementation, if resource monitor is enabled for a first benchmark, it's considered to be enabled",
+        "for rest of benchmarks and vice versa."
+      ]
+    },
+    "monitor.pid_folder": {
+      "val": "/dev/shm/monitor",
+      "type": "str",
+      "desc": [
+        "A host folder that will be used by a resource monitor and benchmarking scripts to communicate process id that should be monitored.",
+        "Users need to specify this parameter of they want to change default path."
+      ]
+    },
+    "monitor.backend_pid_folder": {
+      "val": "$('${monitor.pid_folder}' if not ${exp.docker} else '/workspace/tmp')$",
+      "type": "str",
+      "desc": [
+        "This is a host or docker folder that will be used by a benchmarking scripts. Will be different from `monitor.pid_folder` if",
+        "containerized benchmark is performed. Users must not change this parameter."
+      ]
+    },
+    "monitor.launcher": {
+      "val": "${DLBS_ROOT}/scripts/resource_monitor.sh",
+      "type": "str",
+      "desc": ["A path to an embedded resource monitor."]
+    },
+    "runtime.launcher": {
+      "val": "",
+      "type": "str",
+      "desc": [
+        "A sequence of commands that need to be placed on a command line right before benchmarking scripts. Can be used to pin process to certain",
+        "CPUs (numactl, taskset)."
+      ]
+    },
+    "runtime.cuda_cache": {
+      "val": "/dev/shm/dlbs",
+      "type": "str",
+      "desc": ["If not empty, use this folder as a CUDA cache (search for CUDA_CACHE_PATH environmental variable)."]
+    },
+    "runtime.visible_gpus": {
+      "val": "$(re.sub('[:]', ',', '${exp.gpus}'))$",
+      "type": "str",
+      "val_regex": "^$|([0-9]+)([ ]([0-9]+))*",
+      "desc": ["A list of GPUs that should be made visible to benchmarking scripts."]
+    },
+    "runtime.EXPORT_CUDA_VISIBLE_DEVICES": {
+      "val": "CUDA_VISIBLE_DEVICES=${runtime.visible_gpus}",
+      "type": "str",
+      "desc": ["A variable that can be used in framework configurations to make this GPUs visible. Not used by default."]
+    },
+    "runtime.EXPORT_CUDA_CACHE_PATH": {
+      "val": "CUDA_CACHE_PATH=$(('${runtime.cuda_cache}' if not ${exp.docker} else '/workspace/cuda_cache') if '${runtime.cuda_cache}' else '')$",
+      "type": "str",
+      "desc": ["A variable that can be used in framework configurations to set CUDA cache path. Not used by default."]
+    },
+    "exp.sys_info": {
+      "val": "",
+      "type": "str",
+      "desc":[
+        "A comma separated string that defines what tools should be used to collect system wide information. A default empty",
+        "value means no system information is collected. To collect all information use:",
+        "    -Pexp.sys_info='\"inxi,cpuinfo,meminfo,lscpu,nvidiasmi\"'",
+        "The following source of information are supported:",
+        "    inxi       The inxi must be available (https://github.com/smxi/inxi). It is an output of 'inxi -Fbfrlp'.",
+        "    cpuinfo    Content of /proc/cpuinfo",
+        "    meminfo    Content of /proc/meminfo",
+        "    lscpu      Output of 'lscpu'",
+        "    nvidiasmi  Output of '/usr/bin/nvidia-smi -q'",
+        "The information is stored in a 'hw' namespace i.e. hw.inxi, hw.cpuinfo, hw.meminfo, hw.lscpu and hw.nvidiasmi.",
+        "In addition, a complete output in a json format can be obtained with:",
+        "    python ./python/dlbs/experimenter.py sysinfo"
+      ]
     }
+  }
 }

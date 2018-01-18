@@ -102,12 +102,15 @@ class Model(object):
         :param model_helper.ModelHelper model: Model to add update parameters operators for.
         """
         # https://caffe2.ai/doxygen-python/html/core_8py_source.html#l00222
+        # https://github.com/caffe2/caffe2/blob/master/caffe2/python/examples/resnet50_trainer.py
+        suffix = "_fp16" if self.dtype == "float16" else ""
         model.param_init_net.GaussianFill(
             [],
-            ["data"],
-            shape=(self.batch_size,) + self.input_shape,
-            dtype=self.dtype,
-        )        
+            ['data' + suffix],
+            shape=(self.batch_size,) + self.input_shape
+        )
+        if self.dtype == 'float16':
+            model.param_init_net.FloatToHalf('data' + suffix, 'data')
         
         if add_labels is True:
             model.param_init_net.ConstantFill(

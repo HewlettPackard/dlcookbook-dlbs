@@ -16,8 +16,8 @@ Currently, following checks are performed:
 2. If containerized GPU based benchmarks are to be performed, validator ensures it can
    run `nvidia-docker --version` command.
 3. If containerized benchmarks are to be performed, validator ensures docker image exists
-   by running `docker inspect --type=image ${exp.docker.image}`
-4. Validator checks there are no log files collisions i.e. there are no two or more
+   by running `docker inspect --type=image ${exp.docker_image}`
+4. Validator checks there are no log file collisions i.e. there are no two or more
    benchmark experiments writing logs into same file.
 5. For bare metal benchmarks (it sets up environment paths and library and python paths
    depending on experiment parameters):
@@ -49,7 +49,7 @@ Currently, following checks are performed:
 
 If validator validates benchmarks and some of them fails, log files should contain errors /
 exceptions occurred during benchmark run. An indicator of a failed benchmark is the absence
-of `results.inference_time` (for inference phase) or `results.training_time` (for training phase) keys in log file.
+of `results.time` key in a log file.
 
 If you only want to validate configuration and not run it, use `validate` action
 instead of `run`:

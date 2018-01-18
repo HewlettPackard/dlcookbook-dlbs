@@ -1,55 +1,99 @@
 {
-    "parameters": {
-        "tensorrt.launcher": "${DLBS_ROOT}/scripts/launchers/tensorrt.sh",
-        "tensorrt.args": [
-            "--model ${tensorrt.model_dir}/${tensorrt.model_file}",
-            "--batch_size ${exp.device_batch}",
-            "--dtype ${exp.dtype}",
-            "--num_warmup_batches ${exp.warmup_iters}",
-            "--num_batches ${exp.bench_iters}",
-            "$('--profile' if '${tensorrt.profile}' == 'true' else '')$",
-            "--input ${tensorrt.input}",
-            "--output ${tensorrt.output}"
-        ],
-        "tensorrt.model_file": "${exp.id}.model.prototxt",
-        "tensorrt.model_dir": "$('${DLBS_ROOT}/models/${exp.model}' if '${exp.env}' == 'host' else '/workspace/model')$",
-        "tensorrt.docker.image": "hpe/tensorrt:cuda8-cudnn5",
-        "tensorrt.docker.args": [
-            "-i",
-            "--security-opt seccomp=unconfined",
-            "--pid=host",
-            "--volume=${DLBS_ROOT}/models/${exp.model}:/workspace/model",
-            "$('--volume=${CUDA_CACHE_PATH}:/workspace/cuda_cache' if '${CUDA_CACHE_PATH}' else '')$",
-            "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
-            "${exp.docker.args}",
-            "${tensorrt.docker.image}"
-        ],
-        "tensorrt.profile": "false",
-        "tensorrt.input": "data",
-        "tensorrt.output": "prob",
-        "tensorrt.host.path": "${DLBS_ROOT}/src/tensorrt/build",
-        "tensorrt.host.libpath": ""
+  "parameters": {
+    "tensorrt.launcher": { 
+      "val": "${DLBS_ROOT}/scripts/launchers/tensorrt.sh",
+      "type": "str",
+      "desc": "Path to script that launches TensorRT benchmarks."
     },
-    "extensions": [
-        {
-            "condition":{ "exp.framework": "tensorrt" },
-            "parameters": { 
-                "exp.disabled": "$('true' if ('${exp.phase}'=='training') or ('${exp.device}'=='cpu') or (${exp.num_gpus}>1) else 'false')$" 
-            }
-        },
-        {
-            "condition":{ "exp.framework": "tensorrt", "exp.env": "docker" },
-            "parameters": { "tensorrt.env": ["$('CUDA_CACHE_PATH=${runtime.cuda_cache}' if '${CUDA_CACHE_PATH}' else '')$"]}
-        },
-        {
-            "condition":{ "exp.framework": "tensorrt", "exp.env": "host" },
-            "parameters": { 
-                "tensorrt.env": [
-                    "PATH=$('${tensorrt.host.path}:\\$PATH'.strip(' \t:'))$",
-                    "LD_LIBRARY_PATH=$('${tensorrt.host.libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
-                    "$('CUDA_CACHE_PATH=${runtime.cuda_cache}' if '${CUDA_CACHE_PATH}' else '')$"
-                ]
-            }
-        }
-    ]
+    "tensorrt.env": { 
+      "val": "${runtime.EXPORT_CUDA_CACHE_PATH}",
+      "type": "str",
+      "desc": "Environmental variables to set for TensorRT benchmarks."
+    },
+    "tensorrt.args": { 
+      "val": [
+        "--model ${tensorrt.model_dir}/${tensorrt.model_file}",
+        "--batch_size ${exp.replica_batch}",
+        "--dtype ${exp.dtype}",
+        "--num_warmup_batches ${exp.num_warmup_batches}",
+        "--num_batches ${exp.num_batches}",
+        "$('--profile' if ${tensorrt.profile} is True else '')$",
+        "--input ${tensorrt.input}",
+        "--output ${tensorrt.output}"
+      ],
+      "type": "str",
+      "desc": "Command line arguments that launcher uses to launch TensorRT."
+    },
+    "tensorrt.model_file": { 
+      "val": "${exp.id}.model.prototxt",
+      "type": "str",
+      "desc": "Caffe's prototxt inference (deploy) model file."
+    },
+    "tensorrt.model_dir": { 
+      "val": "$('${DLBS_ROOT}/models/${exp.model}' if ${exp.docker} is False else '/workspace/model')$",
+      "type": "str",
+      "desc": "Directory where Caffe's model file is located. Different for host/docker benchmarks."
+    },
+    "tensorrt.docker_image": { 
+      "val": "hpe/tensorrt:cuda8-cudnn5",
+      "type": "str",
+      "desc": "The name of a docker image to use for TensorRT."
+    },
+    "tensorrt.docker_args": { 
+      "val": [
+        "-i",
+        "--security-opt seccomp=unconfined",
+        "--pid=host",
+        "--volume=${DLBS_ROOT}/models/${exp.model}:/workspace/model",
+        "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
+        "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
+        "${exp.docker_args}",
+        "${tensorrt.docker_image}"
+      ],
+      "type": "str",
+      "desc": "In case if containerized benchmarks, this are the docker parameters."
+    },
+    "tensorrt.profile": { 
+      "val": false,
+      "type": "bool",
+      "desc": "If true, per layer statistics are measured."
+    },
+    "tensorrt.input": { 
+      "val": "data",
+      "type": "str",
+      "desc": "Name of an input data tensor (data)"
+    },
+    "tensorrt.output": { 
+      "val": "prob",
+      "type": "str",
+      "desc": "Name of an output tensor (prob)"
+    },
+    "tensorrt.host_path": { 
+      "val": "${DLBS_ROOT}/src/tensorrt/build",
+      "type": "str",
+      "desc": "Path to a tensorrt executable in case of bare metal run."
+    },
+    "tensorrt.host_libpath": {
+      "val": "",
+      "type": "str",
+      "desc": "Basically, it's a LD_LIBRARY_PATH for TensorRT in case of a bare metal run (should be empty)."
+    }
+  },
+  "extensions": [
+    {
+      "condition":{ "exp.framework": "tensorrt" },
+      "parameters": { 
+        "exp.framework_title": "TensorRT",
+        "exp.status": "$('disabled' if ('${exp.phase}'=='training') or ('${exp.device_type}'=='cpu') or (${exp.num_local_gpus}>1) else 'ok')$" 
+      }
+    },
+    {
+      "condition":{ "exp.framework": "tensorrt", "exp.env": "host" },
+      "parameters": { "tensorrt.env": [
+        "PATH=$('${tensorrt.host_path}:\\$PATH'.strip(' \t:'))$",
+        "LD_LIBRARY_PATH=$('${tensorrt.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
+        "${runtime.EXPORT_CUDA_CACHE_PATH}"
+      ]}
+    }
+  ]
 }

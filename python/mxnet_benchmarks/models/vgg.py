@@ -40,7 +40,7 @@ class VGG(Model):
         Model.__init__(self, params)
         training = self.phase == 'training'
 
-        v = mx.sym.Variable(name="data")
+        v = self.add_data_node()
 
         layers, filters = specs['specs']
         for i, num in enumerate(layers):

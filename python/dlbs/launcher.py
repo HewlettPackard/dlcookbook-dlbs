@@ -19,18 +19,20 @@ dumps all variables to log file and runs experiment.
 from __future__ import print_function
 from os.path import isfile
 import os
+import sys
 import copy
 import logging
 import datetime
 import json
-from dlbs.processor import Processor
+import signal
 from dlbs.worker import Worker
 from dlbs.utils import DictUtils
 from dlbs.utils import ResourceMonitor
-from dlbs.utils import IOUtils
 
 class Launcher(object):
     """Launcher runs experiments."""
+
+    must_exit = False
 
     @staticmethod
     def force_redo(exp):
@@ -44,21 +46,17 @@ class Launcher(object):
         :return: True if experiment needs to be re-run, False otherwise.
         :rtype: bool
         """
-        return 'exp.force_rerun' in exp and exp['exp.force_rerun'] == 'true'
+        return 'exp.rerun' in exp and exp['exp.rerun'] is True
 
     @staticmethod
-    def run(plan, compute_variables=True):
+    def run(plan):
         """Runs experiments.
 
-        Before running experiments, make sure we can compute variables. Exception
-        will be thrown and no experiments will be run. Compute variable will
-        convert all lists into white space separated strings.
+        In newest versions of this class the **plan** array must contain experiments
+        with computed variables.
 
         :param list plan: List of experiments to perform.
-        :param bool compute_variables: If true, variables need to be comptued.
         """
-        if compute_variables:
-            Processor().compute_variables(plan)
         num_experiments = len(plan)
         start_time = datetime.datetime.now()
         stats = {
@@ -84,10 +82,25 @@ class Launcher(object):
             resource_monitor.empty_pid_file()
             resource_monitor.run()
 
+        # Setting handler for SIGUSR1 signal. Users can send this signal to this
+        # script to gracefully terminate benchmarking process.
+        print("Launcher pid %d. Run this to gracefully terminate me: kill -USR1 %d" % (os.getpid(), os.getpid()))
+        sys.stdout.flush()
+        Launcher.must_exit = False
+        def _sigusr1_handler(signum, frame):
+            Launcher.must_exit = True
+        signal.signal(signal.SIGUSR1, _sigusr1_handler)
         for idx in range(num_experiments):
+            if Launcher.must_exit:
+                logging.warn(
+                    "The SIGUSR1 signal has been caught, gracefully shutting down benchmarking process on experiment %d (out of %d)",
+                    idx,
+                    num_experiments
+                )
+                break
             experiment = plan[idx]
             # Is experiment disabled?
-            if 'exp.disabled' in experiment and experiment['exp.disabled'] == 'true':
+            if 'exp.status' in experiment and experiment['exp.status'] == 'disabled':
                 logging.info("Disabling experiment, exp.disabled is true")
                 stats['launcher.disabled_experiments'] += 1
                 continue
@@ -100,10 +113,14 @@ class Launcher(object):
                     )
                     stats['launcher.skipped_experiments'] += 1
                     continue
-            # Get script that runs experiment for this framework
-            command = [experiment['%s.launcher' % experiment['exp.framework']]]
+            # Get script that runs experiment for this framework. If no 'framework_family' is
+            # found, we can try to use exp.framework.
+            framework_key = 'exp.framework_family'
+            if framework_key not in experiment:
+                framework_key = 'exp.framework'
+            command = [experiment['%s.launcher' % (experiment[framework_key])]]
             # Do we need to manipulate arguments for launching process?
-            launcher_args_key = '%s.launcher.args' % experiment['exp.framework']
+            launcher_args_key = '%s.launcher_args' % experiment[framework_key]
             if launcher_args_key in experiment:
                 launcher_args = set(experiment[launcher_args_key].split(' '))
                 logging.debug(
@@ -118,7 +135,10 @@ class Launcher(object):
                     continue
                 assert not isinstance(param_val, list),\
                        "Here, this must not be the list but (%s=%s)" % (param, str(param_val))
-                command.extend(['--%s' % (param.replace('.', '_')), str(param_val)])
+                if not isinstance(param_val, bool):
+                    command.extend(['--%s' % (param.replace('.', '_')), str(param_val)])
+                else:
+                    command.extend(['--%s' % (param.replace('.', '_')), ('true' if param_val else 'false')])
             # Prepare environmental variables
             env_vars = copy.deepcopy(os.environ)
             env_vars.update(DictUtils.filter_by_key_prefix(

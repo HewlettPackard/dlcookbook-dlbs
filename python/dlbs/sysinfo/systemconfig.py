@@ -39,8 +39,12 @@ import shlex
 import json
 #import functools
 from collections import OrderedDict
-import pandas as pd
-import numpy as np
+from dlbs.utils import Modules
+
+if Modules.HAVE_NUMPY:
+    import numpy as np
+if Modules.HAVE_PANDAS:
+    import pandas as pd
 
 class SysInfo(object):
 
@@ -66,7 +70,7 @@ class SysInfo(object):
         if 'lscpu' in self.specs:
             info[_key('lscpu')] = SysInfo.lscpu()
         if 'nvidiasmi' in self.specs:
-            info[_key('nvidiasmi')] = SysInfo.nvidiasmi()
+            info[_key('nvidiasmi')] = SysInfo.nvidiasmi() if Modules.HAVE_NUMPY and Modules.HAVE_PANDAS  else {}
 
         return info
 

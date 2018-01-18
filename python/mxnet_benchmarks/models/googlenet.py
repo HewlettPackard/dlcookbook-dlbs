@@ -60,7 +60,7 @@ class GoogleNet(Model):
         Model.__init__(self, params)
         training = self.phase == 'training'
 
-        data = mx.sym.Variable("data")
+        data = self.add_data_node()
 
         conv1 = ConvFactory(data, 64, kernel=(7, 7), stride=(2, 2), pad=(3, 3), name="conv1/7x7_s2")
         pool1 = mx.sym.Pooling(conv1, kernel=(3, 3), stride=(2, 2), pool_type="max", name="pool1/3x3_s2")

@@ -1,87 +1,257 @@
 {
-    "parameters": {
-        "caffe.launcher": "${DLBS_ROOT}/scripts/launchers/caffe.sh",
-        "caffe.fork": "bvlc",
-        "caffe.phase": "$('train' if '${exp.phase}' == 'training' else 'deploy')$",
-        "caffe.action": "$('train' if '${exp.phase}' == 'training' else 'time')$",
-        "caffe.model_file": "${exp.id}.model.prototxt",
-        "caffe.solver_file": "${exp.id}.solver.prototxt",
-        "caffe.model_dir": "$('${DLBS_ROOT}/models/${exp.model}' if '${exp.env}' == 'host' else '/workspace/model')$",
-        "caffe.solver": [
-            "net: '${caffe.model_dir}/${caffe.model_file}'\\n",
-            "max_iter: ${exp.bench_iters}\\n",
-            "test_interval: 0\\n",
-            "snapshot: 0\\n",
-            "snapshot_after_train: false\\n",
-            "base_lr: 0.01\\n",
-            "lr_policy: 'fixed'\\n",
-            "solver_mode: $('${exp.device}'.upper())$\\n",
-            "$('solver_data_type: ${nvidia_caffe.solver_precision}' if '${exp.framework_id}' == 'nvidia_caffe' else '')$"
-        ],
-        "caffe.args": [
-            "$('--solver=${caffe.model_dir}/${caffe.solver_file}' if '${exp.phase}' == 'training' else '')$",
-            "$('--model=${caffe.model_dir}/${caffe.model_file}' if '${exp.phase}' == 'inference' else '')$",
-            "$('-iterations ${exp.bench_iters}' if '${exp.phase}' == 'inference' else '')$",
-            "$('--gpu=${exp.gpus}' if '${exp.device}' == 'gpu' else '')$"
-        ],
-        "caffe.data_dir": "",
-        "caffe.mirror": true,
-        "caffe.data_mean_file": "",
-        "caffe.data_backend": "LMDB",
-        "caffe.host.path": "${${caffe.fork}_caffe.host.path}",
-        "caffe.docker.image": "${${caffe.fork}_caffe.docker.image}",
-        "caffe.docker.args": [
-            "-i",
-            "--security-opt seccomp=unconfined",
-            "--pid=host",
-            "--volume=${DLBS_ROOT}/models/${exp.model}:/workspace/model",
-            "$('--volume=${CUDA_CACHE_PATH}:/workspace/cuda_cache' if '${CUDA_CACHE_PATH}' else '')$",
-            "$('--volume=${caffe.data_dir}:/workspace/data' if '${caffe.data_dir}' else '')$",
-            "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
-            "${exp.docker.args}",
-            "${caffe.docker.image}"
-        ],
-        "bvlc_caffe.host.path": "${HOME}/projects/bvlc_caffe/build/tools",
-        "bvlc_caffe.host.libpath": "",
-        "bvlc_caffe.docker.image": "hpe/bvlc_caffe:cuda9-cudnn7",
-        "nvidia_caffe.host.path": "${HOME}/projects/nvidia_caffe/build/tools",
-        "nvidia_caffe.host.libpath": "",
-        "nvidia_caffe.docker.image": "hpe/nvidia_caffe:cuda9-cudnn7",
-        "nvidia_caffe.solver_precision": "FLOAT",
-        "nvidia_caffe.forward_precision": "FLOAT",
-        "nvidia_caffe.forward_math_precision": "FLOAT",
-        "nvidia_caffe.backward_precision": "FLOAT",
-        "nvidia_caffe.backward_math_precision": "FLOAT",
-        "intel_caffe.host.path": "${HOME}/projects/intel_caffe/build/tools",
-        "intel_caffe.host.libpath": "",
-        "intel_caffe.docker.image": "hpe/intel_caffe:cpu"
+  "parameters": {
+    "caffe.launcher": {
+      "val":  "${DLBS_ROOT}/scripts/launchers/caffe.sh",
+      "type": "str",
+      "desc": "Path to script that launches Caffe benchmarks."
     },
-    "extensions": [
-        {
-            "condition":{ "exp.framework": "bvlc_caffe" },
-            "parameters": { "exp.framework_id":"bvlc_caffe", "exp.framework": "caffe", "caffe.fork": "bvlc" }
-        },
-        {
-            "condition":{ "exp.framework": "nvidia_caffe" },
-            "parameters": { "exp.framework_id":"nvidia_caffe", "exp.framework": "caffe", "caffe.fork": "nvidia" }
-        },
-        {
-            "condition":{ "exp.framework": "intel_caffe" },
-            "parameters": { "exp.framework_id":"intel_caffe", "exp.framework": "caffe", "caffe.fork": "intel" }
-        },
-        {
-            "condition":{ "exp.framework": "caffe", "exp.env": "docker" },
-            "parameters": { "caffe.env": ["$('CUDA_CACHE_PATH=${runtime.cuda_cache}' if '${CUDA_CACHE_PATH}' else '')$"]}
-        },
-        {
-            "condition":{ "exp.framework": "caffe", "exp.env": "host" },
-            "parameters": { 
-                "caffe.env": [
-                    "PATH=$('${${caffe.fork}_caffe.host.path}:\\$PATH'.strip(' \t:'))$",
-                    "LD_LIBRARY_PATH=$('${${caffe.fork}_caffe.host.libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
-                    "$('CUDA_CACHE_PATH=${runtime.cuda_cache}' if '${CUDA_CACHE_PATH}' else '')$"
-                ]
-            }
-        }
-    ]
+    "caffe.env": {
+      "val":  "${runtime.EXPORT_CUDA_CACHE_PATH}",
+      "type": "str",
+      "desc": "An string that defines export variables that's used to initialize environment for Caffe."
+    },
+    "caffe.fork": {
+      "val":  "bvlc",
+      "type": "str",
+      "desc": [
+        "A fork of Caffe. Possible values may vary including 'bvlc', 'nvidia' and 'intel'. The value",
+        "of this parameter is computed automatically. The only reason why it has default value (bvlc)",
+        "is because there are other parameters referencing this parameter that need to be resolved."
+      ]
+    },
+    "caffe.action": {
+      "val":  "$('train' if '${exp.phase}' == 'training' else 'time')$",
+      "type": "str",
+      "val_domain": ["train", "time"],
+      "desc": "Action that needs to be performed by caffe. Possible values are 'train' or 'time'."
+    },
+    "caffe.model_file": {
+      "val":  "${exp.id}.model.prototxt",
+      "type": "str",
+      "desc": "Caffe's prototxt model file."
+    },
+    "caffe.solver_file": {
+      "val":  "${exp.id}.solver.prototxt",
+      "type": "str",
+      "desc": "Caffe's prototxt solver file."
+    },
+    "caffe.model_dir": {
+      "val":  "$('${DLBS_ROOT}/models/${exp.model}' if not ${exp.docker} else '/workspace/model')$",
+      "type": "str",
+      "desc": "Directory where Caffe's model file is located. Different for host/docker benchmarks."
+    },
+    "caffe.solver": {
+      "val": [
+        "net: '${caffe.model_dir}/${caffe.model_file}'\\n",
+        "max_iter: ${exp.num_batches}\\n",
+        "test_interval: 0\\n",
+        "snapshot: 0\\n",
+        "snapshot_after_train: false\\n",
+        "base_lr: 0.01\\n",
+        "lr_policy: 'fixed'\\n",
+        "solver_mode: $('${exp.device_type}'.upper())$\\n",
+        "$('solver_data_type: ${nvidia_caffe.solver_precision}' if '${exp.framework}' == 'nvidia_caffe' else '')$"
+      ],
+      "type": "str",
+      "desc": "A content for a Caffe's solver file in case Caffe benchmarks train phase."
+    },
+    "caffe.args": {
+      "val": [
+        "$('--solver=${caffe.model_dir}/${caffe.solver_file}' if '${exp.phase}' == 'training' else '')$",
+        "$('--model=${caffe.model_dir}/${caffe.model_file}' if '${exp.phase}' == 'inference' else '')$",
+        "$('-iterations ${exp.num_batches}' if '${exp.phase}' == 'inference' else '')$",
+        "$('--gpu=${exp.gpus}' if '${exp.device_type}' == 'gpu' else '')$"
+      ],
+      "type": "str",
+      "desc": "Command line arguments that launcher uses to launch Caffe."
+    },
+    "caffe.data_dir": {
+      "val":  "",
+      "type": "str",
+      "desc": "A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline)."
+    },
+    "caffe.mirror": {
+      "val":  true,
+      "type": "bool",
+      "desc": "In case of real data, specifies if 'mirrowing' should be applied."
+    },
+    "caffe.data_mean_file": {
+      "val":  "",
+      "type": "str",
+      "desc": "In case of real data, specifies path to an image mean file."
+    },
+    "caffe.data_backend": {
+      "val": "LMDB",
+      "type": "str",
+      "val_domain":["LMDB", "LEVELDB"],
+      "desc": "In case of real data, specifies its storage backend ('LMDB' or 'LEVELDB')."
+    },
+    "caffe.host_path": {
+      "val": "${${caffe.fork}_caffe.host_path}",
+      "type": "str",
+      "desc": "Path to a caffe executable in case of bare metal run."
+    },
+    "caffe.docker_image": {
+      "val": "${${caffe.fork}_caffe.docker_image}",
+      "type": "str",
+      "desc": "The name of a docker image to use."
+    },
+    "caffe.docker_args": {
+      "val": [
+        "-i",
+        "--security-opt seccomp=unconfined",
+        "--pid=host",
+        "--volume=${DLBS_ROOT}/models/${exp.model}:/workspace/model",
+        "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
+        "$('--volume=${caffe.data_dir}:/workspace/data' if '${caffe.data_dir}' else '')$",
+        "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
+        "${exp.docker_args}",
+        "${caffe.docker_image}"
+      ],
+      "type": "str",
+      "desc": "In case if containerized benchmarks, this are the docker parameters."
+    },
+    "bvlc_caffe.host_path": {
+      "val": "${HOME}/projects/bvlc_caffe/build/tools",
+      "type": "str",
+      "desc": "Path to a BVLC Caffe executable in case of a bare metal run."
+    },
+    "bvlc_caffe.host_libpath": {
+      "val": "",
+      "type": "str",
+      "desc": "Basically, it's a LD_LIBRARY_PATH for BVLC Caffe in case of a bare metal run."
+    },
+    "bvlc_caffe.docker_image": {
+      "val": "hpe/bvlc_caffe:cuda9-cudnn7",
+      "type": "str",
+      "desc": "The name of a docker image to use for BVLC Caffe."
+    },
+    "nvidia_caffe.host_path": {
+      "val": "${HOME}/projects/nvidia_caffe/build/tools",
+      "type": "str",
+      "desc": "Path to a NVIDIA Caffe executable in case of a bare metal run."
+    },
+    "nvidia_caffe.host_libpath": {
+      "val": "",
+      "type": "str",
+      "desc": "Basically, it's a LD_LIBRARY_PATH for NVIDIA Caffe in case of a bare metal run."
+    },
+    "nvidia_caffe.docker_image": {
+      "val": "hpe/nvidia_caffe:cuda9-cudnn7",
+      "type": "str",
+      "desc": "The name of a docker image to use for NVIDIA Caffe."
+    },
+    "nvidia_caffe.precision":{
+      "val": "$('float32' if '${exp.dtype}' in ('float', 'float32', 'int8') else 'float16')$",
+      "type": "str",
+      "val_domain": ["float32", "float16", "mixed"],
+      "desc": [
+        "Parameter that specifies what components in NVIDIA Caffe use what precision:",
+        "    float32   Use FP32 for training values storage and matrix-mult accumulator.",
+        "              Use FP32 for master weights.",
+        "    float16   Use FP16 for training values storage and matrix-mult accumulator",
+        "              Use FP16 for master weights.",
+        "    mixed     Use FP16 for training values storage and FP32 for matrix-mult accumulator",
+        "              Use FP32 for master weights.",
+        "More fine-grained control over these values can be done by directly manipulating",
+        "the following parameters: ",
+        "    nvidia_caffe.solver_precision          Master weights",
+        "    nvidia_caffe.forward_precision         Training values storage",
+        "    nvidia_caffe.backward_precision        Training values storage",
+        "    nvidia_caffe.forward_math_precision    Matrix-mult accumulator",
+        "    nvidia_caffe.backward_math_precision   Matrix-mult accumulator",
+        "Default value depends on exp.dtype parameters:",
+        "    exp.dtype == float32 -> nvidia_caffe.precision = float32",
+        "    exp.dtype == float16 -> nvidia_caffe.precision = float16",
+        "    exp.dtype == int32   -> nvidia_caffe.precision is set to float32 and experiment will notbe ran",
+        "For information:",
+        "    http://on-demand.gputechconf.com/gtc/2017/presentation/s7218-training-with-mixed-precision-boris-ginsburg.pdf",
+        "    https://github.com/NVIDIA/caffe/issues/420"
+      ]
+    },
+    "nvidia_caffe.solver_precision": {
+      "val": "$('FLOAT' if '${nvidia_caffe.precision}' in ('float32', 'mixed') else 'FLOAT16')$",
+      "type": "str",
+      "val_domain": ["FLOAT", "FLOAT16"],
+      "desc": [
+        "Precision for a solver (FLOAT, FLOAT16). Only for NVIDIA Caffe.",
+        "More details are here: http://on-demand.gputechconf.com/gtc/2017/presentation/s7218-training-with-mixed-precision-boris-ginsburg.pdf"
+      ]
+    },
+    "nvidia_caffe.forward_precision": {
+      "val": "$('FLOAT16' if '${nvidia_caffe.precision}' in ('float16', 'mixed') else 'FLOAT')$",
+      "type": "str",
+      "val_domain": ["FLOAT", "FLOAT16"],
+      "desc": [
+        "Precision for a forward pass (FLOAT, FLOAT16). Only for NVIDIA Caffe.",
+        "More details are here: http://on-demand.gputechconf.com/gtc/2017/presentation/s7218-training-with-mixed-precision-boris-ginsburg.pdf"
+      ]
+    },
+    "nvidia_caffe.backward_precision": {
+      "val": "$('FLOAT16' if '${nvidia_caffe.precision}' in ('float16', 'mixed') else 'FLOAT')$",
+      "type": "str",
+      "val_domain": ["FLOAT", "FLOAT16"],
+      "desc": [
+        "Precision for a backward pass (FLOAT, FLOAT16). Only for NVIDIA Caffe.",
+        "More details are here: http://on-demand.gputechconf.com/gtc/2017/presentation/s7218-training-with-mixed-precision-boris-ginsburg.pdf"
+      ]
+    },
+    "nvidia_caffe.forward_math_precision": {
+      "val": "$('FLOAT' if '${nvidia_caffe.precision}' in ('float32', 'mixed') else 'FLOAT16')$",
+      "type": "str",
+      "val_domain": ["FLOAT", "FLOAT16"],
+      "desc": [
+        "Precision for a forward math (FLOAT, FLOAT16). Only for NVIDIA Caffe.",
+        "More details are here: http://on-demand.gputechconf.com/gtc/2017/presentation/s7218-training-with-mixed-precision-boris-ginsburg.pdf"
+      ]
+    },
+    "nvidia_caffe.backward_math_precision": {
+      "val": "$('FLOAT' if '${nvidia_caffe.precision}' in ('float32', 'mixed') else 'FLOAT16')$",
+      "type": "str",
+      "val_domain": ["FLOAT", "FLOAT16"],
+      "desc": [
+        "Precision for a backward math (FLOAT, FLOAT16). Only for NVIDIA Caffe.",
+        "More details are here: http://on-demand.gputechconf.com/gtc/2017/presentation/s7218-training-with-mixed-precision-boris-ginsburg.pdf"
+      ]
+    },
+    "intel_caffe.host_path": {
+      "val": "${HOME}/projects/intel_caffe/build/tools",
+      "type": "str",
+      "desc": "Path to an Intel Caffe executable in case of a bare metal run."
+    },
+    "intel_caffe.host_libpath": {
+      "val": "",
+      "type": "str",
+      "desc": "Basically, it's a LD_LIBRARY_PATH for Intel Caffe in case of a bare metal run."
+    },
+    "intel_caffe.docker_image": {
+      "val": "hpe/intel_caffe:cpu",
+      "type": "str",
+      "desc": "The name of a docker image to use for Intel Caffe."
+    }
+  },
+  "extensions": [
+    {
+      "condition":  { "exp.framework": "bvlc_caffe" },
+      "parameters": { "exp.framework_title":"BVLC Caffe", "exp.framework_family": "caffe", "caffe.fork": "bvlc" }
+    },
+    {
+      "condition":  { "exp.framework": "nvidia_caffe" },
+      "parameters": { "exp.framework_title":"NVIDIA Caffe", "exp.framework_family": "caffe", "caffe.fork": "nvidia" }
+    },
+    {
+      "condition":  { "exp.framework": "intel_caffe" },
+      "parameters": { "exp.framework_title":"Intel Caffe", "exp.framework_family": "caffe", "caffe.fork": "intel" }
+    },
+    {
+      "condition":  { "exp.framework": ["bvlc_caffe", "nvidia_caffe", "intel_caffe"], "exp.docker": false },
+      "parameters": { 
+        "caffe.env": [
+          "PATH=$('${${caffe.fork}_caffe.host_path}:\\$PATH'.strip(' \t:'))$",
+          "LD_LIBRARY_PATH=$('${${caffe.fork}_caffe.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
+          "${runtime.EXPORT_CUDA_CACHE_PATH}"
+        ]
+      }
+    }
+  ]
 }

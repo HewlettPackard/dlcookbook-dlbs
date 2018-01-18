@@ -16,7 +16,6 @@
 """
 from __future__ import absolute_import
 import mxnet as mx
-import numpy as np
 from mxnet_benchmarks.models.model import Model
 
 class ResNet(Model):
@@ -131,7 +130,7 @@ class ResNet(Model):
             return output
 
     def resnet(self, units, num_stages, filter_list, bottle_neck=True, bn_mom=0.9,
-               workspace=256, dtype='float32', memonger=False):
+               workspace=256, memonger=False):
         """Return ResNet symbol of
         Parameters
         ----------
@@ -147,17 +146,10 @@ class ResNet(Model):
             Dataset type, only cifar10 and imagenet supports
         workspace : int
             Workspace used in convolution operator
-        dtype : str
-            Precision (float32 or float16)
         """
         num_unit = len(units)
         assert num_unit == num_stages
-        v = mx.sym.Variable(name='data')
-        if dtype == 'float32':
-            v = mx.sym.identity(data=v, name='id')
-        else:
-            if dtype == 'float16':
-                v = mx.sym.Cast(data=v, dtype=np.float16)
+        v = self.add_data_node()
 
         v = mx.sym.Convolution(data=v, num_filter=filter_list[0], kernel=(7, 7), stride=(2, 2),
                                pad=(3, 3), no_bias=True, name="conv0", workspace=workspace)
@@ -206,8 +198,7 @@ class ResNet(Model):
             num_stages=4,
             filter_list=filter_list,
             bottle_neck=bottle_neck,
-            workspace=256,
-            dtype=params['dtype']
+            workspace=256
         )
 
 

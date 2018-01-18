@@ -1,32 +1,32 @@
 {
     "__base__": [
-        "exp.framework", "exp.model", "exp.env", "exp.warmup_iters", "exp.bench_iters", 
-        "exp.phase", "exp.device_batch", "exp.gpus", "exp.log_file"
+        "exp.framework", "exp.model", "exp.docker", "exp.num_warmup_batches", "exp.num_batches", 
+        "exp.phase", "exp.replica_batch", "exp.gpus", "exp.log_file"
     ],
     "tensorflow": [
         "tensorflow.var_update", "tensorflow.use_nccl",  
         "tensorflow.local_parameter_device",
-        "tensorflow.docker.image", "tensorflow.host.libpath"
+        "tensorflow.docker_image", "tensorflow.host_libpath"
     ],
     "caffe": [
     ],
     "bvlc_caffe":[
-         "bvlc_caffe.host.path", "bvlc_caffe.host.libpath", "bvlc_caffe.docker.image"
+         "bvlc_caffe.host_path", "bvlc_caffe.host_libpath", "bvlc_caffe.docker_image"
     ],
     "nvidia_caffe":[
-        "nvidia_caffe.host.path", "nvidia_caffe.host.libpath", "nvidia_caffe.docker.image"
+        "nvidia_caffe.host_path", "nvidia_caffe.host_libpath", "nvidia_caffe.docker_image"
     ],
     "intel_caffe":[
-        "intel_caffe.host.path", "intel_caffe.host.libpath", "intel_caffe.docker.image"
+        "intel_caffe.host_path", "intel_caffe.host_libpath", "intel_caffe.docker_image"
     ],
     "caffe2":[
-        "caffe2.docker.image", "caffe2.host.python_path", "caffe2.host.libpath"
+        "caffe2.docker_image", "caffe2.host_python_path", "caffe2.host_libpath"
     ],
     "mxnet":[
-        "mxnet.kv_store", "mxnet.docker.image", "mxnet.host.python_path", 
-        "mxnet.host.libpath"
+        "mxnet.kv_store", "mxnet.docker_image", "mxnet.host_python_path", 
+        "mxnet.host_libpath"
     ],
     "tensorrt":[
-        "tensorrt.docker.image", "tensorrt.host.path"
+        "tensorrt.docker_image", "tensorrt.host_path"
     ]
 }

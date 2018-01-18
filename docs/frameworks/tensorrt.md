@@ -30,34 +30,64 @@ Same as Caffe. Details are [here](/frameworks/caffe.md?id=models)
 Same as Caffe. Details are [here](/frameworks/caffe.md?id=adding-new-model)
 
 ## Commonly used configuration parameters
+#### __tensorrt.docker_image__
 
-### __tensorrt.docker.image__ =`hpe/tensorrt:cuda8-cudnn6`
-The name of a docker image to use for TensorRT.
-### __tensorrt.host.path__ =`${DLBS_ROOT}/src/tensorrt/build`
-Path to a tensorrt executable in case of bare metal run.
+* __default value__ `"hpe/tensorrt:cuda8-cudnn5"`
+* __description__ The name of a docker image to use for TensorRT.
+
+#### __tensorrt.host_path__
+
+* __default value__ `"${DLBS_ROOT}/src/tensorrt/build"`
+* __description__ Path to a tensorrt executable in case of bare metal run.
+
 
 ## Other parameters
+#### __tensorrt.args__
 
-### __tensorrt.profile__ =`false`
-If true, per layer statistics are measured.
-### __tensorrt.input__ =`data`
-Name of an input data tensor (data).
-### __tensorrt.output__ =`prob`
-Name of an output tensor (prob).
-### __tensorrt.host.libpath__ =`""`
-Basically, it's a LD_LIBRARY_PATH for TensorRT in case of a bare metal run
-(should be empty).
+* __default value__ `[u'--model ${tensorrt.model_dir}/${tensorrt.model_file}', u'--batch_size ${exp.replica_batch}', u'--dtype ${exp.dtype}', u'--num_warmup_batches ${exp.num_warmup_batches}', u'--num_batches ${exp.num_batches}', u"$('--profile' if ${tensorrt.profile} is True else '')$", u'--input ${tensorrt.input}', u'--output ${tensorrt.output}']`
+* __description__ Command line arguments that launcher uses to launch TensorRT.
 
-## Internal parameters
+#### __tensorrt.docker_args__
 
-### __tensorrt.launcher__ =`${DLBS_ROOT}/scripts/launchers/tensorrt.sh`
-Path to script that launches TensorRT benchmarks.
-### __tensorrt.args__ =...
-Command line arguments that launcher uses to launch TensorRT.
-### __tensorrt.model_file__ =`${exp.id}.model.prototxt`
-Caffe's prototxt inference (deploy) model file.
-### __tensorrt.model_dir__ =`$('${DLBS_ROOT}/models/${exp.model}' if '${exp.env}' == 'host' else '/workspace/model')$`
-Directory where Caffe's model file is located. Different for host/docker
-benchmarks.
-### __tensorrt.docker.args__ =...
-In case if containerized benchmarks, this are the docker parameters.
+* __default value__ `[u'-i', u'--security-opt seccomp=unconfined', u'--pid=host', u'--volume=${DLBS_ROOT}/models/${exp.model}:/workspace/model', u"$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$", u"$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$", u'${exp.docker_args}', u'${tensorrt.docker_image}']`
+* __description__ In case if containerized benchmarks, this are the docker parameters.
+
+#### __tensorrt.env__
+
+* __default value__ `"${runtime.EXPORT_CUDA_CACHE_PATH}"`
+* __description__ Environmental variables to set for TensorRT benchmarks.
+
+#### __tensorrt.host_libpath__
+
+* __default value__ `""`
+* __description__ Basically, it's a LD_LIBRARY_PATH for TensorRT in case of a bare metal run \(should be empty\).
+
+#### __tensorrt.input__
+
+* __default value__ `"data"`
+* __description__ Name of an input data tensor \(data\)
+
+#### __tensorrt.launcher__
+
+* __default value__ `"${DLBS_ROOT}/scripts/launchers/tensorrt.sh"`
+* __description__ Path to script that launches TensorRT benchmarks.
+
+#### __tensorrt.model_dir__
+
+* __default value__ `"$('${DLBS_ROOT}/models/${exp.model}' if ${exp.docker} is False else '/workspace/model')$"`
+* __description__ Directory where Caffe's model file is located. Different for host/docker benchmarks.
+
+#### __tensorrt.model_file__
+
+* __default value__ `"${exp.id}.model.prototxt"`
+* __description__ Caffe's prototxt inference \(deploy\) model file.
+
+#### __tensorrt.output__
+
+* __default value__ `"prob"`
+* __description__ Name of an output tensor \(prob\)
+
+#### __tensorrt.profile__
+
+* __default value__ `False`
+* __description__ If true, per layer statistics are measured.

@@ -32,7 +32,7 @@ class DeepMNIST(Model):
         )
         Model.__init__(self, params)
 
-        v = mx.sym.Variable(name="data")
+        v = self.add_data_node()
 
         for layer_size in [2500, 2000, 1500, 1000, 500]:
             v = mx.sym.FullyConnected(data=v, num_hidden=layer_size)

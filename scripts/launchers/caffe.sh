@@ -4,25 +4,26 @@ unknown_params_action=set
 . $DLBS_ROOT/scripts/utils.sh
 loginfo "$0 $*" >> ${exp_log_file}                  # Log command line arguments for debugging purposes
 # The simulation mode: just print out what is about to be launched
-if [ "$exp_simulation" = "true" ]; then
-    echo "${runtime_bind_proc} caffe ${caffe_action} ${caffe_args}"
-    exit 0
+if [ "$exp_status" = "simulate" ]; then
+  echo "${caffe_env} ${runtime_launcher} caffe ${caffe_action} ${caffe_args}"
+  exit 0
 fi
-__framework__="$(echo ${caffe_fork} | tr '[:lower:]' '[:upper:]')_Caffe"
 # Check batch is small enough for this experiment
-__batch_file__="$(dirname ${exp_log_file})/${exp_framework_id}_${exp_device}_${exp_model}.batch"
-is_batch_good "${__batch_file__}" "${exp_device_batch}" || { logwarn "Device batch is too big for configuration"; exit 0; }
-
+__batch_file__="$(dirname ${exp_log_file})/${exp_framework}_${exp_device_type}_${exp_model}.batch"
+is_batch_good "${__batch_file__}" "${exp_replica_batch}" || {
+  report_and_exit "skipped" "The replica batch size (${exp_replica_batch}) is too large for given SW/HW configuration." "${exp_log_file}";
+}
 # Make sure model exists
 host_model_dir=$DLBS_ROOT/models/${exp_model}
 model_file=$(find ${host_model_dir}/ -name "*.${exp_phase}.prototxt")
-file_exists "$model_file" || { logerr "model file does not exist"; exit 1; }
-
+file_exists "$model_file" || report_and_exit "failure" "A model file ($model_file) does not exist." "${exp_log_file}"
 # Copy model file and replace batch size there.
 # https://github.com/BVLC/caffe/blob/master/docs/multigpu.md
 # NOTE: each GPU runs the batchsize specified in your train_val.prototxt
 remove_files "${host_model_dir}/${caffe_model_file}" "${host_model_dir}/${caffe_solver_file}"
-cp ${model_file} ${host_model_dir}/${caffe_model_file} || logfatal "Cannot cp \"${model_file}\" to \"${host_model_dir}/${caffe_model_file}\""
+cp ${model_file} ${host_model_dir}/${caffe_model_file} || {
+  report_and_exit "failure" "Cannot copy \"${model_file}\" to \"${host_model_dir}/${caffe_model_file}\"" "${exp_log_file}"
+}
 # If we are in 'training' phase and data_dir is not empty, we need to change *.train.prototxt file here.
 # Or we can have two configurations for synthetic/real data.
 # Or we can specify input layers in JSON config, so that we can basically set this dynamically
@@ -36,7 +37,7 @@ if [ "${exp_phase}" == "training" ]; then
         sed -i "s#__CAFFE_DATA_DIR__#${caffe_data_dir}#g" ${host_model_dir}/${caffe_model_file}
         sed -i "s#__CAFFE_DATA_BACKEND__#${caffe_data_backend}#g" ${host_model_dir}/${caffe_model_file}
     fi
-    if [ "${exp_framework_id}" == "nvidia_caffe" ]; then
+    if [ "${exp_framework}" == "nvidia_caffe" ]; then
         sed -i "s/^#precision//g" ${host_model_dir}/${caffe_model_file}
         sed -i "s/__FORWARD_TYPE___/${nvidia_caffe_forward_precision}/g" ${host_model_dir}/${caffe_model_file}
         sed -i "s/__BACKWARD_TYPE___/${nvidia_caffe_backward_precision}/g" ${host_model_dir}/${caffe_model_file}
@@ -48,22 +49,20 @@ fi
 if [ "${caffe_fork}" == "nvidia" ]; then
     sed -i "s/__EXP_DEVICE_BATCH__/${exp_effective_batch}/g" ${host_model_dir}/${caffe_model_file}
 else
-    sed -i "s/__EXP_DEVICE_BATCH__/${exp_device_batch}/g" ${host_model_dir}/${caffe_model_file}
+    sed -i "s/__EXP_DEVICE_BATCH__/${exp_replica_batch}/g" ${host_model_dir}/${caffe_model_file}
 fi
 #
 net_name=$(get_value_by_key "${host_model_dir}/${caffe_model_file}" "name")
 [ "${exp_phase}" = "training" ] && echo -e "${caffe_solver}" > ${host_model_dir}/${caffe_solver_file}
 echo "__exp.model_title__= \"${net_name}\"" >> ${exp_log_file}
-echo "__exp.framework_title__= \"${__framework__}\"" >> ${exp_log_file}
 # This script is to be executed inside docker container or on a host machine.
 # Thus, the environment must be initialized inside this scrip lazily.
-[ -z "${runtime_limit_resources}" ] && runtime_limit_resources=":;"
+[ -z "${runtime_launcher}" ] && runtime_launcher=":;"
 script="\
     export ${caffe_env};\
-    echo -e \"__caffe.version__= \x22\$(caffe --version | head -1 | awk '{print \$3}')\x22\";\
+    echo -e \"__exp.framework_ver__= \x22\$(caffe --version | head -1 | awk '{print \$3}')\x22\";\
     echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-    ${runtime_limit_resources}\
-    ${runtime_bind_proc} caffe ${caffe_action} ${caffe_args} &\
+    ${runtime_launcher} caffe ${caffe_action} ${caffe_args} &\
     proc_pid=\$!;\
     [ \"${monitor_frequency}\" != \"0\" ] && echo -e \"\${proc_pid}\" > ${monitor_backend_pid_folder}/proc.pid;\
     wait \${proc_pid};\
@@ -71,8 +70,8 @@ script="\
     echo -e \"__results.proc_pid__= \${proc_pid}\";\
 "
 
-if [ "${exp_env}" = "docker" ]; then
-    assert_docker_img_exists ${caffe_docker_image}
+if [ "${exp_docker}" = "true" ]; then
+    assert_docker_img_exists ${exp_docker_image}
     ${exp_docker_launcher} run ${caffe_docker_args} /bin/bash -c "eval $script" >> ${exp_log_file} 2>&1
 else
     eval $script >> ${exp_log_file} 2>&1
@@ -80,4 +79,4 @@ fi
 
 # Do some post-processing
 remove_files "${host_model_dir}/${caffe_model_file}" "${host_model_dir}/${caffe_solver_file}"
-caffe_postprocess_log "${exp_log_file}" "${__batch_file__}" "${exp_phase}" "${exp_device_batch}" "${exp_effective_batch}" "${exp_bench_iters}"
+caffe_postprocess_log "${exp_log_file}" "${__batch_file__}" "${exp_phase}" "${exp_replica_batch}" "${exp_effective_batch}" "${exp_num_batches}"

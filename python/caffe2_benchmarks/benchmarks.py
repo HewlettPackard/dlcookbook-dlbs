@@ -280,9 +280,9 @@ if __name__ == '__main__':
         mean_throughput = args.batch_size / mean_time     # images / sec
         if args.device == 'gpu':
             mean_throughput = mean_throughput * args.num_gpus
-        print("__results.%s_time__=%s" % (opts['phase'], json.dumps(1000.0 * mean_time)))
-        print("__results.%s_throughput__=%s" % (opts['phase'], json.dumps(int(mean_throughput))))
+        print("__results.time__=%s" % (json.dumps(1000.0 * mean_time)))
+        print("__results.throughput__=%s" % (json.dumps(int(mean_throughput))))
         print("__exp.model_title__=%s" % (json.dumps(model_title)))
-        print("__results.%s_times__=%s" % (opts['phase'], json.dumps((1000.0*times).tolist())))
+        print("__results.time_data__=%s" % (json.dumps((1000.0*times).tolist())))
     else:
-        print("__results.status__=%s" % (json.dumps("fail")))
+        print("__results.status__=%s" % (json.dumps("failure")))

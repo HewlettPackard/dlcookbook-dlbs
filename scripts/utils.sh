@@ -127,7 +127,8 @@ caffe2_error() {
   # Quiet; do not write anything to standard output. Exit immediately with zero
   # status if any match is found, even if an error was detected.
   [ ! -f "$1" ] && return 0;
-  grep -q "^RuntimeError:" "$1" && return 0 || return 1;
+  #grep -q "^RuntimeError:" "$1" && return 0 || return 1;
+  grep -q "^__results.time__" "$1" && return 1 || return 0;
 }
 tf_error() {
     [ "$#" -ne 1 ] && logfatal "tf_error: one argument expected";
@@ -151,7 +152,7 @@ mxnet_error() {
   # Quiet; do not write anything to standard output. Exit immediately with zero
   # status if any match is found, even if an error was detected.
   [ ! -f "$1" ] && return 0;
-  grep -q "^__results.$2_time__" "$1" && return 1 || return 0;
+  grep -q "^__results.time__" "$1" && return 1 || return 0;
 }
 export -f caffe2_error tf_error caffe_error mxnet_error
 
@@ -191,32 +192,47 @@ caffe_postprocess_log() {
   [ ! -f "$exp_file" ] && return 0;
   # Check file exists
   # Delete from file ^M symbols (carriage return)
-  # We can't really do this for now. File is opened.
+  # We can't really do this for now. File is opened. - Well, actually we can. In new
+  # version file is not opened here.
   #sed -i 's/\r//g' $exp_file
   if caffe_error "$exp_file"; then
     logwarn "error in \"$exp_file\" with effective batch $effective_batch (per device batch $device_batch)";
     update_error_file "$batch_file" "$device_batch";
+
+    local error_hint=$(grep -wo "Check failed: .*" $exp_file | head -1)
+    echo "__exp.status__= \"failure\"" >> $exp_file
+    echo "__exp.status_msg__= \"Error has been found in Caffe log file ($error_hint).\"" >> $exp_file
     return 1;
   else
     # Here we know if we are in time or train mode.
     if [ "$phase" = "inference" ]; then
-      local ftm=$(grep "Average Forward pass:" $exp_file | awk '{print $8}')
-      local btm=$(grep "Average Backward pass:" $exp_file | awk '{print $8}')
-      local fbtm=$(grep "Average Forward-Backward:" $exp_file | awk '{print $7}')
-      echo "__results.inference_time__= $ftm" >> $exp_file
-      echo "__results.inference_time_mean__= $ftm" >> $exp_file
-      echo "__results.backward_time__= $btm" >> $exp_file
-      echo "__results.training_time_approx__= $fbtm" >> $exp_file
+      local tm=$(grep "Average Forward pass:" $exp_file | awk '{print $8}')
+      #local btm=$(grep "Average Backward pass:" $exp_file | awk '{print $8}')
+      #local fbtm=$(grep "Average Forward-Backward:" $exp_file | awk '{print $7}')
+      #echo "__results.time__= $ftm" >> $exp_file
+      #echo "__results.backward_time__= $btm" >> $exp_file
+      #echo "__results.training_time_approx__= $fbtm" >> $exp_file
     else
       # hours:minutes:seconds:milliseconds
       #stm=$(grep "Starting Optimization" $exp_file | awk '{print $2}' | head -1 | xargs date -u +"%s.%N" -d)
       local stm=$(grep "Solving " $exp_file | awk '{print $2}' | tail -1 | xargs date -u +"%s.%N" -d)
       local etm=$(grep "Optimization Done" $exp_file | awk '{print $2}' | tail -1 | xargs date -u +"%s.%N" -d)
-      local fbtm=$(echo $stm $etm $iters | awk '{printf "%f", 1000.0*($2-$1)/$3}')
-      echo "__results.training_time__= $fbtm" >> $exp_file
-      echo "__results.training_time_mean__= $fbtm" >> $exp_file
+      local tm=$(echo $stm $etm $iters | awk '{printf "%f", 1000.0*($2-$1)/$3}')
+      #echo "__results.time__= $fbtm" >> $exp_file
     fi
+    local throughput=$(echo $tm $effective_batch | awk '{printf "%f", 1000.0 * $2 / $1}')
+    echo "__results.time__= $tm" >> $exp_file
+    echo "__results.throughput__= $throughput" >> $exp_file
   fi
   return 0
 }
 export -f caffe_postprocess_log
+
+# report_and_exit  status  status_message  log_file
+report_and_exit() {
+  [ "$#" -ne 3 ] && logfatal "report_and_exit: 3 arguments expected (status, status message and log file)";
+  echo "__exp.status__= \"$1\"" >> $3
+  echo "__exp.status_msg__= \"$2\"" >> $3
+  logfatal "$2 (status code = $1)"
+}
+export -f report_and_exit

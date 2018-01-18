@@ -6,99 +6,255 @@ Deep Learning Benchmarking Suite benchmarks frameworks via one or two intermedia
 2. A script, usually a python project, that knows how to run a framework with specified models. May not be required, like in Caffe case - launcher may directly invoke `caffe` framework. For other frameworks, we usually need a python project that for this. If possible, we take advantage of existing projects (TensorFlow case). In general, it's possible to use these frameworks without DLBS.
 
 ## Commonly used configuration parameters
-These parameters can be used with all frameworks and are commonly used. In 95% of
-benchmarks only these parameters need to be used (additionally, see frameworks
-sections for framework specific parameters).
+#### __exp.docker__
 
-### __exp.framework__ = `""`
-Framework to use. Supported frameworks: `tensorflow`, `caffe2`, `mxnet`, `tensorrt`,
-`nvidia_caffe`, `intel_caffe`, `bvlc_caffe`. May be overridden be experimenter if multiple",
-"frameworks share the same backend implementation like all Caffe forks.
-### __exp.model__ = `""`
-A model identifier to use such as `alexnet`, `googlenet`, `vgg16` etc. Framework specific -
-not all frameworks may support all models.
-### __exp.env__ = `host`
-Benchmarking environment - docker or bare metal. Possible values: `docker` or `host`.
-### __exp.warmup_iters__ = `2`
-Number of warmup iterations to perform if supported by backend (For instance, Caffe does not
-support it when running in inference phase.
-### __exp.bench_iters__ = `100`
-Number of benchmarking iterations. Average time is reported based on this number of
-iterations.
-### __exp.phase__ = `training`
-Phase to benchmark. Possible values - `inference` or `training`.
-### __exp.device_batch__ = `16`
-A device batch size. Effective batch size is computed as this number multiplied by
-a total number of compute devices (for instance, GPUs).
-### __exp.gpus__ = `0`
-GPUs to use. List of comma-separated GPU identifiers. For instance `0` or `0,1`
-or `0,1,2,3` or `0,1,2,3,4,5,6,7`.
-### __exp.log_file__ = `${exp.exp_path}/exp/$('${exp.gpus}'.replace(',','.'))$_${exp.model}_${exp.effective_batch}.log`
-Benchmark log file.
+* __default value__ `True`
+* __description__ If true, use docker container to run benchmark. See 'exp.docker_image' for more details..
+
+#### __exp.framework__
+
+* __default value__ `""`
+* __description__ Framework to benchmark. Supported frameworks: 'tensorflow', 'caffe2', 'mxnet', 'tensorrt', 'nvidia_caffe', 'intel_caffe', 'bvlc_caffe'.
+
+#### __exp.gpus__
+
+* __default value__ `"0"`
+* __description__ A list of GPUs to use. If empty, CPUs should be used instead. Replicas are separated by a ',' character while GPUs within single replica are separated with ':' character, for instance for single node benchmark:   O         No distributed training. Use one model replica on GPU 0   0,1,2,3   Use distributed training with 4 model replicas each occupying one GPU   0:1,2:3   Use distributed training with 2 model replicas. Replica 1 is on GPUs 0 and 1, replica 2 is on GPU 2 and 3. This placement must             be supported by a benchmarking script and specific model. In case of multi-node training, this parameter defines a model placement on one node assuming each node uses the same model to GPU placement.
+
+#### __exp.log_file__
+
+* __default value__ `"$('${exp.gpus}'.replace(',', '.'))$_${exp.model}_${exp.effective_batch}.log"`
+* __description__ The name of a log file for this experiment.
+
+#### __exp.model__
+
+* __default value__ `""`
+* __description__ A neural network model to benchmark. Valid values include 'alexnet', 'googlenet', 'resnet50' etc. In general, not all frameworks can support all models. Refer to documentation \(section 'models'\) on what frameworks support what models.
+
+#### __exp.num_batches__
+
+* __default value__ `100`
+* __description__ Number of benchmark batches to perform. Based on average batch time, experimenter will compute performance.
+
+#### __exp.num_warmup_batches__
+
+* __default value__ `1`
+* __description__ Number of warmup batches to process before starting measuring performance. May not be supported by all frameworks.
+
+#### __exp.phase__
+
+* __default value__ `"training"`
+* __description__ Phase to benchmark. Possible values - 'inference' or 'training'.
+
+#### __exp.replica_batch__
+
+* __default value__ `16`
+* __description__ A replica batch size. This is something that's called a device batch size. Assuming we will in future be able to benchmark models that do not fit into one GPU and single replica will require multiple GPUs, a device batch does not clearly represent situation in this case.
+
 
 ## Other parameters
-Less frequently used parameters or parameters that are set automatically for
-internal use.
+#### __exp.cuda__
 
-### __exp.dtype__ = `float`
-Type of data to use if supported by a framework. Possible values `float32`(`float`),
-`float16` or `int8`.
-### __exp.num_gpus__ = `$(len('${exp.gpus}'.replace(',', ' ').split()))$`
-Number of GPUs. Default value is computed based on _exp.gpus_ value.
-### __exp.device__ = `$('gpu' if ${exp.num_gpus} > 0 else 'cpu')$`
-Device to use. Possible values - `gpu` or `cpu`. By default, is computed based on
-_exp.num_gpus_ value.
-### __exp.enable_tensor_core__ = `false`
-If `true`, enable tensor core operations for NVIDIA V100 and CUDA >= 9.0 if supported
-by a framework. Possible values `true` or `false`.
-### __exp.simulation__ = `false`
-If `true`, do not run benchmark but print framework command line to a log file instead.
-### __exp.bench_root__ = `${BENCH_ROOT}`
-Root benchmark folder. Based on this path other paths, like log files, may be specified.
-The _BENCH_ROOT_ is an environmental variable that may be used.
-### __exp.framework_id__ = `${exp.framework}`
-Unique framework identifier, default value is _exp.framework_. In most situations,
-they are the same. However, for Caffe's forks they are different. The _exp.framework_
-initially, for instance, may equal to `bvlc_caffe`. After initialization, the
-_exp.framework_id_ will be equal to `bvlc_caffe` and _exp.framework_ will become `caffe`.
-### __exp.id__ = `$(uuid.uuid4().__str__().replace('-',''))$`
-UUID for a single benchmark experiment.
-### __exp.effective_batch__ = `$(${exp.num_gpus}*${exp.device_batch} if '${exp.device}' == 'gpu' else ${exp.device_batch})$`
-Effective batch size.
-### __exp.exp_path__ = `${exp.bench_root}/${exp.framework}/${exp.env}/${exp.device}/${exp.phase}`
-Root folder where benchmark log files are stored. It's not required to use this parameter.
-The file name that is used to log benchmarks is _exp.log_file_.
-### __exp.force_rerun__ = `false`
-If benchmark log file exists and this value is `false`, benchmark will not be ran.
-### __exp.docker.launcher__ = `$('nvidia-docker' if '${exp.device}' == 'gpu' else 'docker')$`
-One of `nvidia-docker` or `docker` depending on a _exp.device_ value.
-### __resource_monitor.enabled__ = `false`
-If `true`, in-process monitor is started that logs system resource consumption. This
-includes CPU and memory utilization, GPU power consumption and utilization, server power
-consumption tracking if supported by a server.
-### __resource_monitor.pid_file_folder__ = `/dev/shm/dl`
-A folder that contains file that is used to communicate process identifier to monitor.
-### __resource_monitor.launcher__ = `${DLBS_ROOT}/scripts/resource_monitor.sh`
-A resource monitor launcher script.
-### __resource_monitor.data_file__ = `${exp.bench_root}/resource_consumption.csv`
-A resource monitor log file. This file will contain time series with measurements.
-### __resource_monitor.frequency__ = `0.1`
-Sampling frequency in seconds. May be equal to something like `0.1`.
-### __runtime.limit_resources__ = ``
-Something that limits process resources. It's used like '${runtime.limit_resources} ${runtime.bind_proc}
-command with parameters'.
-### __runtime.bind_proc__ = ``
-Can be used to specify process binding commands like 'numactl' or 'taskset'.
-In general, it's any command that should launch the framework. May be a debugger probably.
-It's used like '${runtime.limit_resources} ${runtime.bind_proc} command with parameters'."
-### __runtime.cuda_cache__ = `$('${CUDA_CACHE_PATH}' if '${exp.env}' == 'host' else '/workspace/cuda_cache')$`
-CUDA cache path. May significantly speedup slow startup when a large number of
-experiments are ran. Set it to somewhere in '/dev/shm'. Default value is based on
-environmental variable CUDA_CACHE_PATH.
-### __sys.plan_builder.var_order__ = `["exp.framework", "exp.phase", "exp.model", "exp.gpus"]`
-Order in which plan builder varies variables doing Cartesian product.
-### __sys.plan_builder.method__ = `cartesian_product`
-Method to build multiple experiments, the only supported value is `cartesian_product`.
+* __default value__ `""`
+* __description__ In case of NVIDIA GPUs, the version of CUDA.
+
+#### __exp.cudnn__
+
+* __default value__ `""`
+* __description__ In case of NVIDIA GPUs, the version of cuDNN.
+
+#### __exp.data__
+
+* __default value__ `"synthetic"`
+* __description__ Indicator if real or synthetic data was used in experiment. Real data means the presence of input injection pipeline synthetic data means no injection pipeline. Input tensors are initialized with random numbers. The data specificatio is usually a framework specific and typically specified by a 'data_dir' parameter in a respective framework namespace i.e. 'tensorflow.data_dir'.
+
+#### __exp.data_store__
+
+* __default value__ `""`
+* __description__ An identifier of a data location. May include such values as 'mem' \(in memory\), 'local-hdd' \(data is located on a locally attached  hdd\), 'local-ssd', 'remote-hdd' etc. This value needs to be provided by a user. Only useful if real data was used \(see 'exp.data'\)
+
+#### __exp.device_title__
+
+* __default value__ `""`
+* __description__ A title \(name, model\) of a main compute device. Something like 'P100 PCIe', 'V100 NVLINK', 'P4', 'E5-2650 v2' etc.
+
+#### __exp.device_type__
+
+* __default value__ `"$('gpu' if ${exp.num_gpus} > 0 else 'cpu')$"`
+* __description__ Type of main compute device - 'gpu' or 'cpu'.
+
+#### __exp.docker_args__
+
+* __default value__ `"--rm"`
+* __description__ Additional arguments to pass to docker. For instance, you may want to pass these NVIDIA reccommended parameters:   --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864
+
+#### __exp.docker_image__
+
+* __default value__ `"${${exp.framework}.docker_image}"`
+* __description__ Docker image to use for current benchmark. Must exist in the system.
+
+#### __exp.docker_launcher__
+
+* __default value__ `"$('nvidia-docker' if '${exp.device_type}' == 'gpu' else 'docker')$"`
+* __description__ A launcher for docker containers - 'nvidia-docker' for GPU workloads and 'docker' for CPU ones.
+
+#### __exp.dtype__
+
+* __default value__ `"float32"`
+* __description__ Type of data to use if supported by a framework. Possible values 'float', 'float32', 'float16' or 'int8'. The 'float' and 'float32' means the same - 32 bit floating point numbers.
+
+#### __exp.effective_batch__
+
+* __default value__ `"$(${exp.num_replicas}*${exp.replica_batch} if '${exp.device_type}' == 'gpu' else ${exp.num_nodes} * ${exp.replica_batch})$"`
+* __description__ Effective batch size. By default, it is computed based on 'exp.replica_batch' what makes weak scaling exploration a default choice.
+
+#### __exp.framework_commit__
+
+* __default value__ `""`
+* __description__ A head commit of a framework that's used in benchmarks. Can be useful for reproducible experiments. The support for automatic identification of the head commit is limited now.
+
+#### __exp.framework_family__
+
+* __default value__ `"${exp.framework}"`
+* __description__ A framework family identifier. In most situations this is the same as a framework identifier \('exp.framework'\). For Caffe's forks \(bvlc_caffe, nvidia_caffe and intel_caffe\) it is 'caffe'. This parameter is used to identify what launcher is responsible for running benchmarks. All Caffe's forks share the same launcher.
+
+#### __exp.framework_title__
+
+* __default value__ `""`
+* __description__ Human readable framework title that goes into reports. Something like 'TensorFlow', 'Caffe2', 'MXNet', 'TensorRT', 'NVIDIA Caffe', 'Intel Caffe' and 'BVLC Caffe'
+
+#### __exp.framework_ver__
+
+* __default value__ `""`
+* __description__ Framework version. Usually, the value is automatically identified based on actual framework used in benchmarks \(either bare metal or docker\).
+
+#### __exp.id__
+
+* __default value__ `"$(uuid.uuid4().__str__().replace('-', ''))$"`
+* __description__ Unique identifier \(UUID\) of an experiment. Can be used to uniqely identify individual benchmarks.
+
+#### __exp.model_title__
+
+* __default value__ `""`
+* __description__ A human readable neural network model that goes into reports. Possible values are 'AlexNet', 'GoogleNet', 'ResNet50' etc.
+
+#### __exp.node_id__
+
+* __default value__ `""`
+* __description__ The name of a node. Should be used to identify various servers. Something like 'apollo6500', 'DL380', 'DGX1' etc.
+
+#### __exp.node_nic__
+
+* __default value__ `""`
+* __description__ If distributed benchmark, a string description of an interconnect. Something like 'EDR', 'FDR', '1GB Ethernet' etc.
+
+#### __exp.num_gpus__
+
+* __default value__ `"$(${exp.num_local_gpus} * ${exp.num_nodes})$"`
+* __description__ Total number of all GPUs on all nodes in distributed training.
+
+#### __exp.num_local_gpus__
+
+* __default value__ `"$(len(re.sub('[:,]', ' ', '${exp.gpus}').split()))$"`
+* __description__ Total number of GPUs to use on one node.
+
+#### __exp.num_local_replicas__
+
+* __default value__ `"$(len('${exp.gpus}'.replace(',', ' ').split()) if '${exp.device_type}' == 'gpu' else 1)$"`
+* __description__ Number of model replicas in distributed benchmark on one node.
+
+#### __exp.num_nodes__
+
+* __default value__ `1`
+* __description__ Number of nodes in case of multi-node benchmark.
+
+#### __exp.num_replicas__
+
+* __default value__ `"$(${exp.num_local_replicas} * ${exp.num_nodes})$"`
+* __description__ Total number of replicas on all nodes in distributed benchmark.
+
+#### __exp.proj__
+
+* __default value__ `""`
+* __description__ An optional project identifier. Can be used to logically group invidual benchmarks. It enables clean and easy way to retrieve result from log files / database. To select all benchmarks logically grouped under 'my_project_identifier' project, one may use something like:   select ... from ... where exp.proj = 'my_project_identifier'. To identify individial benchmarks within series of benchmarks in one project, use 'exp.id' parameter.
+
+#### __exp.rerun__
+
+* __default value__ `False`
+* __description__ By default, if experimenter finds existing file for an experiment \(see 'exp.log_file'\), it will not run experiment again. Set the value of this parameter to 'true' to force rerun benchmarks in this case.
+
+#### __exp.status__
+
+* __default value__ `"ok"`
+* __description__ If 'disabled' on input, experimenter will not run this benchmark. In other cases, it will contain status code. The parameter 'exp.status_msg' may contain additional textual description. Possible values:   On input:     disabled   Experiment will not run \(probably, disabled by an extension\).     simulate   Print command line arguments and do not run. Useful to debug computations of parameters.   On output:     ok         Experiment has been completed successfully.     skipped    Experiment has not been conducted. Possible reasons - log file exists \(and not force to rerun\) or batch size is too large                \(this may be known based on previous benchmarks for similar configurations\).                UPDATE: This code is not set if experiment has already been done \(log file exists\). In this case whatever code is in this                        log file is returned.     failure    Experiment has failed. See parameter 'exp.status_msg' that may contain additional details.
+
+#### __exp.status_msg__
+
+* __default value__ `""`
+* __description__ A textual description for a status code stored in parameter 'exp.status'. This may be empty if certain log parsers have not been implemented yet. In future releases, this may become an object that will contain textual description and advanced information such as thrown exceptions.
+
+#### __exp.sys_info__
+
+* __default value__ `""`
+* __description__ A comma separated string that defines what tools should be used to collect system wide information. A default empty value means no system information is collected. To collect all information use:     -Pexp.sys_info='"inxi,cpuinfo,meminfo,lscpu,nvidiasmi"' The following source of information are supported:     inxi       The inxi must be available \(https://github.com/smxi/inxi\). It is an output of 'inxi -Fbfrlp'.     cpuinfo    Content of /proc/cpuinfo     meminfo    Content of /proc/meminfo     lscpu      Output of 'lscpu'     nvidiasmi  Output of '/usr/bin/nvidia-smi -q' The information is stored in a 'hw' namespace i.e. hw.inxi, hw.cpuinfo, hw.meminfo, hw.lscpu and hw.nvidiasmi. In addition, a complete output in a json format can be obtained with:     python ./python/dlbs/experimenter.py sysinfo
+
+#### __exp.use_tensor_core__
+
+* __default value__ `True`
+* __description__ If true, enable tensor core operations for NVIDIA V100 and CUDA >= 9.0 if supported by a framework.
+
+#### __monitor.backend_pid_folder__
+
+* __default value__ `"$('${monitor.pid_folder}' if not ${exp.docker} else '/workspace/tmp')$"`
+* __description__ This is a host or docker folder that will be used by a benchmarking scripts. Will be different from `monitor.pid_folder` if containerized benchmark is performed. Users must not change this parameter.
+
+#### __monitor.frequency__
+
+* __default value__ `0`
+* __description__ A sampling frequency in seconds of embedded resource monitor. By default \(0\) resource monitor is disabled. If this value is > 0, experimenter will start embedded resource monitor \(kind of a reference implementation\) that will log system parameters with this frequency. This parameters include cpu and memory consumption, power, GPU metrics etc. Assumption: in current implementation, if resource monitor is enabled for a first benchmark, it's considered to be enabled for rest of benchmarks and vice versa.
+
+#### __monitor.launcher__
+
+* __default value__ `"${DLBS_ROOT}/scripts/resource_monitor.sh"`
+* __description__ A path to an embedded resource monitor.
+
+#### __monitor.pid_folder__
+
+* __default value__ `"/dev/shm/monitor"`
+* __description__ A host folder that will be used by a resource monitor and benchmarking scripts to communicate process id that should be monitored. Users need to specify this parameter of they want to change default path.
+
+#### __monitor.timeseries__
+
+* __default value__ `"time:str:1,mem_virt:float:2,mem_res:float:3,mem_shrd:float:4,cpu:float:5,mem:float:6,power:float:7,gpus:float:8:"`
+* __description__ A string that specifies which timeseries metrics must go into a log file. Metrics are separated with comma \(,\). Each metric specification consists of three or four fields separated with colon \(:\) - 'name:type:index_range'. The name specifies timeseries name. The field in log file will be composed as 'results.use.$name'. Type specifies how values that come from monitor need to be cast \(std, int, float or bool\). Values from resource monitor come as a whitespace separated string. The index range specifies how that maps to a timeseries name. It can be a single integer\(for instance time:str:1\) specfying exact index or a index and number of elements that should be appended to a timeseries item. Number of elements may not be present what means scan until the end of list is reached  \(for instance gpu:float:8:2 or gpu:float:8:\). If number of elements is specified, a timeseries will contain items that will be lists event though number of elements may be 1.
+
+#### __runtime.EXPORT_CUDA_CACHE_PATH__
+
+* __default value__ `"CUDA_CACHE_PATH=$(('${runtime.cuda_cache}' if not ${exp.docker} else '/workspace/cuda_cache') if '${runtime.cuda_cache}' else '')$"`
+* __description__ A variable that can be used in framework configurations to set CUDA cache path. Not used by default.
+
+#### __runtime.EXPORT_CUDA_VISIBLE_DEVICES__
+
+* __default value__ `"CUDA_VISIBLE_DEVICES=${runtime.visible_gpus}"`
+* __description__ A variable that can be used in framework configurations to make this GPUs visible. Not used by default.
+
+#### __runtime.cuda_cache__
+
+* __default value__ `"/dev/shm/dlbs"`
+* __description__ If not empty, use this folder as a CUDA cache \(search for CUDA_CACHE_PATH environmental variable\).
+
+#### __runtime.launcher__
+
+* __default value__ `""`
+* __description__ A sequence of commands that need to be placed on a command line right before benchmarking scripts. Can be used to pin process to certain CPUs \(numactl, taskset\).
+
+#### __runtime.visible_gpus__
+
+* __default value__ `"$(re.sub('[:]', ',', '${exp.gpus}'))$"`
+* __description__ A list of GPUs that should be made visible to benchmarking scripts.
+
+
+
 
 ## Framework specific configuration parameters
 
