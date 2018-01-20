@@ -460,9 +460,13 @@ class ConvNetBuilder(object):
   def pad(self, p, input_layer=None):
     if input_layer is None:
       input_layer = self.top_layer
-    self.top_layer = tf.pad(input_layer,
-                            tf.constant([[0,0],[0,0],[p,p],[p,p]]),
-                            'CONSTANT')
+    if FLAGS.data_format == 'NCHW':
+      # 'NCHW'
+      paddings = tf.constant([[0,0],[0,0],[p,p],[p,p]])
+    else:
+      # 'NHWC'
+      paddings = tf.constant([[0,0],[p,p],[p,p],[0,0]])
+    self.top_layer = tf.pad(input_layer, paddings, 'CONSTANT')
     return self.top_layer
   
   def residual_unit(self, num_filter, stride, dim_match, bottle_neck=True, 
