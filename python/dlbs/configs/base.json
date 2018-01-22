@@ -224,7 +224,7 @@
     },
     "exp.rerun": {
       "val": false,
-      "type": "str",
+      "type": "bool",
       "desc": [
         "By default, if experimenter finds existing file for an experiment (see 'exp.log_file'), it will not run experiment again.",
         "Set the value of this parameter to 'true' to force rerun benchmarks in this case."

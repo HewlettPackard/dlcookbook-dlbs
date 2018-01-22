@@ -49,7 +49,7 @@
     },
     "tensorflow.distortions": {
       "val": false,
-      "type": "str",
+      "type": "bool",
       "desc": "This is a 'distortions' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
     },
     "tensorflow.num_intra_threads": {
@@ -75,11 +75,11 @@
         "--device=${exp.device_type}",
         "--data_format=$('NCHW' if '${exp.device_type}' == 'gpu' else 'NHWC')$",
         "--variable_update=${tensorflow.var_update}",
-        "$('--use_nccl=${tensorflow.use_nccl}' if '${exp.device_type}' == 'gpu' else '--use_nccl=false')$",
+        "--use_nccl=$('${tensorflow.use_nccl}'.lower() if '${exp.device_type}' == 'gpu' else 'false')$",
         "--local_parameter_device=${tensorflow.local_parameter_device}",
         "$('' if not '${tensorflow.data_dir}' else '--data_dir=${tensorflow.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
         "$('--data_name=${tensorflow.data_name}' if '${tensorflow.data_name}' else '')$",
-        "--distortions=${tensorflow.distortions}",
+        "--distortions=$('true' if ${tensorflow.distortions} else 'false')$",
         "--num_intra_threads=${tensorflow.num_intra_threads}",
         "--resize_method=${tensorflow.resize_method}"
       ],
