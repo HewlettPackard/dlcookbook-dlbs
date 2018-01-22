@@ -1,0 +1,16 @@
+{
+    "parameters": {
+        "exp.num_warmup_batches": 10,
+        "exp.num_batches": 100,
+        "exp.framework": "bvlc_caffe",
+        "exp.docker": true,
+        "exp.gpus": "0",
+        "exp.replica_batch": 16,
+        "exp.log_file": "${BENCH_ROOT}/${caffe.fork}_caffe/${exp.model}.log",
+        "caffe.docker_image": "hpe/bvlc_caffe:cuda9-cudnn7"
+    },
+    "variables":{
+        "exp.model": ["alexnet", "googlenet"],
+        "exp.phase": ["training"]
+    }
+}

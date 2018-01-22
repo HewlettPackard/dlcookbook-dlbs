@@ -253,7 +253,14 @@ class ConfigurationLoader(object):
                            JSON extension in **path** are loaded.
         :return: A tuple consisting of a list of config files, configuration
                  object (dictionary) and dictionary of parameters info
+
+        This method loads configuration files located in 'path'. If `files` is
+        empty, all json files are loaded from that folder.
+        This method fails if one parameter is defined in multiple files. This
+        is intended behaviour for now (this also applies for update_param_info method).
         """
+        assert path is not None, "The 'path' parameter in ConfigurationLoader::load cannot be null."
+        assert os.path.isdir(path), "The 'path' parameter (%s) in ConfigurationLoader::load must point to existing directory" % path
         if files is not None:
             config_files = [os.path.join(path, f) for f in files]
         else:
@@ -266,9 +273,9 @@ class ConfigurationLoader(object):
                 try:
                     # A part of global configuration from this particular file
                     config_section = json.load(file_obj)
-                    # Update param info.
-                    ConfigurationLoader.update_param_info(param_info, config_section)
-                    #
+                    # Update parameters info.
+                    ConfigurationLoader.update_param_info(param_info, config_section, is_user_config=False)
+                    # Joing configuration from this single file.
                     ConfigurationLoader.update(config, ConfigurationLoader.remove_info(config_section))
                 except ValueError as error:
                     logging.error("Invalid JSON configuration in file %s", config_file)
@@ -277,7 +284,7 @@ class ConfigurationLoader(object):
 
 
     @staticmethod
-    def update_param_info(param_info, config):
+    def update_param_info(param_info, config, is_user_config=False):
         """Update parameter info dictionary based on configurationi in **config**
 
         :param dict param_info: A parameter info dictionary that maps parameter
@@ -287,27 +294,60 @@ class ConfigurationLoader(object):
         :param dict config: A dictionary with configuration section that may contain
                             parameters, variables and extensions. The **config** is
                             a result of parsing a JSON configuration file.
+        :param bool is_user_config: If True, the config object represents user-provided
+                                    configuration. If False, this is a system configuration.
+                                    Based on this flag, we deal with parameters in config
+                                    that redefine parameters in existing param_info
+                                    differently. See comments below.
 
-        We are interested here only in parameters section
+        We are interested here only in parameters section where parameter information
+        is defined. There are two scenarios this method is used:
+          1. Load standard configuration. In this case, parameter redefinition is
+             prohibited. If `parameters` section in `config` redefines existing
+             parameters in param_info (already loaded params), program terminates.
+          2. Load user-provided configuration. In this case, we still update parameter
+             info structure, but deal with it in slightly different way. If parameter in
+             `config` exists in param_info, it means user has provided their specific
+             value for this parameter.
+
+        Types of user defined parameters are defined either by user in a standard way as
+        we define types for standard parameters or induced automatically based on JSON
+        parse result.
         """
         if 'parameters' not in config:
             return
         params = config['parameters']
         for name in params:
             val = params[name]
-            assert name not in param_info, "Trying to redefine parameter (%s). Cur val is '%s', new val is '%s'" % (name, str(param_info[name]), val)
+            if not is_user_config:
+                # If this is not a user-provided configuration, we disallow parameter redefinition.
+                assert name not in param_info,\
+                       "Trying to redefine parameter (%s). Cur val is '%s', new val is '%s'" % (name, str(param_info[name]), val)
             if isinstance(val, dict):
+                # This is a complete parameter definition with name, value and description.
                 assert 'val' in val, "Invalid parameter (%s) definition. In case of dictionary, it must define a 'val' field." % name
-                param_info[name] = copy.deepcopy(val)
+                if name not in param_info:
+                    param_info[name] = copy.deepcopy(val)  # New parameter, set it info object.
+                else:
+                    logging.warn(
+                        "User provided parameter (%s) entirely redefines existing parameter (%s). Normally, only value needs to be provided.",
+                        json.dumps(val),
+                        json.dumps(param_info[name])
+                    )
+                    param_info[name]['val'] = val['val']   # Existing parameter from user configuration, update its value
             else:
+                # Just parameter value
                 val_type = 'str' if isinstance(val, basestring) or isinstance(val, list) else type(val).__name__
                 assert val_type in ('int', 'str', 'float', 'bool'),\
                        "Unsupported type of a parameter %s" % val_type
-                param_info[name] = {
-                    'val': val,
-                    'type': val_type,
-                    'desc': "No description for this parameter provided (it was automatically converted from its value)."
-                }
+                if name not in param_info:
+                    param_info[name] = {
+                        'val': val,
+                        'type': val_type,
+                        'desc': "No description for this parameter provided (it was automatically converted from its value)."
+                    }
+                else:
+                    param_info[name]['val'] = val
 
     @staticmethod
     def remove_info(config):

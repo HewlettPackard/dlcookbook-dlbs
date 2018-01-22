@@ -21,20 +21,20 @@ if true; then
         -Pmonitor.frequency=0\
         -Pexp.status='"disabled"'\
         -Vexp.framework='["nvidia_caffe","tensorflow","caffe2","mxnet"]'\
-        -Vexp.gpus='["0","0,1","0,1,2,3","0,1,2,3,4"]'\
+        -Vexp.gpus='["0","0,1","0,1,2,3"]'\
         -Vexp.model='["alexnet", "googlenet", "resnet50", "vgg16", "resnet152"]'\
-						  -Vexp.replica_batch='[8,16,32,64,128,256,512,1024,2048]'\
+        -Vexp.replica_batch='[8,16,32,64,128,256,512,1024,2048]'\
         -Pexp.log_file='"${BENCH_ROOT}/${exp.framework}/$(\"${exp.gpus}\".replace(\",\",\".\"))$_${exp.model}_${exp.effective_batch}.log"'\
-						  -Pexp.docker=true\
+        -Pexp.docker=true\
         -Pnvidia_caffe.docker_image='"nvcr.io/nvidia/caffe:17.12"'\
-						  -Ptensorflow.docker_image='"nvcr.io/nvidia/tensorflow:17.12"'\
-						  -Pcaffe2.docker_image='"nvcr.io/nvidia/caffe2:17.12"'\
-						  -Pmxnet.docker_image='"nvcr.io/nvidia/mxnet:17.12"'\
-						  -E'{"condition":{"exp.model": "alexnet", "exp.replica_batch":[64,128,256,512]},"parameters":{"exp.status":""}}'\
-						  -E'{"condition":{"exp.model": "googlenet", "exp.replica_batch":[64,128,256,512]},"parameters":{"exp.status":""}}'\
-					   -E'{"condition":{"exp.model": "resnet50", "exp.replica_batch":[32,64,128]},"parameters":{"exp.status":""}}'\
-					   -E'{"condition":{"exp.model": "vgg16", "exp.replica_batch":[32,64,128]},"parameters":{"exp.status":""}}'\
-					   -E'{"condition":{"exp.model": "resnet152", "exp.replica_batch":[16,32,64]},"parameters":{"exp.status":""}}'
+        -Ptensorflow.docker_image='"nvcr.io/nvidia/tensorflow:17.12"'\
+        -Pcaffe2.docker_image='"nvcr.io/nvidia/caffe2:17.12"'\
+        -Pmxnet.docker_image='"nvcr.io/nvidia/mxnet:17.12"'\
+        -E'{"condition":{"exp.model": "alexnet", "exp.replica_batch":[64,128,256,512]},"parameters":{"exp.status":""}}'\
+        -E'{"condition":{"exp.model": "googlenet", "exp.replica_batch":[64,128,256,512]},"parameters":{"exp.status":""}}'\
+        -E'{"condition":{"exp.model": "resnet50", "exp.replica_batch":[32,64,128]},"parameters":{"exp.status":""}}'\
+        -E'{"condition":{"exp.model": "vgg16", "exp.replica_batch":[32,64,128]},"parameters":{"exp.status":""}}'\
+        -E'{"condition":{"exp.model": "resnet152", "exp.replica_batch":[16,32,64]},"parameters":{"exp.status":""}}'
 
     #python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
     #                                         results.time results.throughput exp.model_title\
@@ -58,5 +58,10 @@ if true; then
 
     # Originally, we have this number of benchmarks: 4 * 4 * 5 * 9 = 720
     # They are all disabled, we enable these number of experiments: (4 + 4 + 3 + 3 + 3) * 4 * 4 = 272
+fi
+#------------------------------------------------------------------------------#
+# Example: almost same configuration as above but with config defined in JSON file
+if false; then
+    python $script $action --log-level=$loglevel --config=./configs/advanced.json
 fi
 #------------------------------------------------------------------------------#

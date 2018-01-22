@@ -284,7 +284,9 @@ class Experimenter(object):
             logging.debug('Loading configuration from: %s', self.config_file)
             with open(self.config_file) as file_obj:
                 user_config = json.load(file_obj)
-                ConfigurationLoader.update_param_info(self.param_info, user_config)
+                # Update parameter information from user configuration.
+                ConfigurationLoader.update_param_info(self.param_info, user_config, is_user_config=True)
+                # Update existing benchmark configuration.
                 ConfigurationLoader.update(self.config, ConfigurationLoader.remove_info(user_config))
         if self.plan_file is not None and self.action == 'run':
             logging.debug('Loading plan from: %s', self.plan_file)

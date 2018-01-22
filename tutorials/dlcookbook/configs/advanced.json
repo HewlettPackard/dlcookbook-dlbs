@@ -1,0 +1,42 @@
+{
+    "parameters": {
+        "exp.num_warmup_batches": 1,
+        "exp.num_batches": 1,
+        "monitor.frequency": 0,
+        "exp.status": "disabled",
+        "exp.log_file": "${BENCH_ROOT}/${exp.framework}/$(\"${exp.gpus}\".replace(\",\",\".\"))$_${exp.model}_${exp.effective_batch}.log",
+        "exp.docker": true,
+        "nvidia_caffe.docker_image": "nvcr.io/nvidia/caffe:17.11",
+        "tensorflow.docker_image": "nvcr.io/nvidia/tensorflow:17.11",
+        "caffe2.docker_image": "nvcr.io/nvidia/caffe2:17.11",
+        "mxnet.docker_image": "nvcr.io/nvidia/mxnet:17.11"
+    },
+    "variables": {
+        "exp.framework": ["nvidia_caffe", "tensorflow", "caffe2", "mxnet"],
+        "exp.gpus": ["0", "0,1", "0,1,2,3"],
+        "exp.model": ["alexnet", "googlenet", "resnet50", "vgg16", "resnet152"],
+        "exp.replica_batch": [8,16,32,64,128,256,512,1024,2048]
+    },
+    "extensions": [
+        {
+            "condition": {"exp.model": "alexnet", "exp.replica_batch": [64,128,256,512]},
+            "parameters": {"exp.status":""}
+        },
+        {
+            "condition": {"exp.model": "googlenet", "exp.replica_batch": [64,128,256,512]},
+            "parameters": {"exp.status":""}
+        },
+        {
+            "condition": {"exp.model": "vgg16", "exp.replica_batch":[32,64,128]},
+            "parameters": {"exp.status":""}
+        },
+        {
+            "condition": {"exp.model": "resnet50", "exp.replica_batch": [32,64,128]},
+            "parameters": {"exp.status":""}
+        },
+        {
+            "condition": {"exp.model": "resnet152", "exp.replica_batch": [16,32,64]},
+            "parameters": {"exp.status":""}
+        }
+    ]
+}

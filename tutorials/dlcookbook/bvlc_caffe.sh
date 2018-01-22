@@ -21,7 +21,7 @@ loglevel=warning
 # log file is different for every experiment - if it's not the case, the valdiator
 # component that's enabled by default will detect this and terminate the script
 # without running experiments.
-if true; then
+if false; then
     rm -rf ./$framework
     python $script $action --log-level=$loglevel                `#Set it to 'info' to track benchmarking progress.`\
                            -Pexp.num_warmup_batches=10          `#Number of iterations that do not contribute to performance measurement.`\
@@ -56,6 +56,16 @@ if true; then
     #    python ./python/dlbs/experimenter.py help --params ^caffe.docker_image
     python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
                                              results.time results.throughput exp.model_title
+fi
+#------------------------------------------------------------------------------#
+# Example: this example demonstrates how to use input JSON based configuration files
+if true; then
+    rm -rf ./$framework
+
+    python $script $action --log-level=$loglevel --config=./configs/bvlc_caffe.json
+
+    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
+                                         results.time results.throughput exp.model_title
 fi
 #------------------------------------------------------------------------------#
 # Example: this one runs BVLC Caffe with several models and several batch sizes.
