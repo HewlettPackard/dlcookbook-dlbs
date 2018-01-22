@@ -17,7 +17,6 @@ import time
 import json
 import threading
 import logging
-import math
 import subprocess
 import traceback
 from dlbs.utils import IOUtils
@@ -41,15 +40,13 @@ class Worker(threading.Thread):
         # This is a blocking call.
         worker.work()
     """
-    def __init__(self, command, environ, params, job_number, total_jobs):
+    def __init__(self, command, environ, params):
         """ Initializes this worker with the specific parameters.
 
         :param list command: List containing command to execute and its comamnd\
                              line arguments (with Popen).
         :param dict environ: Environment variables to set with Popen.
         :param dict params: Parameters of this experiment (dictionary).
-        :param int job_number: Index of this benchmark
-        :param int total_jobs: Total number of benchmarks
 
         """
         threading.Thread.__init__(self)
@@ -58,8 +55,6 @@ class Worker(threading.Thread):
         self.params = params              # All experiment variables
         self.process = None               # Background process object
         self.ret_code = 0                 # Return code of the process
-        self.job_number = job_number
-        self.total_jobs = total_jobs
 
     def __dump_parameters(self, a_file):
         """Dumps all experiment parameters to a file (or /dev/stdout)."""
@@ -87,10 +82,6 @@ class Worker(threading.Thread):
             # supposed to be created is exp.log_file or exp_log_file in the script.
             # Other output of the launching script will be printed by this pyhton code
             # to a stanard output.
-            col_width = int(math.floor(math.log10(self.total_jobs))+1)
-            if self.job_number%10 == 0:
-                print("Doing %s benchmark out of %s" % (str(self.job_number).rjust(col_width),
-                                                        str(self.total_jobs).rjust(col_width)))
             self.process = subprocess.Popen(self.command, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=self.environ)
             while True:
                 output = self.process.stdout.readline()

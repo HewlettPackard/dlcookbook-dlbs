@@ -57,10 +57,17 @@ class Launcher(object):
 
         :param list plan: List of experiments to perform.
         """
+        # Count number of active experiments in the plan
+        num_active_experiments = 0
+        for experiment in plan:
+            if 'exp.status' in experiment and experiment['exp.status'] != 'disabled':
+                num_active_experiments += 1
+
         num_experiments = len(plan)
         start_time = datetime.datetime.now()
         stats = {
             "launcher.total_experiments": num_experiments,
+            "launcher.active_experiments": num_active_experiments,
             "launcher.failed_experiments": 0,
             "launcher.skipped_experiments": 0,
             "launcher.disabled_experiments": 0,
@@ -84,12 +91,17 @@ class Launcher(object):
 
         # Setting handler for SIGUSR1 signal. Users can send this signal to this
         # script to gracefully terminate benchmarking process.
-        print("Launcher pid %d. Run this to gracefully terminate me: kill -USR1 %d" % (os.getpid(), os.getpid()))
+        print("--------------------------------------------------------------")
+        print("Experimenter pid %d. Run this to gracefully terminate me:" % os.getpid())
+        print("\tkill -USR1 %d" % os.getpid())
+        print("I will terminate myself as soon as current benchmark finishes.")
+        print("--------------------------------------------------------------")
         sys.stdout.flush()
         Launcher.must_exit = False
         def _sigusr1_handler(signum, frame):
             Launcher.must_exit = True
         signal.signal(signal.SIGUSR1, _sigusr1_handler)
+        num_completed_experiments = 0
         for idx in range(num_experiments):
             if Launcher.must_exit:
                 logging.warn(
@@ -147,10 +159,14 @@ class Launcher(object):
                 remove_prefix=True
             ))
             # Run experiment in background and wait for complete
-            worker = Worker(command, env_vars, experiment, idx+1, num_experiments)
+            worker = Worker(command, env_vars, experiment)
             worker.work(resource_monitor)
             if worker.ret_code != 0:
                 stats['launcher.failed_experiments'] += 1
+            num_completed_experiments += 1
+            # Print progress
+            if num_completed_experiments%10 == 0:
+                print("Done %d benchmarks out of %d" % (num_completed_experiments, num_active_experiments))
 
         end_time = datetime.datetime.now()
         stats['launcher.end_time'] = str(end_time)
