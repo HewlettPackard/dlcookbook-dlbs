@@ -218,7 +218,7 @@
       "desc": ["Unique identifier (UUID) of an experiment. Can be used to uniqely identify individual benchmarks."]
     },
     "exp.log_file": {
-      "val": "$('${exp.gpus}'.replace(',', '.'))$_${exp.model}_${exp.effective_batch}.log",
+      "val": "${exp.framework}_${exp.device_type}_${exp.model}_${exp.effective_batch}_${exp.id}.log",
       "type": "str",
       "desc": ["The name of a log file for this experiment."]
     },

@@ -31,6 +31,7 @@ Usage:
   validator.report()           # Report results.
 
 """
+from __future__ import print_function
 import json
 import os
 import subprocess
@@ -62,14 +63,33 @@ class Validator(object):
 
     def validate(self):
         """Performs all checks for provided plan."""
+        # Log files play important role in logging benchmark results. By default, we perform log file check. We
+        # force every exepriment to have this parameter of type string (not None and not empty)
+        log_file_check = True
+        if 'DLBS_LOG_FILE_CHECK' in os.environ and os.environ['DLBS_LOG_FILE_CHECK'] == 'false':
+            print("[WARNING] Found DLBS_LOG_FILE_CHECK environmental variable with value 'false'."
+                  "Log file parameters will not be validated for existence and uniqueness.")
+            log_file_check = False
+
         log_files = set()
         for experiment in self.plan:
             # Check log files for collision
-            if 'exp.log_file' in experiment:
-                log_file = experiment['exp.log_file']
-                if log_file in log_files:
-                    self.log_files_collisions.add(log_file)
-                log_files.add(log_file)
+            if log_file_check:
+                if 'exp.log_file' not in experiment:
+                    self.errors.append(
+                        "No 'exp.log_file' parameter found in experiment definition."
+                        "To disable log file check, define 'DLBS_LOG_FILE_CHECK=false' environemntal variable."
+                    )
+                else:
+                    log_file = experiment['exp.log_file']
+                    if log_file is None or not isinstance(log_file, basestring) or log_file.strip() == '':
+                        self.errors.append(
+                            "Log file parameter has invalid value ('%s'). It must not be None, must be of type string and must not be empty."
+                            "To disable log file check, define 'DLBS_LOG_FILE_CHECK=false' environemntal variable." % log_file
+                        )
+                    elif log_file in log_files:
+                        self.log_files_collisions.add(log_file)
+                    log_files.add(log_file)
             # Update framework statistics
             self.update_framework_stats(experiment)
 

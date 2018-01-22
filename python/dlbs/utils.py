@@ -43,7 +43,7 @@ class IOUtils(object):
                               its parent directory exists.
         """
         dir_name = os.path.dirname(file_name)
-        if not os.path.isdir(dir_name):
+        if dir_name != '' and not os.path.isdir(dir_name):
             os.makedirs(dir_name)
 
     @staticmethod
