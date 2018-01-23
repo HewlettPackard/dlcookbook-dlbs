@@ -152,6 +152,17 @@ class TestConfigurationLoader(unittest.TestCase):
             for field in ('val', 'type', 'desc'):
                 self.assertIn(field, param_info[param])
 
+    def test_path_none(self):
+        # None path must throw error
+        with self.assertRaises(ValueError):
+            ConfigurationLoader.load(None)
+        # Non existing directory must trigger Value Error
+        with self.assertRaises(ValueError):
+            ConfigurationLoader.load('/dr3/f2t23f/tfwegh5/sgh3gw4/hh/')
+        # Existing directory and non existing file must trigger ValueError
+        with self.assertRaises(ValueError):
+            ConfigurationLoader.load('/', files=['sfasdf23r23r23r2r23r.json'])
+
 
 if __name__ == '__main__':
     unittest.main()

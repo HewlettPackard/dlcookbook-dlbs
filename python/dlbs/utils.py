@@ -259,8 +259,11 @@ class ConfigurationLoader(object):
         This method fails if one parameter is defined in multiple files. This
         is intended behaviour for now (this also applies for update_param_info method).
         """
-        assert path is not None, "The 'path' parameter in ConfigurationLoader::load cannot be null."
-        assert os.path.isdir(path), "The 'path' parameter (%s) in ConfigurationLoader::load must point to existing directory" % path
+        if path is None:
+            raise ValueError("Configuration load error. The 'path' parameter cannot be None.")
+        if not os.path.isdir(path):
+            raise ValueError("Configuration load error. The 'path' parameter (%s) must point to an existing directory." % path)
+
         if files is not None:
             config_files = [os.path.join(path, f) for f in files]
         else:
@@ -268,7 +271,8 @@ class ConfigurationLoader(object):
         config = {}         # Configuration with params/vars/extensions
         param_info = {}     # Information on params such as type and help messages
         for config_file in config_files:
-            logging.debug('Loading configuration from: %s', config_file)
+            if not os.path.isfile(config_file):
+                raise ValueError("Configuration load error. Configuration data cannot be loaded for not a file (%s)" % config_file)
             with open(config_file) as file_obj:
                 try:
                     # A part of global configuration from this particular file
@@ -277,9 +281,9 @@ class ConfigurationLoader(object):
                     ConfigurationLoader.update_param_info(param_info, config_section, is_user_config=False)
                     # Joing configuration from this single file.
                     ConfigurationLoader.update(config, ConfigurationLoader.remove_info(config_section))
-                except ValueError as error:
-                    logging.error("Invalid JSON configuration in file %s", config_file)
-                    raise error
+                except ValueError:
+                    logging.error("Configuration load error. Invalid JSON configuration in file %s", config_file)
+                    raise
         return (config_files, config, param_info)
 
 
@@ -321,16 +325,29 @@ class ConfigurationLoader(object):
             val = params[name]
             if not is_user_config:
                 # If this is not a user-provided configuration, we disallow parameter redefinition.
-                assert name not in param_info,\
-                       "Trying to redefine parameter (%s). Cur val is '%s', new val is '%s'" % (name, str(param_info[name]), val)
+                if name in param_info:
+                    raise ConfigurationError(
+                        "Parameter info update error."
+                        " Parameter redefinition is not allowed for non-user configuration."
+                        " This is a system configuration error that must not happen."
+                        " Parameter %s=%s, new parameter definition (value) is %s" % (name, str(param_info[name]), val)
+                    )
             if isinstance(val, dict):
                 # This is a complete parameter definition with name, value and description.
-                assert 'val' in val, "Invalid parameter (%s) definition. In case of dictionary, it must define a 'val' field." % name
+                if 'val' not in val:
+                    raise ConfigurationError(
+                        "Parameter info update error."
+                        " Parameter that is defined by a dictionary must contain 'val' field that"
+                        " defines its default value. Found this definition: %s=%s" % (name, val)
+                    )
                 if name not in param_info:
                     param_info[name] = copy.deepcopy(val)  # New parameter, set it info object.
+                    # TODO what about parameter type and description?
                 else:
                     logging.warn(
-                        "User provided parameter (%s) entirely redefines existing parameter (%s). Normally, only value needs to be provided.",
+                        " Parameter (%s) entirely redefines existing parameter (%s)."
+                        " Normally, only value needs to be provided."
+                        " We will proceed but you may want to fix this.",
                         json.dumps(val),
                         json.dumps(param_info[name])
                     )
@@ -338,8 +355,6 @@ class ConfigurationLoader(object):
             else:
                 # Just parameter value
                 val_type = 'str' if isinstance(val, basestring) or isinstance(val, list) else type(val).__name__
-                assert val_type in ('int', 'str', 'float', 'bool'),\
-                       "Unsupported type of a parameter %s" % val_type
                 if name not in param_info:
                     param_info[name] = {
                         'val': val,
@@ -348,6 +363,19 @@ class ConfigurationLoader(object):
                     }
                 else:
                     param_info[name]['val'] = val
+            # Do final validations
+            if 'type' in param_info[name] and param_info[name]['type'] not in ('int', 'str', 'float', 'bool'):
+                raise ConfigurationError(
+                    "Parameter info update error."
+                    " Parameter has invalid type = '%s'."
+                    " Parameter definition is %s = %s" % (param_info[name]['type'], name, param_info[name])
+                )
+            if 'type' not in param_info[name] or 'desc' not in param_info[name]:
+                logging.warn(
+                    "Parameter definition does not contain type ('type') and/or description ('desc')."
+                    " You should fix this. Parameter definition is"
+                    " %s = %s", name, param_info[name]
+                )
 
     @staticmethod
     def remove_info(config):
@@ -366,7 +394,13 @@ class ConfigurationLoader(object):
             for name in params:
                 val = params[name]
                 if isinstance(val, dict):
-                    assert 'val' in val, "Invalid parameter (%s) definition. In case of dictionary, it must define a 'val' field." % name
+                    # This should not generally happen since we deal with it in update_param_info, but just in case
+                    if 'val' not in val:
+                        raise ConfigurationError(
+                            "Parameter info remove error."
+                            " Parameter that is defined by a dictionary must contain 'val' field that"
+                            " defines its default value. Found this definition: %s=%s" % (name, val)
+                        )
                     params[name] = val['val']
 
         return clean_config
@@ -381,24 +415,48 @@ class ConfigurationLoader(object):
         :param bool is_root: True if **dest** and *source** are root configuration
                              objects. False if these objects are members.
         """
+        def _raise_types_mismatch_config_error(key, dest_val_type, src_val_type, valid_types):
+            raise ConfigurationError(
+                "Configuration update error - expecting value types to be same and one of %s but"
+                " Dest(key=%s, val_type=%s) <- Source(key=%s, val_type=%s)" % (valid_types, key, dest_val_type.__name__, key, src_val_type.__name__)
+            )
+        # Types and expected key names. Types must always match, else exception is thrown.
+        if is_root:
+            schema = {'types':(dict, list), 'dict':['parameters', 'variables'], 'list':['extensions']}
+        else:
+            schema = {'types':(list, basestring, int, float, long)}
         for key in source:
+            # Firstly, check that type of value is expected.
+            val_type = type(source[key]).__name__
+            if not isinstance(source[key], schema['types']):
+                raise ConfigurationError(
+                    "Configuration update error - unexpected type of key value: "
+                    " is_root=%s, key=%s, value type=%s, expected type is one of %s" % \
+                    (str(is_root), key, val_type, str(schema['types']))
+                )
+            # So, the type is expected. Warn if key value is suspicious - we can do it only for root.
+            if is_root and key not in schema[val_type]:
+                logging.warn("The name of a root key is '%s' but expected is one of '%s'", key, schema[val_type])
+
             if key not in dest:
+                # The key in source dictionary is not in destination dictionary.
                 dest[key] = copy.deepcopy(source[key])
             else:
+                # The key from source is in dest.
                 both_dicts = isinstance(dest[key], dict) and isinstance(source[key], dict)
                 both_lists = isinstance(dest[key], list) and isinstance(source[key], list)
                 both_primitive = type(dest[key]) is type(source[key]) and isinstance(dest[key], (basestring, int, float, long))
 
                 if is_root:
-                    assert both_dicts or both_lists, "In root configuration objects, only dictionaries and lists are allowed."
+                    if not both_dicts and not both_lists:
+                        _raise_types_mismatch_config_error(key, type(dest[key]), type(source[key]), '[dict, list]')
                     if both_dicts:
-                        # This is for parameters and variables section
                         ConfigurationLoader.update(dest[key], source[key], is_root=False)
                     else:
-                        # This works for extensions
                         dest[key].extend(source[key])
                 else:
-                    assert both_lists or both_primitive, "Members of configuration must be either lists or primitive types"
+                    if not both_lists and not both_primitive:
+                        _raise_types_mismatch_config_error(key, type(dest[key]), type(source[key]), '[list, basestring, int, float, long]')
                     dest[key] = copy.deepcopy(source[key]) if both_lists else source[key]
 
 
