@@ -349,6 +349,15 @@
       "type": "str",
       "desc": ["A variable that can be used in framework configurations to set CUDA cache path. Not used by default."]
     },
+    "runtime.python": {
+      "val": "$(sys.executable if ${exp.docker} is False else 'python')$",
+      "type": "str",
+      "desc": [
+        "In case if benchmark is a python based benchmark as most of backend implementations, this points to a particular python to use.",
+        "By default, it equals to python version that was used to launch the experimenter script for bare metal runs. In docker containers,",
+        "by default, we use standard python."
+      ]
+    },
     "exp.sys_info": {
       "val": "",
       "type": "str",

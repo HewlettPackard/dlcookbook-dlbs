@@ -173,7 +173,7 @@ class Validator(object):
                     stats['docker_images'].append(exp[docker_img_key])
             else:
                 stats['num_host_exps'] += 1
-                self.check_host_framework(exp['exp.framework'], exp['%s.env' % (exp['exp.framework_family'])])
+                self.check_host_framework(exp['exp.framework'], exp['%s.env' % (exp['exp.framework_family'])], exp['runtime.python'])
         # Update CPU/GPU stats
         if 'exp.device_type' in exp:
             if exp['exp.device_type'] == 'gpu':
@@ -204,7 +204,7 @@ class Validator(object):
             imgs[framework] = set()
         imgs[framework].add(docker_img)
 
-    def check_host_framework(self, framework, env):
+    def check_host_framework(self, framework, env, python_exec):
         """Checks it can run framework in host environment.
 
         :param str framework: Framework name (caffe, tensorflow, caffe2 ...). This\
@@ -231,16 +231,17 @@ class Validator(object):
             name_value = item.split('=')
             variables[name_value[0]] = name_value[1]
         # Run simple tests
+        # The 'PATH' issue is described here: https://stackoverflow.com/questions/48168482/keyerror-path-on-numpy-import
         cmd = None
         if framework == 'tensorflow':
-            cmd = ['python', '-c', 'import tensorflow as tf; print tf.__version__;']
+            cmd = [python_exec, '-c', 'import os; os.environ.setdefault("PATH", ""); import tensorflow as tf; print tf.__version__;']
         elif framework == 'mxnet':
-            cmd = ['python', '-c', 'import mxnet as mx; print mx.__version__;']
+            cmd = [python_exec, '-c', 'import os; os.environ.setdefault("PATH", ""); import mxnet as mx; print mx.__version__;']
         elif framework == 'caffe2':
             # It seems that in the future releases it'll be possible to use something like:
             # from caffe2.python.build import build_options
             #cmd = ['python', '-c', 'import caffe2;']
-            cmd = ['python', '-c', 'from caffe2.python.build import build_options; print(build_options);']
+            cmd = [python_exec, '-c', 'import os; os.environ.setdefault("PATH", ""); from caffe2.python.build import build_options; print(build_options);']
             #cmd = ['python', '-c', 'from caffe2.python.build import CAFFE2_NO_OPERATOR_SCHEMA; print(CAFFE2_NO_OPERATOR_SCHEMA);']
         elif framework == 'caffe':
             cmd = ['caffe', '--version']

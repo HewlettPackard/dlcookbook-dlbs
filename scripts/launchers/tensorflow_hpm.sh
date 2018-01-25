@@ -20,7 +20,7 @@ script="\
     export ${tensorflow_env};\
     echo -e \"__exp.framework_ver__= \x22\$(python -c 'import tensorflow as tf; print tf.__version__;')\x22\";\
     echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-    ${runtime_launcher} python ${tensorflow_python_path}/tf_cnn_benchmarks.py ${tensorflow_args} &\
+    ${runtime_launcher} ${runtime_python} ${tensorflow_python_path}/tf_cnn_benchmarks.py ${tensorflow_args} &\
     proc_pid=\$!;\
     [ \"${monitor_frequency}\" != \"0\" ] && echo -e \"\${proc_pid}\" > ${monitor_backend_pid_folder}/proc.pid;\
     wait \${proc_pid};\

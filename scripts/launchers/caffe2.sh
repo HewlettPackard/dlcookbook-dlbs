@@ -19,7 +19,7 @@ is_batch_good "${__batch_file__}" "${exp_replica_batch}" || {
 script="\
     export ${caffe2_env};\
     echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-    ${runtime_launcher} python ${caffe2_bench_path}/caffe2_benchmarks/benchmarks.py ${caffe2_args} &\
+    ${runtime_launcher} ${runtime_python} ${caffe2_bench_path}/caffe2_benchmarks/benchmarks.py ${caffe2_args} &\
     proc_pid=\$!;\
     [ \"${monitor_frequency}\" != \"0\" ] && echo -e \"\${proc_pid}\" > ${monitor_backend_pid_folder}/proc.pid;\
     wait \${proc_pid};\

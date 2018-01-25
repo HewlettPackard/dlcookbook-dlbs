@@ -19,8 +19,10 @@ from __future__ import print_function
 import re
 import os
 import logging
-# Do not remove this. It is used in configuration files to generate experiments UUIDs
+# Do not remove these imports. It is used in configuration files to generate experiments UUIDs and in other cases.
 import uuid  #pylint: disable=W0611
+import sys   #pylint: disable=W0611
+#
 import json
 from dlbs.exceptions import ConfigurationError
 from dlbs.exceptions import LogicError

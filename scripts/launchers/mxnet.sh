@@ -19,7 +19,7 @@ is_batch_good "${__batch_file__}" "${exp_replica_batch}" || {
 script="\
     export ${mxnet_env};\
     echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-    ${runtime_launcher} python ${mxnet_bench_path}/mxnet_benchmarks/benchmarks.py ${mxnet_args} &\
+    ${runtime_launcher} ${runtime_python} ${mxnet_bench_path}/mxnet_benchmarks/benchmarks.py ${mxnet_args} &\
     proc_pid=\$!;\
     [ \"${monitor_frequency}\" != \"0\" ] && echo -e \"\${proc_pid}\" > ${monitor_backend_pid_folder}/proc.pid;\
     wait \${proc_pid};\
