@@ -24,7 +24,7 @@
         "--num_warmup_batches=${exp.num_warmup_batches}",
         "--num_gpus=${exp.num_local_gpus}",
         "--device=${exp.device_type}",
-        "--data_dir=$('' if not '${caffe2.data_dir}' else '${caffe2.data_dir}' if ${exp.docker} is True else '/workspace/data')$",
+        "--data_dir=$('' if not '${caffe2.data_dir}' else '${caffe2.data_dir}' if ${exp.docker} is False else '/workspace/data')$",
         "--data_backend=${caffe2.data_backend}",
         "--dtype=${exp.dtype}",
         "$('--enable_tensor_core' if ${exp.use_tensor_core} is True else '')$"
