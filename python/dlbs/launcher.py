@@ -29,6 +29,61 @@ from dlbs.worker import Worker
 from dlbs.utils import DictUtils
 from dlbs.utils import ResourceMonitor
 
+class ProgressReporter(object):
+    def __init__(self, num_experiments, num_active_experiments, file_name=None):
+        self.__file_name = file_name
+        if self.__file_name:
+            self.__progress = {
+                'start_time': str(datetime.datetime.now()),
+                'stop_time': None,
+                'status': 'inprogress',
+                'num_total_benchmarks': num_experiments,
+                'num_active_benchmarks': num_active_experiments,
+                'num_completed_benchmarks': 0,
+                'active_benchmark': {},
+                'completed_benchmarks':[]
+            }
+
+
+    def report(self, log_file, status, counts=True):
+        if self.__file_name:
+            self.__progress['completed_benchmarks'].append({
+                'status': status,
+                'start_time': str(datetime.datetime.now()),
+                'stop_time': str(datetime.datetime.now()),
+                'log_file': log_file
+            })
+            if counts:
+                self.__progress['num_completed_benchmarks'] += 1
+            DictUtils.dump_json_to_file(self.__progress, self.__file_name)
+
+    def report_active(self, log_file):
+        if self.__file_name:
+            self.__progress['active_benchmark'] = {
+                'status': 'inprogress',
+                'start_time': str(datetime.datetime.now()),
+                'stop_time': None,
+                'log_file': log_file
+            }
+            DictUtils.dump_json_to_file(self.__progress, self.__file_name)
+
+    def report_active_completed(self):
+        if self.__file_name:
+            self.__progress['active_benchmark']['stop_time'] = str(datetime.datetime.now())
+            self.__progress['active_benchmark']['status'] = 'completed'
+            self.__progress['completed_benchmarks'].append(self.__progress['active_benchmark'])
+            self.__progress['num_completed_benchmarks'] += 1
+            self.__progress["active_benchmark"] = {}
+            DictUtils.dump_json_to_file(self.__progress, self.__file_name)
+
+    def report_all_completed(self):
+        print (self.__progress)
+        if self.__file_name:
+            self.__progress['stop_time'] = str(datetime.datetime.now())
+            self.__progress['status'] = 'completed'
+            DictUtils.dump_json_to_file(self.__progress, self.__file_name)
+
+
 class Launcher(object):
     """Launcher runs experiments."""
 
@@ -49,7 +104,7 @@ class Launcher(object):
         return 'exp.rerun' in exp and exp['exp.rerun'] is True
 
     @staticmethod
-    def run(plan):
+    def run(plan, progress_file=None):
         """Runs experiments.
 
         In newest versions of this class the **plan** array must contain experiments
@@ -73,7 +128,6 @@ class Launcher(object):
             "launcher.disabled_experiments": 0,
             "launcher.start_time": str(start_time)
         }
-
         # See if resource monitor needs to be run. Now, the assumption is that
         # if it's enabled for a first experiments ,it's enabled for all others.
         resource_monitor = None
@@ -88,7 +142,12 @@ class Launcher(object):
             # to keep correct access rights.
             resource_monitor.empty_pid_file()
             resource_monitor.run()
-
+        # It's used for reporting progress to a user
+        progress_reporter = ProgressReporter(
+            num_experiments,
+            num_active_experiments,
+            progress_file
+        )
         # Setting handler for SIGUSR1 signal. Users can send this signal to this
         # script to gracefully terminate benchmarking process.
         print("--------------------------------------------------------------")
@@ -115,6 +174,7 @@ class Launcher(object):
             if 'exp.status' in experiment and experiment['exp.status'] == 'disabled':
                 logging.info("Disabling experiment, exp.disabled is true")
                 stats['launcher.disabled_experiments'] += 1
+                progress_reporter.report(experiment['exp.log_file'], 'disabled', counts=False)
                 continue
             # If experiments have been ran, check if we need to re-run.
             if 'exp.log_file' in experiment and experiment['exp.log_file']:
@@ -124,7 +184,10 @@ class Launcher(object):
                         experiment['exp.log_file']
                     )
                     stats['launcher.skipped_experiments'] += 1
+                    progress_reporter.report(experiment['exp.log_file'], 'skipped', counts=True)
                     continue
+            # Track current progress
+            progress_reporter.report_active(experiment['exp.log_file'])
             # Get script that runs experiment for this framework. If no 'framework_family' is
             # found, we can try to use exp.framework.
             framework_key = 'exp.framework_family'
@@ -167,6 +230,7 @@ class Launcher(object):
             # Print progress
             if num_completed_experiments%10 == 0:
                 print("Done %d benchmarks out of %d" % (num_completed_experiments, num_active_experiments))
+            progress_reporter.report_active_completed()
 
         end_time = datetime.datetime.now()
         stats['launcher.end_time'] = str(end_time)
@@ -177,3 +241,4 @@ class Launcher(object):
 
         for key, val in stats.items():
             print('__%s__=%s' % (key, json.dumps(val)))
+        progress_reporter.report_all_completed()

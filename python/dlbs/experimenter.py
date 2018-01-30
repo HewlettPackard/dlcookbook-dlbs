@@ -105,6 +105,7 @@ class Experimenter(object):
         self.__validation = True         # Validate config before running benchmarks
         self.__action = None             # Action to perform (build, run, ...)
         self.__config_file = None        # Configuration file to load
+        self.__progress_file = None      # A JSON file with current progress
         self.__config = {}               # Loaded configuration
         self.__param_info = {}           # Parameter meta-info such as type and value domain
         self.__plan_file = None          # File with pre-built plan
@@ -217,6 +218,9 @@ class Experimenter(object):
         parser.add_argument('--plan', required=False, type=str, help='Pre-built plan of an experiment (json).\
                                                                       If action is "build", a file name to write plan to.\
                                                                       If action is "run", a file name to read plan from.')
+        parser.add_argument('--progress-file', required=False, type=str, default=None, help='A JSON file that experimenter will be updating on its progress.'\
+                                                                                             'If not present, no progress info will be available.'\
+                                                                                             'Put it somewhere in /dev/shm')
         parser.add_argument('-P', action='append', required=False, default=[], help='Parameters that override parameters in configuration file.\
                                                                                      For instance, -Pexp.phase=2. Values must be json parsable (json.loads()).')
         parser.add_argument('-V', action='append', required=False, default=[], help='Variables that override variables in configuration file in section "variables". \
@@ -235,6 +239,7 @@ class Experimenter(object):
         self.config_file = args.config
         self.plan_file = args.plan
         self.validation = not args.no_validation
+        self.__progress_file = args.progress_file
 
         # Initialize logger
         if init_logger:
@@ -314,7 +319,7 @@ class Experimenter(object):
                 else:
                     logging.info("Plan has been validated")
             if not self.validation or validator.plan_ok:
-                Launcher.run(self.plan)
+                Launcher.run(self.plan, self.__progress_file)
         elif self.action == 'validate':
             self.build_plan()
             Processor(self.param_info).compute_variables(self.plan)

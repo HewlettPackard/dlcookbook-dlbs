@@ -1,0 +1,112 @@
+<html>
+  <head>
+    <title>Deep Learning Benchmarking Suite</title>
+    <script language="JavaScript">
+      function update() {
+        httpRequest = new XMLHttpRequest()
+        httpRequest.open('GET', 'api/progress')
+        httpRequest.send()
+        httpRequest.onreadystatechange = function(){
+          if (httpRequest.readyState === XMLHttpRequest.DONE) {
+            if (httpRequest.status === 200) {
+              //alert(httpRequest.responseText)
+              //return
+              // Parse JSON response
+              var progress = JSON.parse(httpRequest.responseText);
+              // Deal with experiment statistics
+              document.getElementById('status').value = progress.status;
+              document.getElementById('num_total_benchmarks').value = progress.num_total_benchmarks;
+              document.getElementById('num_active_benchmarks').value = progress.num_active_benchmarks;
+              document.getElementById('num_completed_benchmarks').value = progress.num_completed_benchmarks;
+              document.getElementById('start_time').value = progress.start_time;
+              document.getElementById('stop_time').value = progress.stop_time;
+              // Deal with active benchmark
+              if (!progress.hasOwnProperty('active_benchmark')) {
+                progress['active_benchmark'] = {}
+              }
+              active_bench = progress['active_benchmark']
+              if (!active_bench.hasOwnProperty('log_file')) {
+                active_bench['log_file'] = ''
+              }
+              if (!active_bench.hasOwnProperty('start_time')) {
+                active_bench['start_time'] = ''
+              }
+              document.getElementById('active_log_file').value = active_bench['log_file'];
+              document.getElementById('active_start_time').value = active_bench['start_time'];
+              // Delete existing table data
+              var table_container = document.getElementById('table_container');
+              while (table_container.firstChild) {
+                table_container.removeChild(table_container.firstChild);
+              }
+              // Create table
+              columns = ['status', 'log_file', 'start_time', 'stop_time']
+              col_titles = ['Status', 'Log file', 'Start time', 'Stop time']
+              var completed_table = document.createElement('table');
+              completed_table.setAttribute('border', '1')
+              // Add header
+              var header = document.createElement('tr');
+              for(var c=0; c<col_titles.length; c++) {
+                var cell = document.createElement('th');
+                cell.appendChild(document.createTextNode(col_titles[c]));
+                header.appendChild(cell);
+              }
+              completed_table.appendChild(header);
+              // Add data
+              for(var i=0; i<progress.completed_benchmarks.length; i++) {
+                var row = document.createElement('tr')
+                for(var c=0; c<columns.length; c++) {
+                  var cell = document.createElement('td')
+                  cell.appendChild(document.createTextNode(progress.completed_benchmarks[i][columns[c]]))
+                  row.appendChild(cell)
+                }
+                completed_table.appendChild(row)
+              }
+              // Attach table
+              table_container.appendChild(completed_table)
+            } else {
+              alert('There was a problem with the request.');
+              alert(httpRequest.responseText);
+            }
+          }
+        }
+      }
+    </script>
+  </head>
+
+  <h1>Deep Learning Benchmarking Suite</h1>
+  <button type="button" onclick="update()">Update</button>
+  <hr/>
+  <div id='progress'>
+    <h3>Overview</h3>
+    <label for="status">Status</label>
+    <input type="text" value="" class="field left" id="status" readonly>
+    <br/><br/>
+    <label for="num_total_benchmarks">Total number of benchmarks</label>
+    <input type="text" value="" class="field left" id="num_total_benchmarks" readonly>
+    <br/><br/>
+    <label for="num_active_benchmarks">Number of benchmarks to run</label>
+    <input type="text" value="" class="field left" id="num_active_benchmarks" readonly>
+    <br/><br/>
+    <label for="num_completed_benchmarks">Number of completed benchmarks</label>
+    <input type="text" value="" class="field left" id="num_completed_benchmarks" readonly>
+    <br/><br/>
+    <label for="start_time">Benchmarks started on</label>
+    <input type="text" value="" class="field left" id="start_time" size=30 readonly>
+    <br/><br/>
+    <label for="stop_time">Benchmarks completed on</label>
+    <input type="text" value="" class="field left" id="stop_time" size=30 readonly>
+    <br/><br/>
+
+    <h3>Active Benchmark</h3>
+    <label for="active_log_file">Log file</label>
+    <input type="text" value="" class="field left" id="active_log_file" size=120 readonly>
+    <br/><br/>
+    <label for="active_start_time">Start time</label>
+    <input type="text" value="" class="field left" id="active_start_time" size=30 readonly>
+    <br/><br/>
+
+    <h3>Completed Benchmarks</h3>
+    <div id='table_container'>
+  </div>
+
+</html>
