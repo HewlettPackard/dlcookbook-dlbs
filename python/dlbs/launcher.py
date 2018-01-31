@@ -77,7 +77,6 @@ class ProgressReporter(object):
             DictUtils.dump_json_to_file(self.__progress, self.__file_name)
 
     def report_all_completed(self):
-        print (self.__progress)
         if self.__file_name:
             self.__progress['stop_time'] = str(datetime.datetime.now())
             self.__progress['status'] = 'completed'
