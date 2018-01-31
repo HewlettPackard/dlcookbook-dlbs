@@ -49,21 +49,23 @@ if false; then
 fi
 
 #------------------------------------------------------------------------------#
-# Example: this example shows how to run bare metal BVLC Caffe with custom library path
+# Example: this example shows how to run bare metal NVIDIA Caffe with custom library path
 if false; then
     rm -rf ./$framework
     python $script $action --log-level=$loglevel\
                            -Pexp.framework='"nvidia_caffe"'\
                            -Vexp.docker=false\
-                           -Pexp.gpus='0'\
+                           -Pexp.gpus='"0,1"'\
                            -Pexp.log_file='"${BENCH_ROOT}/${caffe.fork}_caffe/${exp.model}_${exp.effective_batch}.log"'\
-                           -Vexp.model='["alexnet", "googlenet", "vgg16", "vgg19", "resnet50", "resnet101", "resnet152"]'\
-                           -Vexp.replica_batch='[4]'\
-                           -Pnvidia_caffe.host_libpath='"/opt/OpenBLAS/lib:/opt/hdf5-1.10.1/lib:/opt/cudnn-7.0.3/lib64:/opt/nccl1/lib"'
+                           -Vexp.model='["alexnet"]'\
+                           -Vexp.replica_batch='[16]'\
+                           -Pnvidia_caffe.host_libpath='"/opt/OpenBLAS/lib:/opt/hdf5-1.10.1/lib:/opt/cudnn-7.0.3/lib64:/opt/nccl/lib:/opt/boost-1.63.0/lib:/usr/local/lib"'\
+                           -Pcaffe.data_dir='"/fdata/imagenet-data/lmdb/ilsvrc12_train_lmdb/"'\
+                           -Pcaffe.data_mean_file='"/fdata/imagenet-data/lmdb/imagenet_mean.binaryproto"'
     python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
                                              results.time results.throughput exp.model_title
 fi
-
+#-Vexp.model='["alexnet", "googlenet", "vgg16", "vgg19", "resnet50", "resnet101", "resnet152"]'\
 #------------------------------------------------------------------------------#
 # Run networks with different precision.
 # On Voltas with CUDA 9 and cuDNN7 this script can use tensor cores no matter

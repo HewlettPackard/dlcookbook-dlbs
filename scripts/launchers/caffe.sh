@@ -45,10 +45,26 @@ if [ "${exp_phase}" == "training" ]; then
         sed -i "s/__BACKWARD_MATH___/${nvidia_caffe_backward_math_precision}/g" ${host_model_dir}/${caffe_model_file}
     fi
 fi
-# For NVIDIA Caffe, protobuf must contain effective batch size.
+# BVLC/Intel Caffe and NVIDIA Caffe treat batch sizes in protobuf files differently.
+# BVLC/Intel Caffe work in weak scaling mode. Batch size in protobuf is a per-device batch size.
+# NVIDIA Caffe on the other hand treat the value for batch size as effective batch size dividing it
+# by number of solvers (workers). However, because of the algorithm which is here:
+# https://github.com/NVIDIA/caffe/blob/cdb3d9a5d46774a3be3cc4c4ecc0bcd760901cc1/src/caffe/parallel.cpp#L279
+# in some cases NVIDIA Caffe can treat batch size as per-GPU batch size switching to weak scaling mode.
+# This is exactly our case with synthetic data where layer of type Input is not processed in that function
+# resulting in batch size not being modified.
 if [ "${caffe_fork}" == "nvidia" ]; then
-    sed -i "s/__EXP_DEVICE_BATCH__/${exp_effective_batch}/g" ${host_model_dir}/${caffe_model_file}
+    # NVIDIA Caffe - strong scaling for real data and weak scaling for synthetic one
+    if [ "${caffe_data_dir}" == "" ]; then
+        # Synthetic data with 'Input' layer - Caffe is in weak scaling model
+        sed -i "s/__EXP_DEVICE_BATCH__/${exp_replica_batch}/g" ${host_model_dir}/${caffe_model_file}
+    else
+        # Real data - Caffe is in strong scaling mode - it will divide whatever batch size we have in
+        # protobuf by number of solvers.
+        sed -i "s/__EXP_DEVICE_BATCH__/${exp_effective_batch}/g" ${host_model_dir}/${caffe_model_file}
+    fi
 else
+    # This is for BVLC/Intel Caffe
     sed -i "s/__EXP_DEVICE_BATCH__/${exp_replica_batch}/g" ${host_model_dir}/${caffe_model_file}
 fi
 #
