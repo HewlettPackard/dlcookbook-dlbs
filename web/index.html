@@ -12,7 +12,12 @@
               //alert(httpRequest.responseText)
               //return
               // Parse JSON response
-              var progress = JSON.parse(httpRequest.responseText);
+              var response = JSON.parse(httpRequest.responseText);
+              if (response.status != 0) {
+                alert(httpRequest.responseText);
+                return;
+              }
+              var progress = response.progress
               // Deal with experiment statistics
               document.getElementById('status').value = progress.status;
               document.getElementById('num_total_benchmarks').value = progress.num_total_benchmarks;

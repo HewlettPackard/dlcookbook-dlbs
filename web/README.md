@@ -14,4 +14,7 @@ implementation is located in `python/dlbs/web`:
 python ./simple_server.py /dev/shm/progress.json 8000
 ```
 You need to provide a file path to a JSON file that (the one that was used to run
-experimenter, and a port number). 
+experimenter, and a port number).
+
+In general, progress file may not exist all the time. It will be read only when user
+requests update. If it does not exist, server will notify about it.
