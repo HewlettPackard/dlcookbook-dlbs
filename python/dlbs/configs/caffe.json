@@ -80,6 +80,16 @@
       "type": "str",
       "desc": "In case of real data, specifies path to an image mean file."
     },
+    "caffe.data_mean_file_path": {
+      "val":  "$(os.path.dirname(os.path.abspath('${caffe.data_mean_file}')) if '${caffe.data_mean_file}' else '')$",
+      "type": "str",
+      "desc": "If data mean file is present, this variable contains path to that file. Do not change this variable."
+    },
+    "caffe.data_mean_file_name": {
+      "val":  "$(os.path.basename('${caffe.data_mean_file}') if '${caffe.data_mean_file}' else '')$",
+      "type": "str",
+      "desc": "If data mean file is present, this variable contains name of that file. Do not change this variable."
+    },
     "caffe.data_backend": {
       "val": "LMDB",
       "type": "str",
@@ -104,6 +114,7 @@
         "--volume=${DLBS_ROOT}/models/${exp.model}:/workspace/model",
         "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
         "$('--volume=${caffe.data_dir}:/workspace/data' if '${caffe.data_dir}' else '')$",
+        "$('--volume=${caffe.data_mean_file_path}:/workspace/image_mean' if '${caffe.data_dir}' else '')$",
         "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
         "${exp.docker_args}",
         "${caffe.docker_image}"

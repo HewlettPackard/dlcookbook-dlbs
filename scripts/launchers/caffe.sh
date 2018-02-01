@@ -31,10 +31,17 @@ if [ "${exp_phase}" == "training" ]; then
     if [ "${caffe_data_dir}" == "" ]; then
         sed -i "s/^#synthetic//g" ${host_model_dir}/${caffe_model_file}
     else
+        if [ "${exp_docker}" == "true" ]; then
+            real_data_dir="/workspace/data"
+            real_data_mean_file="/workspace/image_mean/${caffe_data_mean_file_name}"
+        else
+            real_data_dir="${caffe_data_dir}"
+            real_data_mean_file="${caffe_data_mean_file}"
+        fi
         sed -i "s/^#data//g" ${host_model_dir}/${caffe_model_file}
         sed -i "s#__CAFFE_MIRROR__#${caffe_mirror}#g" ${host_model_dir}/${caffe_model_file}
-        sed -i "s#__CAFFE_DATA_MEAN_FILE__#${caffe_data_mean_file}#g" ${host_model_dir}/${caffe_model_file}
-        sed -i "s#__CAFFE_DATA_DIR__#${caffe_data_dir}#g" ${host_model_dir}/${caffe_model_file}
+        sed -i "s#__CAFFE_DATA_MEAN_FILE__#${real_data_mean_file}#g" ${host_model_dir}/${caffe_model_file}
+        sed -i "s#__CAFFE_DATA_DIR__#${real_data_dir}#g" ${host_model_dir}/${caffe_model_file}
         sed -i "s#__CAFFE_DATA_BACKEND__#${caffe_data_backend}#g" ${host_model_dir}/${caffe_model_file}
     fi
     if [ "${exp_framework}" == "nvidia_caffe" ]; then
