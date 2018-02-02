@@ -28,7 +28,7 @@ name: "InceptionV3"
 #data   }
 #data   transform_param {
 #data     mirror: __CAFFE_MIRROR__
-#data     crop_size: 227
+#data     crop_size: 299
 #data     mean_file: "__CAFFE_DATA_MEAN_FILE__"
 #data   }
 #data   data_param {
