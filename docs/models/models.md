@@ -38,12 +38,16 @@ The following table summarizes models we currently support. We try to make sure 
 model implementation is the same across all frameworks. There may still be differences - I am working
 on it now. The source code for the models contains references of the original implementations.
 
+> Pay attention to shapes of input images - they are different for different models. This
+> introduces different requirements to minimal spatial dimensions of images in your dataset.
+
 <table>
   <tr>
-    <th>model</th><th>Name</th><th>#Parameters</th><th>#Model size (Mb)</th><th>TensorFlow</th><th>Caffe</th><th>TensorRT</th><th>Caffe2</th><th>MXNet</th>
+    <th>model</th><th>Name</th><th>Input shape (CHW)</th><th>#Parameters</th><th>#Model size (Mb)</th><th>TensorFlow</th><th>Caffe</th><th>TensorRT</th><th>Caffe2</th><th>MXNet</th>
   </tr>
   <tr>
     <td>alexnet</td><td>[AlexNet](http://ethereon.github.io/netscope/#/gist/5c94a074f4e4ac4b81ee28a796e04b5d)</td>
+    <td>3x227x227</td>
     <td>62,378,344</td><td>238</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/alexnet_model.py)</td>
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/bvlc_alexnet)</td>
@@ -52,6 +56,7 @@ on it now. The source code for the models contains references of the original im
   </tr>
   <tr>
     <td>deep_mnist</td><td>[DeepMNIST](http://ethereon.github.io/netscope/#/gist/9c75cd95891207082bd42264eb7a2706)</td>
+    <td>1x28x28</td>
     <td>11,972,510</td><td>46</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/deepmnist_model.py)</td>
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/deep_mnist)</td>
@@ -60,6 +65,7 @@ on it now. The source code for the models contains references of the original im
   </tr>
   <tr>
     <td>eng_acoustic_model</td><td>[EngAcousticModel](http://ethereon.github.io/netscope/#/gist/10f5dee56b6f7bbb5da26749bd37ae16)</td>
+    <td>540x1x1</td>
     <td>34,678,784</td><td>133</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/engacoustic_model.py)</td>
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/eng_acoustic_model)</td>
@@ -68,6 +74,7 @@ on it now. The source code for the models contains references of the original im
   </tr>
   <tr>
     <td>googlenet</td><td>[GoogleNet](http://ethereon.github.io/netscope/#/gist/4325909f3683e51eaf93fdaeed6b2a9b)</td>
+    <td>3x224x224</td>
     <td>6,998,552</td><td>27</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/googlenet_model.py)</td>
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/bvlc_googlenet)</td>
@@ -76,6 +83,7 @@ on it now. The source code for the models contains references of the original im
   </tr>
   <tr>
     <td>inception3</td><td>[Inception3](http://ethereon.github.io/netscope/#/gist/04a797f778a7d513a9b52af4c1dbee4e)</td>
+    <td rowspan=2>3x299x299</td>
     <td>23,869,094</td><td>91</td>
     <td rowspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/inception_model.py)</td>
     <td colspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/inception3)</td>
@@ -89,6 +97,7 @@ on it now. The source code for the models contains references of the original im
   </tr>
   <tr>
     <td>overfeat</td><td>[Overfeat](http://ethereon.github.io/netscope/#/gist/ebfeff824393bcd66a9ceb851d8e5bde)</td>
+    <td>3x231x231</td>
     <td>145,920,872</td><td>557</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/overfeat_model.py)</td>
     <td colspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/overfeat)</td>
@@ -97,6 +106,7 @@ on it now. The source code for the models contains references of the original im
   </tr>
   <tr>
     <td>resnet18</td><td>[ResNet18](http://ethereon.github.io/netscope/#/gist/649e0fb6c96c60c9f0abaa339da3cd27)</td>
+    <td rowspan=7>3x224x224</td>
     <td>11,703,485</td><td>45</td>
     <td rowspan="7" framework="tensorflow">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/resnet_model.py)</td>
     <td colspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/resnet18)</td>
@@ -135,6 +145,7 @@ on it now. The source code for the models contains references of the original im
   </tr>
   <tr>
     <td>vgg11</td><td>[VGG11](http://ethereon.github.io/netscope/#/gist/5550b93fb51ab63d520af5be555d691f)</td>
+    <td rowspan=4>3x224x224</td>
     <td>132,863,336</td><td>507</td>
     <td rowspan="4">[Impl](https://github.hpe.com/labs/dlcookbook/blob/master/python/tf_cnn_benchmarks/vgg_model.py)</td>
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/vgg11)</td>

@@ -16,6 +16,8 @@ For now, every framework has it's specific data ingestion parameters. However, a
 > In current version, only image-type of datasets are supported. However, if input pipeline
 > is only specified by a directory, it will work.
 
+One thing to remember preparing benchmarking dataset is that various models define their own shape for input images. For instance, InceptionV3's input shape is `3x299x299` while ResNet50's input shape is `3x224x224`. The [models](/models/models.md?id=supported-models) section provides detailed information on all supported models and their input shapes.
+
 ### Caffe
 > Caffe can work with datasets stored in LMDB or LEVELDB databases.
 
