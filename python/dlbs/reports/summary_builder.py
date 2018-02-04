@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""The module builds three types of reports that are readable by humans. It also 
+"""The module builds three types of reports that are readable by humans. It also
 generates json files that are used to generate data for HPE Discover Demo.
-    
+
 Usage:
 
 >>> python summary_builder.py [PARAMETERS]
@@ -24,9 +24,9 @@ Parameters:
   by a log parser.
 * ``--report-file`` File name of the report to be generated.
 * ``--type`` Type of the report ('exploration', 'weak-scaling', 'strong-scaling')
-* ``--target-variable`` Target variable for the report. In most cases it's either 
+* ``--target-variable`` Target variable for the report. In most cases it's either
   'results.training_time' or 'results.inference_time'.
-* ``--query`` Optional JSON flat dictionary. Specifies query that selects experiments 
+* ``--query`` Optional JSON flat dictionary. Specifies query that selects experiments
   to build summary for. A typical use case is to select specific framework. For instance:
   **--query='{\"exp.framework_id\": \"tensorflow\"}'**. Should be json parsable string.
 """
@@ -34,6 +34,7 @@ from __future__ import print_function
 import json
 import argparse
 from sets import Set
+import dlbs.python_version   # pylint: disable=unused-import
 from dlbs.utils import DictUtils
 
 
@@ -43,7 +44,7 @@ SPEEDUP_TITLE = "Speedup (instances per second)"
 
 class SummaryBuilder(object):
     """Class that builds summary reports in csv formats and generates json files."""
-    
+
     def __init__(self):
         self.cache = None
         self.nets = None

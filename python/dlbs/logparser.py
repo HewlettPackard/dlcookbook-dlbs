@@ -16,7 +16,7 @@
 It can parse any other files that contain key-value items according to a specific
 format. See :py:meth:`~dlbs.logparser.LogParser.parse_log_file` for details.
 
-* Named arguments  
+* Named arguments
 
   * ``--summary-file FILE_NAME``  Write summary of experiments into this JSON file.
   * ``--log-dir LOG_DIR``         Scan this folder for *.log files. Use ``--recursive`` flag to\
@@ -30,18 +30,18 @@ format. See :py:meth:`~dlbs.logparser.LogParser.parse_log_file` for details.
 * Positional arguments
 
   * ``FILE1 FILE2 ...``           Log files to parse. If set, ``--log_dir`` parameter is ignored.
-  
+
 Example 1
-    Parse one file and print results to a standard output. It should print out 
+    Parse one file and print results to a standard output. It should print out
     a whole bunch of parameters.
 
     >>> python logparser.py ./bvlc_caffe/alexnet_2.log
 
-Example 2 
-    If we are intrested only in some of the parameters, we can specify them on a 
-    command line with ``--keys`` command line argument. That's OK if some of these 
+Example 2
+    If we are intrested only in some of the parameters, we can specify them on a
+    command line with ``--keys`` command line argument. That's OK if some of these
     parameters are not the log files.
-    
+
     >>> python logparser.py ./bvlc_caffe/alexnet_2.log --keys "exp.framework_title" "exp.model_title"  "exp.effective_batch" "results.training_time" "results.inference_time"
 
 
@@ -50,8 +50,8 @@ Example 3
 
     >>> python logparser.py ./bvlc_caffe/*.log --keys "exp.framework_title" "exp.model_title"  "exp.effective_batch" "results.training_time" "results.inference_time"
 
-Example 4 
-    It's also possible to specify directory. In case of directory, a switch 
+Example 4
+    It's also possible to specify directory. In case of directory, a switch
     ``--recursive`` can be used to find log files in that directory and all its
     subdirectories
 
@@ -67,6 +67,7 @@ from __future__ import print_function
 import sys
 import json
 import argparse
+import dlbs.python_version   # pylint: disable=unused-import
 from dlbs.utils import DictUtils
 from dlbs.utils import IOUtils
 
@@ -121,7 +122,8 @@ class LogParser(object):
         return exp_params
 
 
-if __name__ == "__main__":
+def main():
+    """Does all log parsing work."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--summary-file', type=str, required=False, default=None, help='Write summary of experiments into this JSON file.')
     parser.add_argument('--log-dir', type=str, required=False, default=None, help='Scan this folder for *.log files. Scan recursively if --recursive is set.')
@@ -158,3 +160,7 @@ if __name__ == "__main__":
         print ("")
     else:
         DictUtils.dump_json_to_file(summary, args.summary_file)
+
+
+if __name__ == "__main__":
+    main()

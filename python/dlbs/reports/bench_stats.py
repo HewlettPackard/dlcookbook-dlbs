@@ -31,6 +31,7 @@ Example:
 from __future__ import print_function
 import argparse
 import json
+import dlbs.python_version   # pylint: disable=unused-import
 from dlbs.utils import IOUtils
 from dlbs.logparser import LogParser
 
@@ -40,7 +41,7 @@ class BenchStats(object):
     @staticmethod
     def compute(log_dir, recursive):
         """ Finds files and compute experiments' statistics.
-        
+
         :param std log_dir: Directory to search files for.
         :param bool recursive: If True, directory will be searched recursively.
         :return: Dictionary with experiment statistics.

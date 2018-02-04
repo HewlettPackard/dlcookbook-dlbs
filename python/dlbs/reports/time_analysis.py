@@ -25,6 +25,7 @@ Parameters:
 """
 from __future__ import print_function
 import argparse
+import dlbs.python_version   # pylint: disable=unused-import
 from dlbs.logparser import LogParser
 from dlbs.utils import IOUtils
 from dlbs.utils import Modules

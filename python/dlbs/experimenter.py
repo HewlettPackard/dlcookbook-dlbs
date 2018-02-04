@@ -86,6 +86,7 @@ import sys
 import logging
 import argparse
 import json
+import dlbs.python_version   # pylint: disable=unused-import
 from dlbs.builder import Builder
 from dlbs.launcher import Launcher
 from dlbs.utils import DictUtils
