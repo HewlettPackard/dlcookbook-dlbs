@@ -153,8 +153,10 @@ def update_benchmarks(args):
     params = get_params(args.params)
     # Update benchmarks.
     for benchmark in benchmarks:
-        keys = [key for key in params if key not in benchmark]
-        for key in keys:
+        #keys = [key for key in params if key not in benchmark]
+        #for key in keys:
+        #    benchmark[key] = params[key]
+        for key in params:
             benchmark[key] = params[key]
     # Serialize updated benchmarks.
     DictUtils.dump_json_to_file({"data": benchmarks}, args.output_file)
