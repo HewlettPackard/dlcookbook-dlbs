@@ -44,7 +44,7 @@
         "--num_gpus=${exp.num_local_gpus}",
         "--device=${exp.device_type}",
         "--kv_store=${mxnet.kv_store}",
-        "$('' if not '${mxnet.data_dir}' else '--data_dir=${mxnet.data_dir}' if ${exp.docker} is True else '/workspace/data')$",
+        "$('' if not '${mxnet.data_dir}' else '--data_dir=${mxnet.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
         "--dtype=${exp.dtype}"
       ],
       "type": "str",

@@ -112,7 +112,9 @@ class DataIteratorFactory(object):
                 num_classes,
                 data_shape,
                 max_iter=opts['num_warmup_batches'] + opts['num_batches'],
-                dtype=np.float32
+                #dtype=opts['dtype']
+                #dtype=np.float32
+                dtype='float32'
             )
         else:
             if kv_store:
@@ -122,14 +124,15 @@ class DataIteratorFactory(object):
             # https://mxnet.incubator.apache.org/api/python/io.html#mxnet.io.ImageRecordIter
             # https://github.com/apache/incubator-mxnet/blob/master/example/image-classification/common/data.py
             data_iter = mx.io.ImageRecordIter(
-                path_imgre=opts['data_dir'],
+                path_imgrec=opts['data_dir'],
                 data_name='data',
                 label_name='softmax_label',
                 data_shape=(data_shape[1], data_shape[2], data_shape[3]),
                 batch_size=data_shape[0],
                 rand_crop=True,
                 rand_mirror=True,
-                dtype=np.float32,
+                #dtype=opts['dtype'],
+                dtype='float32',
                 num_parts=nworker,
                 part_index=rank
             )
