@@ -36,9 +36,8 @@ if true; then
         -E'{"condition":{"exp.model": "vgg16", "exp.replica_batch":[32,64,128]},"parameters":{"exp.status":""}}'\
         -E'{"condition":{"exp.model": "resnet152", "exp.replica_batch":[16,32,64]},"parameters":{"exp.status":""}}'
 
-    #python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-    #                                         results.time results.throughput exp.model_title\
-    #                                         exp.gpus exp.docker_image
+    #params=exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title,exp.gpus,exp.docker_image
+    #python $parser ./$framework/*.log --output_params ${params}
 
     # This is what happens here. We enumerate all possible configuration that include those that we are intrested in. Look at exp.framework,
     # exp.gpus and exp.replica_batch parameters. We then disable all these configurations (exp.status). We then specify docker images that we

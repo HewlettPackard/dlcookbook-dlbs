@@ -29,9 +29,8 @@ if true; then
                            -Pexp.docker=true\
                            -Pexp.phase='"training"'\
                            -Ptensorflow.docker_image='"hpe/tensorflow:cuda9-cudnn7"'
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title\
-                                             exp.docker_image
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title,exp.docker_image"
+    python $parser ./$framework/*.log --output_params ${params}
 fi
 
 #------------------------------------------------------------------------------#
@@ -45,7 +44,7 @@ if false; then
                            -Pexp.log_file='"${BENCH_ROOT}/tensorflow/$(\"docker\" if ${exp.docker} else \"host\")$/${exp.model}_${exp.effective_batch}.log"'\
                            -Vexp.model='["alexnet", "googlenet"]'\
                            -Vexp.replica_batch='[2, 4]'\
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title\
-                                             exp.docker
+
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title,exp.docker"
+    python $parser ./$framework/*.log --output_params ${params}
 fi

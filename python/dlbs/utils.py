@@ -54,7 +54,8 @@ class IOUtils(object):
         *directory*. If *recursively* is True, scans subfolders as well.
 
         :param str directory: A directory to search files in.
-        :param str file_name_pattern: A file name pattern to search.
+        :param str file_name_pattern: A file name pattern to search. For instance,
+                                      is can be '*.log'
         :param bool recursively: If True, search in subdirectories.
         :return: List of file names satisfying *file_name_pattern* pattern.
         """
@@ -64,9 +65,80 @@ class IOUtils(object):
             files = [f for p in os.walk(directory) for f in glob(os.path.join(p[0], file_name_pattern))]
         return files
 
+    @staticmethod
+    def gather_files(path_specs, file_name_pattern, recursively=False):
+        """Find/get files specified by an `inputs` parameter.
+
+        :param list path_specs: A list of file names / directories.
+        :param str file_name_pattern: A file name pattern to search. Only
+                                      used for entries in path_specs that
+                                      are directories.
+        :param bool recursively: If True, search in subdirectories. Only used
+                                 for entries in path_specs that are directories.
+        :return: List of file names satisfying *file_name_pattern* pattern.
+        """
+        files = []
+        for path_spec in path_specs:
+            if os.path.isdir(path_spec):
+                files.extend(IOUtils.find_files(path_spec, file_name_pattern, recursively))
+            elif os.path.isfile(path_spec):
+                files.append(path_spec)
+        return files
+
+    @staticmethod
+    def get_non_existing_file(file_name, max_attempts = 1000):
+        """Return file name that does not exist.
+
+        :param str file_name: Input file name.
+        :rtype: str
+        :return: The 'file_name' if this file does not exist else find first
+                 file name that file does not exist.
+        """
+        if not os.path.exists(file_name):
+            return file_name
+        attempt = 0
+        while True:
+            candidate_file_name = "%s.%d" % (file_name, attempt)
+            if not os.path.exists(candidate_file_name):
+                return candidate_file_name
+            attempt += 1
+            if attempt >= max_attempts:
+                msg = "Cannot find non existing file from pattern %s"
+                raise ValueError(msg % file_name)
+
 
 class DictUtils(object):
     """Container for dictionary helpers."""
+
+    @staticmethod
+    def subdict(dictionary, keys):
+        """Return subdictionary containing only keys from 'keys'.
+
+        :param dict dictionary: Input dictionary.
+        :param list_or_val keys: Keys to extract
+        :rtype: dict
+        :return: Dictionary that contains key/value pairs for key in keys.
+        """
+        if keys is None:
+            return dictionary
+        return dict((k, dictionary[k]) for k in keys if k in dictionary)
+
+    @staticmethod
+    def contains(dictionary, keys):
+        """Checkes if dictionary contains all keys in 'keys'
+
+        :param dict dictionary: Input dictionary.
+        :param list_or_val keys: Keys to find in dictionary
+        :rtype: boolean
+        :return: True if all keys are in dictionary or keys is None
+        """
+        if keys is None:
+            return True
+        keys = keys if isinstance(keys, list) else [keys]
+        for key in keys:
+            if key not in dictionary:
+                return False
+        return True
 
     @staticmethod
     def ensure_exists(dictionary, key, default_value=None):
@@ -176,8 +248,8 @@ class DictUtils(object):
             try:
                 value = match.group(2).strip()
                 value = json.loads(value) if len(value) > 0 else None
-            except ValueError as e:
-                raise ConfigurationError("Cannot parse JSON string '%s' with key '%s' (key-value definition: '%s'). Error is %s" % (value, key, line, str(e)))
+            except ValueError as err:
+                raise ConfigurationError("Cannot parse JSON string '%s' with key '%s' (key-value definition: '%s'). Error is %s" % (value, key, line, str(err)))
             if add_only_keys is None or key in add_only_keys:
                 dictionary[key] = value
                 logging.debug("Key-value item (%s=%s) has been parsed and added to dictionary", key, str(value))
@@ -212,9 +284,11 @@ class DictUtils(object):
         :param dict query: Query to use.
         :param ['relaxed', 'strict'] policy: Policy to match.
         :param dict matches: Dictionary where matches will be stored if match has been identified.
-        :return: True if match
+        :return: True if match or query is None
         :rtype: bool
         """
+        if query is None:
+            return True
         assert policy in ['relaxed', 'strict'], ""
 
         for field, value in query.iteritems():

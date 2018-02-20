@@ -29,8 +29,8 @@ if true; then
                            -Vexp.phase='["training"]'\
                            -Pexp.log_file='"${BENCH_ROOT}/${caffe.fork}_caffe/${exp.model}.log"'\
                            -Pcaffe.docker.image='"hpe/nvidia_caffe:cuda9-cudnn7"'
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title"
+    python $parser ./$framework/*.log --output_params ${params}
 fi
 #------------------------------------------------------------------------------#
 # Example: this one runs NVIDIA Caffe with several models and several batch sizes
@@ -44,8 +44,8 @@ if false; then
                            -Vexp.model='["alexnet", "googlenet"]'\
                            -Vexp.replica_batch='[2, 4]'\
                            -Pcaffe.docker.image='"hpe/nvidia_caffe:cuda9-cudnn7"'
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title"
+    python $parser ./$framework/*.log --output_params ${params}
 fi
 
 #------------------------------------------------------------------------------#
@@ -62,8 +62,8 @@ if false; then
                            -Pnvidia_caffe.host_libpath='"/opt/OpenBLAS/lib:/opt/hdf5-1.10.1/lib:/opt/cudnn-7.0.3/lib64:/opt/nccl/lib:/opt/boost-1.63.0/lib:/usr/local/lib"'\
                            -Pcaffe.data_dir='"/fdata/imagenet-data/lmdb/ilsvrc12_train_lmdb/"'\
                            -Pcaffe.data_mean_file='"/fdata/imagenet-data/lmdb/imagenet_mean.binaryproto"'
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title"
+    python $parser ./$framework/*.log --output_params ${params}
 fi
 #-Vexp.model='["alexnet", "googlenet", "vgg16", "vgg19", "resnet50", "resnet101", "resnet152"]'\
 #------------------------------------------------------------------------------#
@@ -84,9 +84,7 @@ if false; then
                            -Vnvidia_caffe.precision='["float32", "float16", "mixed"]'\
                            -Pexp.log_file='"${BENCH_ROOT}/${caffe.fork}_caffe/${nvidia_caffe.precision}/${exp.model}.log"'\
                            -Pnvidia_caffe.docker_image='"hpe/nvidia_caffe:cuda9-cudnn7"'
-    python $parser --log-dir ./$framework\
-                   --recursive\
-                   --keys exp.status exp.framework_title exp.effective_batch\
-                          results.time results.throughput exp.model_title\
-                          nvidia_caffe.precision
+
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title,nvidia_caffe.precision"
+    python $parser ./$framework/*.log --output_params ${params}
 fi

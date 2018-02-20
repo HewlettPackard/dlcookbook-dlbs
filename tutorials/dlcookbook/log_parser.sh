@@ -15,41 +15,73 @@ script=$DLBS_ROOT/python/dlbs/logparser.py
 # This tutorial demonstrates different use cases for the log parser.
 
 #------------------------------------------------------------------------------#
-# Example 1: Parse one file and print results to a standard output. It should print
+# Example: Parse one file and print results to a standard output. It should print
 # out a whole bunch of parameters.
 if true; then
-    python $script ./bvlc_caffe/alexnet_2.log
+    python $script ./bvlc_caffe/alexnet*.log
 fi
 
 #------------------------------------------------------------------------------#
-# Example 2: If we are intrested only in some of the parameters, we can specify
-# them on a command line with --keys command line argument. That's OK if some of
-# these parameters are not the log files.
+# Example: If we are intrested only in some of the parameters, we can specify
+# them on a command line with ''--output_params' command line argument. That's OK
+# if some of these parameters are not the log files.
 if false; then
-    python $script ./bvlc_caffe/alexnet_2.log --keys "exp.framework_title" "exp.model_title"\
-                                                     "exp.effective_batch" "results.time" "results.phase"
+    params="exp.framework_title,exp.model_title,exp.effective_batch,results.time"
+    python $script ./bvlc_caffe/alexnet*.log --output_params ${params}
 fi
 
 #------------------------------------------------------------------------------#
-# Example 3: It's possible to specify as many log files as you want:
+# Example: It's possible to specify as many log files as you want:
 if false; then
-    python $script ./bvlc_caffe/*.log --keys "exp.framework_title" "exp.model_title"\
-                                             "exp.effective_batch" "results.time" "results.phase"
+    params="exp.framework_title,exp.model_title,exp.effective_batch,results.time"
+    python $script ./bvlc_caffe/*.log --output_params ${params}
 fi
 #------------------------------------------------------------------------------#
-# Example 4: It's also possible to specify directory. In case of directory, a
+# Example: It's also possible to specify directory. In case of directory, a
 # a switch --recursive can be used to find log files in that directory and all its
 # subdirectories
 if false; then
-    python $script --log-dir ./bvlc_caffe --recursive --keys "exp.framework_title" "exp.model_title"\
-                                                             "exp.effective_batch" "results.time" "results.phase"
+    params="exp.framework_title,exp.model_title,exp.effective_batch,results.time"
+    python $script ./bvlc_caffe --recursive --output_params ${params}
 fi
 
 #------------------------------------------------------------------------------#
-# Example 5: Finally, the summary can be written to a file. A content of the output
+# Example: The summary can be written to a file. A content of the output
 # file can be used to build summary reports (see 'summary_builder.sh' file).
 if false; then
-    python $script --summary-file ./bvlc_caffe/summary.json --log-dir ./bvlc_caffe --recursive\
-                   --keys "exp.gpus" "exp.framework_title" "exp.model_title"  "exp.effective_batch"\
-                          "results.time" "results.phase" "exp.replica_batch" "exp.framework"
+    params="exp.framework_title,exp.model_title,exp.effective_batch,results.time"
+    python $script ./bvlc_caffe --recursive \
+                                --output_file ./bvlc_caffe.json \
+                                --output_params ${params}
+fi
+
+#------------------------------------------------------------------------------#
+# Example: The summary can be written to a gzipped file.
+if false; then
+    params="exp.framework_title,exp.model_title,exp.effective_batch,results.time"
+    python $script ./bvlc_caffe --recursive \
+                                --output_file ./bvlc_caffe.json.gz \
+                                --output_params ${params}
+fi
+
+#------------------------------------------------------------------------------#
+# Example: It's possible to selectively filter benchmarks setting constraints
+# on parameter value
+if false; then
+    params="exp.framework_title,exp.model_title,exp.effective_batch,results.time"
+    python $script ./bvlc_caffe --recursive \
+                                --output_params ${params} \
+                                --filter_query='{"exp.model": "alexnet"}'
+fi
+
+#------------------------------------------------------------------------------#
+# Example: It's also possible to add new parameters. Values for new parameters
+# can reference existing parameters
+if false; then
+    #params="exp.framework_title,exp.model_title,exp.effective_batch,results.time"
+    params="exp.my_summary"
+    python $script ./bvlc_caffe \
+      --recursive \
+      --output_params ${params} \
+      -P'{"exp.my_summary":"${exp.framework_title}/${exp.model_title}/${exp.effective_batch} -> ${results.time}"}'
 fi

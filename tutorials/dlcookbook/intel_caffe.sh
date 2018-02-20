@@ -28,9 +28,8 @@ if true; then
                            -Vexp.model='["alexnet"]'\
                            -Vexp.phase='["training"]'\
                            -Pexp.log_file='"${BENCH_ROOT}/${caffe.fork}_caffe/${exp.model}.log"'
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title\
-                                             exp.phase
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title,exp.phase"
+    python $parser ./$framework/*.log --output_params ${params}
 fi
 #------------------------------------------------------------------------------#
 # Example: this one runs Intel Caffe with several models and several batch sizes.
@@ -44,9 +43,6 @@ if false; then
                            -Pexp.log_file='"${BENCH_ROOT}/${caffe.fork}_caffe/$(\"docker\" if ${exp.docker} else \"host\")$/${exp.model}_${exp.effective_batch}.log"'\
                            -Vexp.model='["alexnet", "googlenet"]'\
                            -Vexp.replica_batch='[2, 4]'
-    python $parser --log-dir ./$framework/\
-                   --recursive\
-                   --keys exp.status exp.framework_title exp.effective_batch\
-                          results.time results.throughput exp.model_title\
-                          exp.phase exp.docker
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title,exp.docker_image,exp.phase"
+    python $parser ./$framework/ --recursive --output_params ${params}
 fi

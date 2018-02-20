@@ -21,7 +21,7 @@ loglevel=warning
 # log file is different for every experiment - if it's not the case, the valdiator
 # component that's enabled by default will detect this and terminate the script
 # without running experiments.
-if false; then
+if true; then
     rm -rf ./$framework
     python $script $action --log-level=$loglevel                `#Set it to 'info' to track benchmarking progress.`\
                            -Pexp.num_warmup_batches=10          `#Number of iterations that do not contribute to performance measurement.`\
@@ -54,18 +54,18 @@ if false; then
     # Alternatively, you can sepcify docker image with bvlc_caffe.docker_image
     # See example below for it. Try running this to get more details:
     #    python ./python/dlbs/experimenter.py help --params ^caffe.docker_image
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title"
+    python $parser ./$framework/*.log --output_params ${params}
 fi
 #------------------------------------------------------------------------------#
 # Example: this example demonstrates how to use input JSON based configuration files
-if true; then
+if false; then
     rm -rf ./$framework
 
     python $script $action --log-level=$loglevel --config=./configs/bvlc_caffe.json
 
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                         results.time results.throughput exp.model_title
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title"
+    python $parser ./$framework/*.log --output_params ${params}
 fi
 #------------------------------------------------------------------------------#
 # Example: this one runs BVLC Caffe with several models and several batch sizes.
@@ -88,8 +88,8 @@ if false; then
     # All results will go into corresponding log files. Read documentation section on what metrics are monitored and
     # how to retrieve this data.
 
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title"
+    python $parser ./$framework/*.log --output_params ${params}
 fi
 #------------------------------------------------------------------------------#
 # Example: this example shows how to run bare metal BVLC Caffe with custom library path.
@@ -114,6 +114,7 @@ if false; then
                            -Vexp.model='["alexnet", "googlenet", "vgg16", "vgg19", "resnet50", "resnet101", "resnet152"]'\
                            -Vexp.replica_batch='[4]'\
                            -Pbvlc_caffe.host_libpath='"/opt/OpenBLAS/lib:/usr/local/cuda/lib64"'
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title
+
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title"
+    python $parser ./$framework/*.log --output_params ${params}
 fi

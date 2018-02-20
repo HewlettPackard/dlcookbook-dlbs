@@ -32,9 +32,8 @@ if true; then
                            -Pexp.phase='"training"'\
                            -Pexp.log_file='"${BENCH_ROOT}/mxnet/${exp.model}_${exp.effective_batch}.log"'\
                            -Pmxnet.docker_image='"hpe/mxnet:cuda9-cudnn7"'
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title\
-                                             exp.docker_image
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title,exp.docker_image"
+    python $parser ./$framework/*.log --output_params ${phase}
 fi
 
 #------------------------------------------------------------------------------#
@@ -52,9 +51,8 @@ if false; then
                            -Vexp.model='["alexnet", "googlenet"]'\
                            -Vexp.replica_batch='[2, 4]'\
                            -Vmxnet.host_libpath='"/opt/OpenBLAS/lib"'
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title\
-                                             exp.docker
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title,exp.docker"
+    python $parser ./$framework/*.log --output_params ${params}
 fi
 
 #------------------------------------------------------------------------------#
@@ -75,7 +73,6 @@ if false; then
                            -Pexp.phase='"training"'\
                            -Pexp.log_file='"${BENCH_ROOT}/mxnet/${exp.model}_${exp.dtype}_${exp.effective_batch}.log"'\
                            -Pmxnet.docker_image='"hpe/mxnet:cuda9-cudnn7"'
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title\
-                                             exp.docker_image exp.dtype
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title,exp.docker_image,exp.dtype"
+    python $parser ./$framework/*.log --output_params ${params}
 fi

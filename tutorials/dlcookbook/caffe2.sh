@@ -29,9 +29,8 @@ if true; then
                            -Vexp.model='["alexnet"]'\
                            -Pexp.log_file='"${BENCH_ROOT}/caffe2/${exp.model}_${exp.effective_batch}.log"'\
                            -Pcaffe2.docker.image='"hpe/caffe2:cuda9-cudnn7"'
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title\
-                                             exp.docker_image
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title,exp.docker_image"
+    python $parser ./$framework/*.log --output_params ${params}
 fi
 #------------------------------------------------------------------------------#
 # Example: this one runs Caffe2 in host OS. By default, it's assumed caffe2
@@ -51,9 +50,8 @@ if false; then
                    -Vexp.replica_batch='[8]'\
                    -Pexp.num_warmup_batches=100\
                    -Pexp.num_batches=100
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title\
-                                             exp.docker
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title,exp.docker_image"
+    python $parser ./$framework/*.log --output_params ${params}
 fi
 #------------------------------------------------------------------------------#
 # Compare FP32/FP16. FP16 benchmark may fail if your system does not support it.
@@ -71,7 +69,6 @@ if false; then
                            -Vexp.dtype='["float32", "float16"]'\
                            -Pexp.log_file='"${BENCH_ROOT}/caffe2/${exp.model}_${exp.dtype}_${exp.effective_batch}.log"'\
                            -Pcaffe2.docker.image='"hpe/caffe2:cuda9-cudnn7"'
-    python $parser ./$framework/*.log --keys exp.status exp.framework_title exp.effective_batch\
-                                             results.time results.throughput exp.model_title\
-                                             exp.docker_image exp.dtype
+    params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title,exp.docker_image"
+    python $parser ./$framework/*.log --output_params ${params}
 fi
