@@ -34,6 +34,7 @@ python ./python/dlbs/experimenter.py sysinfo
 """
 from __future__ import print_function
 import subprocess
+import os
 import re
 import shlex
 import json
@@ -49,7 +50,7 @@ if Modules.HAVE_PANDAS:
 class SysInfo(object):
 
     def __init__(self,
-                 specs='inxi,cpuinfo,meminfo,lscpu,nvidiasmi',
+                 specs='inxi,cpuinfo,meminfo,lscpu,nvidiasmi,dmi',
                  namespace='hw',
                  inxi_path=None):
         self.specs = set(specs.split(','))
@@ -71,7 +72,40 @@ class SysInfo(object):
             info[_key('lscpu')] = SysInfo.lscpu()
         if 'nvidiasmi' in self.specs:
             info[_key('nvidiasmi')] = SysInfo.nvidiasmi() if Modules.HAVE_NUMPY and Modules.HAVE_PANDAS  else {}
+        if 'dmi' in self.specs:
+            info[_key('dmi')] = SysInfo.dmi()
 
+        return info
+
+    @staticmethod
+    def dmi():
+        """Get various info from /sys/devices/virtual/dmi/id that does not require SUDO.
+
+        DMI - Desktop Management Interface: https://linux.die.net/man/8/dmidecode
+        https://askubuntu.com/questions/179958/how-do-i-find-out-my-motherboard-model/179964
+        """
+        base_path = '/sys/devices/virtual/dmi/id/'
+        # Files that we most likely can read without SUDO rights and that can be useful.
+        # Most likely, in that folder there are other files that we can read but it may
+        # not be the good idea to expose that kind of info (like BIOS info etc).
+        # 'bios_date', 'bios_vendor', 'bios_version'
+        dmi_files = [
+            'board_name',      # ProLiant XL250a Gen9
+            'board_vendor',    # HP
+            'product_name',    # ProLiant XL250a Gen9
+            'sys_vendor'       # HP
+        ]
+        info = {}
+        for dmi_file in dmi_files:
+            file_name = base_path + dmi_file
+            if not os.path.exists(file_name):
+                continue
+            try:
+                with open (file_name, "r") as file_obj:
+                    dmi_value = file_obj.read().strip()
+                info[dmi_file] = dmi_value
+            except IOError:
+                pass
         return info
 
     @staticmethod
