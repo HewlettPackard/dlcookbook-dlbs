@@ -16,7 +16,7 @@ The structure of that folder is the following:
 
 The name of an image thus becomes `$prefix/$framework:$tag`. The build script requires one mandatory parameter - path to a folder with Dockerfile to build. For instance, the following command:
 ```bash
-./build tensorflow/cuda8-cudnn6
+./build.sh tensorflow/cuda8-cudnn6
 ```
 builds a specific version of TensorFlow docker images (versions are defined in [versions](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/docker/versions) file) with Ubuntu 16.04, CUDA 8 and cuDNN 6. The image name is `hpe/tensorflow:cuda8-cudnn6`.
 

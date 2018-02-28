@@ -31,34 +31,31 @@ single log file, extract all parameters and print them out to a console:
 python $parser ./bvlc_caffe/alexnet_2.log
 ```
 
-Users can specify which fields (parameters) they are interested in with `--keys`
+Users can specify which fields (parameters) they are interested in with `--output_params`
 command line argument:
 ```bash
-python $parser ./bvlc_caffe/alexnet_2.log --keys "exp.framework_title" "exp.model_title"  "exp.effective_batch" "results.time"
+python $parser ./bvlc_caffe/alexnet_2.log --output_params "exp.framework_title,exp.model_title,exp.effective_batch,results.time"
 ```
 
 It is possible to specify multiple files:
 ```bash
-python $parser ./bvlc_caffe/*.log --keys "exp.framework_title" "exp.model_title"  "exp.effective_batch" "results.time"
+python $parser ./bvlc_caffe/*.log --output_params "exp.framework_title,exp.model_title,exp.effective_batch,results.time"
 ```
 
-It's also possible to specify a directory with `--log-dir` command line argument. In case of
-directory, a switch ``--recursive` can be used to find log files in that directory and all its
+It's also possible to specify a directory. In case of
+directory, a switch `--recursive` can be used to find log files in that directory and all its
 subdirectories:
 ```bash
-python $parser --log-dir ./bvlc_caffe --recursive --keys "exp.framework_title" "exp.model_title"  "exp.effective_batch" "results.time"
+python $parser ./bvlc_caffe --recursive --output_params "exp.framework_title,exp.model_title,exp.effective_batch,results.time"
 ```
 
 To be able to process results and build reports, parameters need to be serialized to a json
 file:
 ```bash
-python $parser --summary-file ./bvlc_caffe/summary.json --log-dir ./bvlc_caffe --recursive\
-               --keys "exp.gpus" "exp.framework_title" "exp.model_title"  "exp.effective_batch"\
-                      "results.time" "exp.framework_id"
+params="exp.framework_title,exp.model_title,exp.effective_batch,results.time"
+python $parser ./bvlc_caffe --recursive --output_file ./bvlc_caffe.json --output_params ${params}
 ```
 
 ### Summary Builder
 [Summary Builder](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/dlbs/summary_builder.py) builds simple exploration or weak/strong-scaling reports based on JSON files produced
 by the log parser.
-
-1. __Exploration reports__ are useful to present inference or single-GPU training results.

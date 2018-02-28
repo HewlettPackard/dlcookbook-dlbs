@@ -42,7 +42,7 @@ mkdir -p ./benchmarks/my_experiment
 # Run experiment
 python ./python/dlbs/experimenter.py run -Pexp.framework='"tensorflow"' -Pexp.model='"resnet50"' -Pexp.gpus='"0"' -Pexp.log_file='"./benchmarks/my_experiment/tf.log"'
 # Print some results
-python ./python/dlbs/logparser.py --keys exp.device_type exp.phase results.time exp.framework_title exp.model_title exp.replica_batch exp.framework_ver -- ./benchmarks/my_experiment/tf.log
+python ./python/dlbs/logparser.py ./benchmarks/my_experiment/tf.log --output_params "exp.device_type,exp.phase,results.time,exp.framework_title,exp.model_title,exp.replica_batch,exp.framework_ver"
 ```
 
 If you do not have NVIDIA GPUs, run TensorFlow in CPU mode (the only difference is that
@@ -57,7 +57,7 @@ mkdir -p ./benchmarks/my_experiment
 # Run experiment
 python ./python/dlbs/experimenter.py run -Pexp.framework='"tensorflow"' -Pexp.model='"resnet50"' -Pexp.device_type='"cpu"' -Pexp.log_file='"./benchmarks/my_experiment/tf.log"'
 # Print some results
-python ./python/dlbs/logparser.py --keys exp.device_type exp.phase results.time exp.framework_title exp.model_title exp.replica_batch exp.framework_ver -- ./benchmarks/my_experiment/tf.log
+python ./python/dlbs/logparser.py ./benchmarks/my_experiment/tf.log --output_params "exp.device_type,exp.phase,results.time,exp.framework_title,exp.model_title,exp.replica_batch,exp.framework_ver"
 ```
 
 If everything is OK, you should expect seeing this JSON (training time - an average batch time - of course will be different):

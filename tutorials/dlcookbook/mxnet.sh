@@ -33,7 +33,7 @@ if true; then
                            -Pexp.log_file='"${BENCH_ROOT}/mxnet/${exp.model}_${exp.effective_batch}.log"'\
                            -Pmxnet.docker_image='"hpe/mxnet:cuda9-cudnn7"'
     params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title,exp.docker_image"
-    python $parser ./$framework/*.log --output_params ${phase}
+    python $parser ./$framework/*.log --output_params ${params}
 fi
 
 #------------------------------------------------------------------------------#
