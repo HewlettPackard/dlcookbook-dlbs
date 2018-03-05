@@ -38,6 +38,7 @@ import os
 import re
 import shlex
 import json
+import logging
 #import functools
 from collections import OrderedDict
 from dlbs.utils import Modules
@@ -55,7 +56,7 @@ class SysInfo(object):
                  inxi_path=None):
         self.specs = set(specs.split(','))
         self.namespace = namespace
-        self.inxi_path = inxi_path
+        self.inxi_path = 'inxi' if inxi_path is None else os.path.join(inxi_path, 'inxi')
 
     def collect(self):
         info = {}
@@ -101,7 +102,7 @@ class SysInfo(object):
             if not os.path.exists(file_name):
                 continue
             try:
-                with open (file_name, "r") as file_obj:
+                with open(file_name, "r") as file_obj:
                     dmi_value = file_obj.read().strip()
                 info[dmi_file] = dmi_value
             except IOError:
@@ -125,8 +126,12 @@ class SysInfo(object):
         info = OrderedDict()
         for _, line in enumerate(output_lines):
             if line[0] != ' ': # key
-                key, prop = line.split(":")
-                info[key] = [prop.strip()]
+                try:
+                    key, prop = line.split(":")
+                    info[key] = [prop.strip()]
+                except ValueError as err:
+                    logging.warn("INXI output parsing error on line: " + line)
+                    logging.exception(err)
         return info
 
     @staticmethod
