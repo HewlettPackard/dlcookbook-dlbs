@@ -88,6 +88,7 @@ class Model(object):
         :param model_helper.ModelHelper model: Model to add update parameters operators for.
         :param list loss: A list of losses.
         """
+
         model.net._net = memonger.share_grad_blobs(
             model.net,
             loss,
@@ -95,6 +96,7 @@ class Model(object):
             namescope='',
             share_activations=False,
         )
+
 
     def add_synthetic_inputs(self, model, add_labels=True):
         """Build data ingestion operators for this model for multi-GPU training
@@ -111,7 +113,7 @@ class Model(object):
         )
         if self.dtype == 'float16':
             model.param_init_net.FloatToHalf('data' + suffix, 'data')
-        
+
         if add_labels is True:
             model.param_init_net.ConstantFill(
                 [],
@@ -120,6 +122,7 @@ class Model(object):
                 value=1,
                 dtype=core.DataType.INT32,
             )
+        # data = model.StopGradient(data, data)
 
     def add_data_inputs(self, model, reader, use_gpu_transform):
         """Adds real data pipeline.
@@ -132,18 +135,19 @@ class Model(object):
         """
         data, _ = brew.image_input(       # data, label
             model,
-            reader,
+            [reader],
             ["data", "softmax_label"],
             batch_size=self.batch_size,   # Per device batch size
             output_type=self.dtype,       # "float" or "float16"
             use_gpu_transform=use_gpu_transform,
             use_caffe_datum=True,
             mean=128.,
-            std=128.,
+            #std=128.,
             scale=256,
             crop=self.input_shape[2],
-            mirror=1,
+            mirror=True,
             is_test=False,
+            decode_threads=1
         )
         data = model.StopGradient(data, data)
 
