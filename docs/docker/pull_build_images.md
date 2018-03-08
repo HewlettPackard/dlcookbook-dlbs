@@ -48,3 +48,5 @@ This is a list of docker files we provide (they are not optimized yet, we are wo
   * [cuda9-cudnn7](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/docker/tensorflow/cuda9-cudnn7)
 * TensorRT
   * [cuda8-cudnn6](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/docker/tensorrt/cuda8-cudnn6)
+* PyTorch
+  * [cuda9-cudnn7](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/docker/pytorch/cuda9-cudnn7)

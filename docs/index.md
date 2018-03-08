@@ -1,10 +1,11 @@
 # __Deep Learning Benchmarking Suite__
-Deep Learning Benchmarking Suite (DLBS) is a set of command line tools for providing consistent and reproducible benchmark experiments on various hardware/software combinations. In particular, DLBS provides the following functionality:
+Deep Learning Benchmarking Suite (DLBS) is a collection of command line tools for providing consistent and reproducible benchmark experiments on various hardware/software combinations. In particular, DLBS provides the following functionality:
 1. Implements internally various deep models. Our goal is to provide same model implementations for all supported frameworks. Deep models that are supported include various VGGs, ResNets, AlexNet and GoogleNet models.
-2. Benchmarks single node multi GPU configurations. Frameworks that are now supported: BVLC Caffe, NVIDIA Caffe, Intel Caffe, Caffe2, TensorFlow, MXNet and TensorRT.
+2. Benchmarks single node multi GPU configurations. Frameworks that are now supported: BVLC Caffe, NVIDIA Caffe, Intel Caffe, Caffe2, TensorFlow, MXNet, PyTorch and NVIDIA inference engine TensorRT.
 3. Supports inference and training phases.
 4. Can use real data if dataset is available. Else, falls back to synthetic data.
 5. Supports bare metal and docker environments.
+6. Can run benchmarks with single, half and in some cases int8 precision.
 
 ## Supported platforms
 Deep Learning Benchmarking Suite was tested on various servers with Ubuntu /
@@ -27,6 +28,7 @@ Mac OS due to slightly different command line API of some of the tools we use
     5. [Caffe2](http://caffe2.ai)
     6. [MXNet](http://mxnet.io)
     7. [TensorRT](https://developer.nvidia.com/tensorrt)
+    8. [PyTorch](http://pytorch.org/)
 
    There are several ways to get Docker images. Read [here](/docker/pull_build_images.md?id=buildpull-docker-images) about various options including images from [NVIDIA GPU Cloud](https://www.nvidia.com/en-us/gpu-cloud/). We may not support the newest framework versions due to API change.
 
@@ -92,6 +94,8 @@ If `results.time` is not there, study ./benchmarks/my_experiment/tf.log for erro
   - [Caffe2](/frameworks/caffe2.md?id=caffe2)
   - [MXNet](/frameworks/mxnet.md?id=mxnet)
   - [TensorFlow](/frameworks/tensorflow.md?id=tensorflow)
+  - [TensorRT](/frameworks/tensorrt.md?id=tensorrt)
+  - [PyTorch](/frameworks/pytorch.md?id=pytorch)
 - [Extending DLBS](/extend/dlbs.md?id=extending-deep-learning-benchmarking-suite)
 - [Resource monitor](/monitor/monitor.md?id=resource-monitor)
 

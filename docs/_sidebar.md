@@ -14,6 +14,7 @@
   - [Caffe2](/frameworks/caffe2.md?id=caffe2)
   - [MXNet](/frameworks/mxnet.md?id=mxnet)
   - [TensorFlow](/frameworks/tensorflow.md?id=tensorflow)
+  - [PyTorch](/frameworks/pytorch.md?id=pytorch)
   - [TensorRT](/frameworks/tensorrt.md?id=tensorrt)
 - [Data](/data/data.md?id=data)
 - [Resource monitor](/monitor/monitor.md?id=resource-monitor)

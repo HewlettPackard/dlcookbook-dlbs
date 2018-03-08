@@ -94,10 +94,14 @@ experimenter.py help --frameworks tensorflow
 [`mxnet.host_python_path`](/frameworks/mxnet?id=mxnethost_python_path "Path to a MXNET's python folder in case of a bare metal run.")
 [`mxnet.host_libpath`](/frameworks/mxnet?id=mxnethost_libpath "Basically, it's a LD_LIBRARY_PATH for MXNet in case of a bare metal run.")
 
+### __PyTorch__
+[`pytorch.docker_image`](/frameworks/pytorch?id=pytorchdocker_image "The name of a docker image to use for PyTorch if containerized benchmark is requested.")
+[`pytorch.cudnn_benchmark`](/frameworks/pytorch?id=pytorchcudnn_benchmark "Uses the inbuilt cudnn auto-tuner to find the fastest convolution algorithms. If this is set to false, uses some in-built heuristics that might not always be fastest. By default cudnn_benchmark is set to TRUE. Setting to true will improve performance, at the expense of using more memory. The input shape should be the same for each batch, otherwise autotune will re-run for each batch, causing a huge slow-down. More details are here: https://github.com/soumith/cudnn.torch#modes")
+[`pytorch.cudnn_fastest`](/frameworks/pytorch?id=pytorchcudnn_fastest "Enables a fast mode for the Convolution modules - simply picks the fastest convolution algorithm, rather than tuning for workspace size. By default, cudnn.fastest is set to false. You should set to true if memory is not an issue, and you want the fastest performance. More details are here: https://github.com/soumith/cudnn.torch#modes")
+
 ### __TensorRT__
 [`tensorrt.docker_image`](/frameworks/tensorrt?id=tensorrtdocker_image "The name of a docker image to use for TensorRT.")
 [`tensorrt.host_path`](/frameworks/tensorrt?id=tensorrthost_path "Path to a tensorrt executable in case of bare metal run.")
-
 
 
 

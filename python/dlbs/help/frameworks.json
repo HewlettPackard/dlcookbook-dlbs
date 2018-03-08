@@ -28,5 +28,8 @@
     ],
     "tensorrt":[
         "tensorrt.docker_image", "tensorrt.host_path"
+    ],
+    "pytorch":[
+        "pytorch.docker_image", "pytorch.cudnn_benchmark", "pytorch.cudnn_fastest"
     ]
 }

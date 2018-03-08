@@ -16,7 +16,7 @@ For now, every framework has it's specific data ingestion parameters. However, a
 > In current version, only image-type of datasets are supported. However, if input pipeline
 > is only specified by a directory, it will work.
 
-One thing to remember preparing benchmarking dataset is that various models define their own shape for input images. For instance, InceptionV3's input shape is `3x299x299` while ResNet50's input shape is `3x224x224`. The [models](/models/models.md?id=supported-models) section provides detailed information on all supported models and their input shapes.
+One thing to remember preparing benchmark dataset is that various models define their own shape for input images. For instance, InceptionV3's input shape is `3x299x299` while ResNet50's input shape is `3x224x224`. The [models](/models/models.md?id=supported-models) section provides detailed information on all supported models and their input shapes.
 
 ### Caffe
 > Caffe can work with datasets stored in LMDB or LEVELDB databases.
@@ -48,3 +48,11 @@ One thing to remember preparing benchmarking dataset is that various models defi
 
 > Setting `tensorflow.distortions` to true will significantly slow down easy computable
 > models such as AlexNet.
+
+### PyTorch
+> PyTorch can now work with datasets of [raw images](http://pytorch.org/docs/master/torchvision/datasets.html#imagefolder).
+
+1. `pytorch.data_dir` A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline).
+2. `pytorch.data_backend` The type of dataset specified by *pytorch.data_dir*. Two datasets are supported. The first one is *caffe_lmdb*. This is exactly the same type of datasets that Caffe frameworks use. The second type is *image_folder* that can be read by a torchvision's [ImageFolder dataset](https://github.com/pytorch/vision/blob/master/torchvision/datasets/folder.py#L72).
+3. `pytorch.data_shuffle` Enable/disable shuffling for both real and synthetic datasets.
+4. `pytorch.num_loader_threads` Number of worker threads to be used by data loader (for synthetic and real datasets).

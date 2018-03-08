@@ -43,7 +43,7 @@ on it now. The source code for the models contains references of the original im
 
 <table>
   <tr>
-    <th>model</th><th>Name</th><th>Input shape (CHW)</th><th>#Parameters</th><th>#Model size (Mb)</th><th>TensorFlow</th><th>Caffe</th><th>TensorRT</th><th>Caffe2</th><th>MXNet</th>
+    <th>model</th><th>Name</th><th>Input shape (CHW)</th><th>#Parameters</th><th>#Model size (Mb)</th><th>TensorFlow</th><th>Caffe</th><th>TensorRT</th><th>Caffe2</th><th>MXNet</th><th>PyTorch</th>
   </tr>
   <tr>
     <td>alexnet</td><td>[AlexNet](http://ethereon.github.io/netscope/#/gist/5c94a074f4e4ac4b81ee28a796e04b5d)</td>
@@ -53,6 +53,7 @@ on it now. The source code for the models contains references of the original im
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/bvlc_alexnet)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/alexnet.py)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/alexnet.py)</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/pytorch_benchmarks/models/alexnet.py)</td>
   </tr>
   <tr>
     <td>deep_mnist</td><td>[DeepMNIST](http://ethereon.github.io/netscope/#/gist/9c75cd95891207082bd42264eb7a2706)</td>
@@ -62,6 +63,7 @@ on it now. The source code for the models contains references of the original im
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/deep_mnist)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/deep_mnist.py)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/deep_mnist.py)</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/pytorch_benchmarks/models/deep_mnist.py)</td>
   </tr>
   <tr>
     <td>eng_acoustic_model</td><td>[EngAcousticModel](http://ethereon.github.io/netscope/#/gist/10f5dee56b6f7bbb5da26749bd37ae16)</td>
@@ -71,6 +73,7 @@ on it now. The source code for the models contains references of the original im
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/eng_acoustic_model)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/eng_acoustic_model.py)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/eng_acoustic_model.py)</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/pytorch_benchmarks/models/eng_acoustic_model.py)</td>
   </tr>
   <tr>
     <td>googlenet</td><td>[GoogleNet](http://ethereon.github.io/netscope/#/gist/4325909f3683e51eaf93fdaeed6b2a9b)</td>
@@ -80,6 +83,7 @@ on it now. The source code for the models contains references of the original im
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/bvlc_googlenet)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/googlenet.py)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/googlenet.py)</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/pytorch_benchmarks/models/googlenet.py)</td>
   </tr>
   <tr>
     <td>inception3</td><td>[Inception3](http://ethereon.github.io/netscope/#/gist/04a797f778a7d513a9b52af4c1dbee4e)</td>
@@ -89,6 +93,7 @@ on it now. The source code for the models contains references of the original im
     <td colspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/inception3)</td>
     <td rowspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/inception.py)</td>
     <td rowspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/inception.py)</td>
+    <td rowspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/pytorch_benchmarks/models/inception.py)</td>
   </tr>
   <tr>
     <td>inception4</td><td>[Inception4](http://ethereon.github.io/netscope/#/gist/8fdab7a3ea5bceb9169832dfd73b5e31)</td>
@@ -103,6 +108,7 @@ on it now. The source code for the models contains references of the original im
     <td colspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/overfeat)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/overfeat.py)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/overfeat.py)</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/pytorch_benchmarks/models/overfeat.py)</td>
   </tr>
   <tr>
     <td>resnet18</td><td>[ResNet18](http://ethereon.github.io/netscope/#/gist/649e0fb6c96c60c9f0abaa339da3cd27)</td>
@@ -112,6 +118,7 @@ on it now. The source code for the models contains references of the original im
     <td colspan=2>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/resnet18)</td>
     <td rowspan="7" framework="caffe2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/resnet.py)</td>
     <td rowspan="7" framework="mxnet">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/resnet.py)</td>
+    <td rowspan="7" framework="mxnet">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/pytorch_benchmarks/models/resnet.py)</td>
   </tr>
   <tr>
     <td>resnet34</td><td>[ResNet34](http://ethereon.github.io/netscope/#/gist/277a9604370076d8eed03e9e44e23d53)</td>
@@ -151,6 +158,7 @@ on it now. The source code for the models contains references of the original im
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/vgg11)</td>
     <td rowspan="4">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/vgg.py)</td>
     <td rowspan="4">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/vgg.py)</td>
+    <td rowspan="4">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/pytorch_benchmarks/models/vgg.py)</td>
   </tr>
   <tr>
     <td>vgg13</td><td>[VGG13](http://ethereon.github.io/netscope/#/gist/a96ba317064a61b22a1742bd05c54816)</td>

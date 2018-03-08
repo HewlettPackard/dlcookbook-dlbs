@@ -72,13 +72,19 @@ class TestConfigurationLoader(unittest.TestCase):
         'tensorrt': [
             "launcher", "args", "model_file", "model_dir", "docker_image", 
             "docker_args", "profile", "input", "output", "host_path", "host_libpath"
+        ],
+        'pytorch': [
+            "launcher", "env", "bench_path", "data_dir", "cudnn_benchmark",
+            "cudnn_fastest", "data_shuffle", "num_loader_threads", "args",
+            "docker_image", "docker_args", "host_python_path", "host_libpath",
+            "data_backend"
         ]
     }
 
     def setUp(self):
         self.config_path = os.path.join(os.path.dirname(__file__), '..', 'configs')
         self.config_files = ['base.json', 'caffe.json', 'caffe2.json', 'mxnet.json',
-                             'tensorflow.json', 'tensorrt.json']
+                             'tensorflow.json', 'tensorrt.json', 'pytorch.json']
         self.config_files.sort()
 
     def test_update_param_info(self):

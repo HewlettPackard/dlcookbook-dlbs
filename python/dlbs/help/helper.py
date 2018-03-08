@@ -80,6 +80,7 @@ class Helper(object):
             print ("\tintel_caffe")
             print ("\tcaffe2")
             print ("\tmxnet")
+            print ("\tpytorch")
             print ("\ttensorrt")
             print ("Usage: python %s help --frameworks [FRAMEWORK [FRAMEWORK ...]]" % (sys.argv[0]))
             return

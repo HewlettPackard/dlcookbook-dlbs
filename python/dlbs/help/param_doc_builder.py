@@ -80,7 +80,7 @@ class ParamDocBuilder(object):
             fstream.write("\n")
         # Iterate over framework classes. Each framework class has its own doc file
         # in 'docs' folder.
-        for framework_family in ['tensorflow', 'caffe', 'caffe2', 'mxnet', 'tensorrt']:
+        for framework_family in ['tensorflow', 'caffe', 'caffe2', 'mxnet', 'tensorrt', 'pytorch']:
             # Get set of framework specific params
             if framework_family == 'caffe':
                 frameworks = ('caffe', 'nvidia_caffe', 'bvlc_caffe', 'intel_caffe')
@@ -130,6 +130,7 @@ class ParamDocBuilder(object):
                 ("### __Intel Caffe__", 'intel_caffe', '/frameworks/caffe'),
                 ("### __Caffe2__", 'caffe2', '/frameworks/caffe2'),
                 ("### __MxNet__", 'mxnet', '/frameworks/mxnet'),
+                ("### __PyTorch__", 'pytorch', '/frameworks/pytorch'),
                 ("### __TensorRT__", 'tensorrt', '/frameworks/tensorrt')
             ]
             for section in sections:
