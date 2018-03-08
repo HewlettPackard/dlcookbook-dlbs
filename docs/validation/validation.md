@@ -23,11 +23,11 @@ Currently, following checks are performed:
    depending on experiment parameters):
       - For Tesorflow it ensures it can run the following command:
         ```bash
-        python -c "import tensorflow as tf; print tf.__version__;"
+        python -c "import tensorflow as tf; print(tf.__version__;)"
         ```
       - For MXNet it ensures it can run the following command:
         ```bash
-        python -c "import mxnet as mx; print mx.__version__;"
+        python -c "import mxnet as mx; print(mx.__version__;)"
         ```
       - For Caffe2 it ensures it can run the following command:
         ```bash
