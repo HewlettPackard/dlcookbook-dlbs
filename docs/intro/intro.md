@@ -3,7 +3,7 @@
 Every benchmark is defined by a set of parameters. Every parameter is a key-value pair. Parameters define everything - frameworks, batch sizes, log files, models etc. Benchmark can be defined manually be enumerating all parameters, or automatically, by providing a configuration that defines how parameters should vary from one experiment to another. A script called [exerimenter](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/dlbs/experimenter.py) varies parameters (basically, by doing Cartesian product) and creates multiple benchmarks with different parameters.
 
 <p align="center">
-  <img src="https://raw.github.hpe.com/labs/dlcookbook/master/docs/intro/imgs/overview.png">
+  <img src="https://raw.githubusercontent.com/HewlettPackard/dlcookbook-dlbs/master/docs/intro/imgs/overview.png">
 </p>
 
 Every framework that we support has a wrapper script - a short 40-80 line bash file that knows how to run benchmarks for a specific framework (Caffe's forks do not have it). Experimenter launches this script and passes all benchmark parameters on a command line. Bash wrapper script then parses these parameters and launches a framework.
