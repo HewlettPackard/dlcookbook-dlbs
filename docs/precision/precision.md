@@ -77,3 +77,7 @@ settings. As a reference implementation I used this ResNet50 [trainer](https://g
 We are using outdated version of tf_cnn_benchmarks. Once we move to the latest version,
 we can take advantage of fp16. See this [file](https://github.com/tensorflow/benchmarks/blob/master/scripts/tf_cnn_benchmarks/benchmark_cnn.py).
 They mention there that FP16 is still an experimental feature.
+
+### PyTorch
+PyTorch accepts standard `exp.dtype` parameter and supports single and half precision
+data types.
