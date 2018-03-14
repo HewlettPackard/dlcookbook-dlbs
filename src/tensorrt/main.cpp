@@ -172,6 +172,11 @@ public:
     stream << "], nbBindings=" << nbBindings << ")";
     log(stream.str());
     //
+    if (num_batches_ <= 0) {
+      std::cout << "***ERROR***: Suspicious number of batches (0) in calibrator::getBatch()." << std::endl;
+      exit(1);
+    }
+    //
     if (next_batch_ >= num_batches_) { return false; }
     //
     fill_random(batch_);
@@ -238,6 +243,11 @@ public:
     std::ostringstream stream;
     stream << "[calibrator] Calibrator::allocCalibrationMemory(input_size=" << input_size << ", num_batches=" << num_batches << ")";
     log(stream.str());
+    
+    if (batch_size_ <= 0) {
+      std::cout << "***ERROR***: Batch size needs to be set first. Use 'calibrator::setBatchSize()'" << std::endl;
+      exit(1);
+    }
     
     input_size_ = input_size;
     num_batches_ = num_batches;
@@ -335,13 +345,13 @@ int main(int argc, char **argv) {
 
   g_logger.log_info("[main] Creating inference builder");
   IBuilder* builder = createInferBuilder(g_logger);
-    
+
   // Parse the caffe model to populate the network, then set the outputs.
   // For INT8 inference, the input model must be specified with 32-bit weights.
   g_logger.log_info("[main] Creating network and Caffe parser (model: " + model + ")");
   INetworkDefinition* network = builder->createNetwork();
   ICaffeParser* caffe_parser = createCaffeParser();
-  auto blob_name_to_tensor = caffe_parser->parse(
+  const IBlobNameToTensor* blob_name_to_tensor = caffe_parser->parse(
     model.c_str(), // *.prototxt caffe model definition
     nullptr,       // if null, random weights?
     *network, 
@@ -361,6 +371,16 @@ int main(int argc, char **argv) {
   } else if (data_type == DataType::kINT8) {
     g_logger.log_info("Enabling INT8 mode");
     g_calibrator.setBatchSize(batch_size);
+
+    // Allocate memory but before figure out size of input tensor.
+    const nvinfer1::ITensor* input_tensor = blob_name_to_tensor->find(input_name.c_str());
+    const Dims3 input_dims = input_tensor->getDimensions();
+    const auto input_sz = input_dims.c * input_dims.h * input_dims.w;
+    g_calibrator.allocCalibrationMemory(
+      batch_size * input_dims.c * input_dims.h * input_dims.w,
+      10
+    );
+
     builder->setInt8Mode(true);
     builder->setInt8Calibrator(&g_calibrator);
   } else {
