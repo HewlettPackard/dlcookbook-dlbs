@@ -278,7 +278,7 @@ int get_binding_size(ICudaEngine* engine, const int idx);
 void report_bindings(ICudaEngine* engine);
 
 // Compute and print results. At the exit, vec will be sorted.
-void report_results(std::vector<float>& vec, const std::string& name_prefix);
+void report_results(std::vector<float>& vec, const std::string& name_prefix, const int batch_size);
 
 /**
  * exec <config> <model> <batch-size> <num-iters> [input_name] [output_name] [data_type]
@@ -432,8 +432,8 @@ int main(int argc, char **argv) {
     g_profiler.printLayerTimes(num_batches);
   }
   g_logger.log_info("[main] Reporting results");
-  report_results(total, "total_");           // Total, true, time including data transfers.
-  report_results(inference, "");             // Pure inference time.
+  report_results(total, "total_", batch_size);           // Total, true, time including data transfers.
+  report_results(inference, "", batch_size);             // Pure inference time.
   
   g_logger.log_info("[main] Cleaning buffers");
   if (data_type == DataType::kINT8) {
@@ -473,14 +473,16 @@ void report_bindings(ICudaEngine* engine) {
   }
 }
 
-void report_results(std::vector<float>& v, const std::string& name_prefix) {
+void report_results(std::vector<float>& v, const std::string& name_prefix, const int batch_size) {
   std::sort(v.begin(), v.end());
   const float sum = std::accumulate(v.begin(), v.end(), 0.0f);
   const float mean = sum / v.size();
   const float sq_sum = std::inner_product(v.begin(), v.end(), v.begin(), 0.0f);
   const float stdev = std::sqrt(sq_sum / v.size() - mean * mean);
+  const float throughput = 1000.0 * batch_size / mean;
   
   std::cout << "__results." << name_prefix << "time__= " << mean  << std::endl;
+  std::cout << "__results." << name_prefix << "throughput__= " << throughput  << std::endl;
   std::cout << "__results." << name_prefix << "time_data__=[";
   for (int i=0; i<v.size(); ++i) {
     if (i != 0) { std::cout << ","; }

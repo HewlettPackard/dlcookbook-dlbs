@@ -27,7 +27,7 @@ if true; then
                            -Vexp.model='["resnet18"]'\
                            -Pexp.log_file='"${BENCH_ROOT}/tensorrt/${exp.model}.log"'
     params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title"
-    python $parser ./$framework/*.log --output_params ${params}
+    python $parser ./$framework/*.log --output-params ${params}
 fi
 #------------------------------------------------------------------------------#
 # Example: same experiment as above but runs in a host OS. I must run this as a root
@@ -41,7 +41,7 @@ if false; then
                            -Vexp.model='["resnet18"]'\
                            -Pexp.log_file='"${BENCH_ROOT}/tensorrt/${exp.model}.log"'
     params="exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title"
-    python $parser ./$framework/*.log --output_params ${params}
+    python $parser ./$framework/*.log --output-params ${params}
 fi
 #------------------------------------------------------------------------------#
 # Example: this one runs TensorRT with several models and several batch sizes
@@ -58,5 +58,5 @@ if false; then
                    -Pexp.num_warmup_batches=1\
                    -Pexp.num_batches=1
     params="exp.framework_title,exp.effective_batch,results.time,results.total_time,exp.model_title"
-    python $parser ./$framework/*.log --output_params ${params}
+    python $parser ./$framework/*.log --output-params ${params}
 fi
