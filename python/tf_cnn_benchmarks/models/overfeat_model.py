@@ -23,7 +23,7 @@ References:
   http://arxiv.org/abs/1312.6229
 """
 
-import model
+from models import model
 
 
 class OverfeatModel(model.Model):
@@ -47,3 +47,4 @@ class OverfeatModel(model.Model):
     cnn.affine(4096)                               # Layer7 (+relu)
     cnn.dropout()
                                                    # Layer7 (output)
+

@@ -13,35 +13,24 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Alexnet model configuration.
+"""SensorNet model configuration.
 
 References:
-  Krizhevsky, Alex, Ilya Sutskever, and Geoffrey E. Hinton
-  ImageNet Classification with Deep Convolutional Neural Networks
-  Advances in Neural Information Processing Systems. 2012
 """
 
 import model
 
 
-class AlexnetOrigModel(model.Model):
-  """Alexnet cnn model."""
+class SensorNetModel(model.Model):
+  """SensorNet fully connected model."""
 
   def __init__(self):
-    super(AlexnetOrigModel, self).__init__('alexnetorig', 224 + 3, 512, 0.005)
+    super(SensorNetModel, self).__init__('sensor_net', 28, 512, 0.005)
 
   def add_inference(self, cnn):
-    # Note: VALID requires padding the images by 3 in width and height
-    cnn.conv(64, 11, 11, 4, 4, 'VALID')
-    cnn.mpool(3, 3, 2, 2)
-    cnn.conv(192, 5, 5)
-    cnn.mpool(3, 3, 2, 2)
-    cnn.conv(384, 3, 3)
-    cnn.conv(384, 3, 3)
-    cnn.conv(256, 3, 3)
-    cnn.mpool(3, 3, 2, 2)
-    cnn.reshape([-1, 256 * 6 * 6])
-    cnn.affine(4096)
-    cnn.dropout()
-    cnn.affine(4096)
-    cnn.dropout()
+    # We have one channel image of size 28x28 = 784
+    cnn.reshape([-1, 28*28])
+    cnn.affine(1024)
+    cnn.affine(1024)
+    cnn.affine(1024)
+

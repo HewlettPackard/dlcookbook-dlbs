@@ -32,7 +32,7 @@ class EngAcousticModel(model.Model):
   """DeepMNIST fully connected model."""
 
   def __init__(self):
-    super(EngAcousticModel, self).__init__('engacousticmodel', 23, 512, 0.005)
+    super(EngAcousticModel, self).__init__('eng_acoustic_model', 23, 512, 0.005)
 
   def add_inference(self, cnn):
     # We have one channel image of size 28x28

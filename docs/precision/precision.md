@@ -56,8 +56,7 @@ The `exp.use_tensor_core` does not affect behavior of NVIDIA Caffe at this point
 ### TensorRT
 TensorRT supports single, half and int8 inference. Use `exp.dtype` to control it. If I am
 not mistaken, at this point (we use 2.1 version) TensorRT does not support tensor core
-operations on Volta GPUs - the `exp.use_tensor_core` does not affect behavior of NVIDIA
-Caffe at this point.
+operations on Volta GPUs - the `exp.use_tensor_core` does not affect behavior of TensorRT at this point.
 
 ### MXNet
 The MXNet framework supports float32/float16 with optional tensor core math. DL Benchmarking
@@ -74,9 +73,10 @@ Use standard parameters `exp.dtype` and `exp.use_tensor_core` to specify benchma
 settings. As a reference implementation I used this ResNet50 [trainer](https://github.com/caffe2/caffe2/blob/master/caffe2/python/examples/resnet50_trainer.py).
 
 ### TensorFlow
-We are using outdated version of tf_cnn_benchmarks. Once we move to the latest version,
-we can take advantage of fp16. See this [file](https://github.com/tensorflow/benchmarks/blob/master/scripts/tf_cnn_benchmarks/benchmark_cnn.py).
-They mention there that FP16 is still an experimental feature.
+The version of TensorFlow backend we use now (tf_cnn_benchmarks) supports single/half
+precision benchmarks. This is controlled by a standard parameter `exp.dtype`. When user
+disables tensor ops with `exp.use_tensor_core=false`, DLBS exports TF_DISABLE_CUDNN_TENSOR_OP_MATH
+envirnmental variable with value 'false'.
 
 ### PyTorch
 PyTorch accepts standard `exp.dtype` parameter and supports single and half precision

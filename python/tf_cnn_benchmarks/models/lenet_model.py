@@ -13,24 +13,27 @@
 # limitations under the License.
 # ==============================================================================
 
-"""SensorNet model configuration.
+"""Lenet model configuration.
 
 References:
+  LeCun, Yann, Leon Bottou, Yoshua Bengio, and Patrick Haffner
+  Gradient-based learning applied to document recognition
+  Proceedings of the IEEE (1998)
 """
 
-import model
+from models import model
 
 
-class SensorNetModel(model.Model):
-  """SensorNet fully connected model."""
+class Lenet5Model(model.Model):
 
   def __init__(self):
-    super(SensorNetModel, self).__init__('sensornet', 28, 512, 0.005)
+    super(Lenet5Model, self).__init__('lenet5', 28, 32, 0.005)
 
   def add_inference(self, cnn):
-    # We have one channel image of size 28x28 = 784
-    cnn.reshape([-1, 28*28])
-    cnn.affine(1024)
-    cnn.affine(1024)
-    cnn.affine(1024)
-
+    # Note: This matches TF's MNIST tutorial model
+    cnn.conv(32, 5, 5)
+    cnn.mpool(2, 2)
+    cnn.conv(64, 5, 5)
+    cnn.mpool(2, 2)
+    cnn.reshape([-1, 64 * 7 * 7])
+    cnn.affine(512)

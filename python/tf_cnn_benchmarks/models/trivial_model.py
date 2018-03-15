@@ -12,31 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Trivial model configuration."""
 
-"""DeepMNIST model configuration.
-
-References:
-  Ciresan et al. Neural Computation 10, 2010 and arXiv 1003.0358, 2010
-  http://arxiv.org/abs/1003.0358
-  We have 10 classes here (search tf_cnn_benchmarks.py for 'nclass')
-  We also have one channel only (search tf_cnn_benchmarks.py for 'input_nchan =')
-"""
-
-import model
+from models import model
 
 
-class DeepMNISTModel(model.Model):
-  """DeepMNIST fully connected model."""
+class TrivialModel(model.Model):
+  """Trivial model configuration."""
 
   def __init__(self):
-    super(DeepMNISTModel, self).__init__('deepmnist', 28, 512, 0.005)
+    super(TrivialModel, self).__init__('trivial', 224 + 3, 32, 0.005)
 
   def add_inference(self, cnn):
-    # We have one channel image of size 28x28
-    cnn.reshape([-1, 28*28])
-    cnn.affine(2500)
-    cnn.affine(2000)
-    cnn.affine(1500)
-    cnn.affine(1500)
-    cnn.affine(1000)
-    cnn.affine(500)
+    cnn.reshape([-1, 227 * 227 * 3])
+    cnn.affine(1)
+    cnn.affine(4096)
+
+
+class TrivialCifar10Model(model.Model):
+  """Trivial cifar10 model configuration."""
+
+  def __init__(self):
+    super(TrivialCifar10Model, self).__init__('trivial', 32, 32, 0.005)
+
+  def add_inference(self, cnn):
+    cnn.reshape([-1, 32 * 32 * 3])
+    cnn.affine(1)
+    cnn.affine(4096)

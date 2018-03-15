@@ -14,7 +14,8 @@
       "val": [
         "PYTHONPATH=${tensorflow.python_path}:\\$PYTHONPATH",
         "${runtime.EXPORT_CUDA_CACHE_PATH}",
-        "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}"
+        "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}",
+        "TF_DISABLE_CUDNN_TENSOR_OP_MATH=$('false' if ${exp.use_tensor_core} else 'true')$"
       ],
       "type": "str",
       "desc": "Environmental variables to set for TensorFlow benchmarks."
@@ -62,8 +63,18 @@
       "type": "str",
       "desc": "This is a 'resize_method' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
     },
+    "tensorflow.use_xla": {
+      "val": false,
+      "type": "bool",
+      "desc": "Enable/disable XLA."
+    },
     "tensorflow.args": {
       "val": [
+        "--per_gpu_thread_count=1",
+        "--xla=$('${tensorflow.use_xla}'.lower())$",
+        "--use_fp16=$('true' if '${exp.dtype}' == 'float16' else 'false')$",
+        "--use_tf_layers=true",
+        "--staged_vars=false",
         "--model=${exp.model}",
         "--eval=false",
         "--forward_only=$('true' if '${exp.phase}'=='inference' else 'false')$",
@@ -75,7 +86,7 @@
         "--device=${exp.device_type}",
         "--data_format=$('NCHW' if '${exp.device_type}' == 'gpu' else 'NHWC')$",
         "--variable_update=${tensorflow.var_update}",
-        "--use_nccl=$('${tensorflow.use_nccl}'.lower() if '${exp.device_type}' == 'gpu' else 'false')$",
+        "$('--all_reduce_spec=nccl' if '${exp.device_type}' == 'gpu' and ${tensorflow.use_nccl} else 'false')$",
         "--local_parameter_device=${tensorflow.local_parameter_device}",
         "$('' if not '${tensorflow.data_dir}' else '--data_dir=${tensorflow.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
         "$('--data_name=${tensorflow.data_name}' if '${tensorflow.data_name}' else '')$",
@@ -121,7 +132,8 @@
         "$('CUDA_CACHE_DISABLE=0' if '${runtime.cuda_cache}' else '')$",
         "$('CUDA_CACHE_MAXSIZE=2147483648' if '${runtime.cuda_cache}' else '')$",
         "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}",
-        "LD_LIBRARY_PATH=$('${tensorflow.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$"
+        "LD_LIBRARY_PATH=$('${tensorflow.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
+        "TF_DISABLE_CUDNN_TENSOR_OP_MATH=$('false' if ${exp.use_tensor_core} else 'true')$"
       ]}
     }
   ]

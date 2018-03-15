@@ -22,7 +22,7 @@ References:
   arXiv preprint arXiv:1409.4842 (2014)
 """
 
-import model
+from models import model
 
 
 class GooglenetModel(model.Model):
@@ -55,3 +55,4 @@ class GooglenetModel(model.Model):
     inception_v1(cnn, 384, 192, 384, 48, 128, 128)
     cnn.apool(7, 7, 1, 1, mode='VALID')
     cnn.reshape([-1, 1024])
+

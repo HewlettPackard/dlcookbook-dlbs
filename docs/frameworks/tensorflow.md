@@ -1,7 +1,7 @@
 
 # __TensorFlow__
 
-TensorFlow is integrated with benchmarking suite via tensorflow CNN benchmarks [projects](https://github.com/tensorflow/benchmarks). Currently, we do not provide support for the latest version. Version, bundled with benchmarking suite should be used instead.
+TensorFlow is integrated with benchmarking suite via tensorflow CNN benchmarks [projects](https://github.com/tensorflow/benchmarks). The git hash of the version we use is [4b337c13b1d71c67a9097779a2d92a9e1cc7ba2a](https://github.com/tensorflow/benchmarks/commit/4b337c13b1d71c67a9097779a2d92a9e1cc7ba2a).
 
 ## Standalone run
 See [tf_cnn_benchmarks.py](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/tf_cnn_benchmarks.py) for a complete list of supported command line arguments. Website with detailed description and explanation is located [here](https://www.tensorflow.org/performance/).

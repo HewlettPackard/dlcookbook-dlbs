@@ -13,27 +13,14 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Lenet model configuration.
+"""Utility code for a certain platform.
 
-References:
-  LeCun, Yann, Leon Bottou, Yoshua Bengio, and Patrick Haffner
-  Gradient-based learning applied to document recognition
-  Proceedings of the IEEE (1998)
+This file simply imports everything from the default platform. To switch to a
+different platform, the import statement can be changed to point to a new
+platform.
+
+Creating a custom platform can be useful to, e.g., run some initialization code
+required by the platform or register a platform-specific model.
 """
 
-import model
-
-
-class Lenet5Model(model.Model):
-
-  def __init__(self):
-    super(Lenet5Model, self).__init__('lenet5', 28, 32, 0.005)
-
-  def add_inference(self, cnn):
-    # Note: This matches TF's MNIST tutorial model
-    cnn.conv(32, 5, 5)
-    cnn.mpool(2, 2)
-    cnn.conv(64, 5, 5)
-    cnn.mpool(2, 2)
-    cnn.reshape([-1, 64 * 7 * 7])
-    cnn.affine(512)
+from platforms.default.util import *  # pylint: disable=unused-import,wildcard-import

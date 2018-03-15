@@ -36,6 +36,8 @@ RUN pip --no-cache-dir install \
         scipy \
         sklearn \
         pandas \
+        future \
+        absl-py \
         && \
     python -m ipykernel.kernelspec
 
@@ -58,7 +60,7 @@ RUN echo "startup --batch" >>/etc/bazel.bazelrc
 RUN echo "build --spawn_strategy=standalone --genrule_strategy=standalone" \
     >>/etc/bazel.bazelrc
 # Install the most recent bazel release.
-ENV BAZEL_VERSION 0.5.4
+ENV BAZEL_VERSION 0.10.0
 WORKDIR /
 RUN mkdir /bazel && \
     cd /bazel && \
