@@ -192,6 +192,7 @@ class Inception3(BaseInceptionModel):
             also passed an internally calculated loss_scale parameter that is used to scale
             your loss to normalize for the number of GPUs. Signature: function(model, loss_scale)
         """
+        self.counts = defaultdict(lambda: 0)
         is_inference = self.phase == 'inference'
 
         v = 'data'
@@ -320,6 +321,7 @@ class Inception4(BaseInceptionModel):
             also passed an internally calculated loss_scale parameter that is used to scale
             your loss to normalize for the number of GPUs. Signature: function(model, loss_scale)
         """
+        self.counts = defaultdict(lambda: 0)
         is_inference = self.phase == 'inference'
 
         v = 'data'
