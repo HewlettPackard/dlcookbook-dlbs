@@ -31,6 +31,8 @@ class Model(object):
             assert param in params, "Missing mandatory neural net parameter '%s'" % param
         assert params['phase'] in ['inference', 'training'],\
                "Invalid phase: '%s'. Expecting 'inference' or 'training'" % (params['phase'])
+        if params['dtype'] not in ('float', 'float32', 'float16'):
+            print("[WARNING] Suspicious data type '%s'. Expecting 'float', 'float32' or 'float16'." % params['dtype'])
 
         self.__name = params['name']
         self.__batch_size = params['batch_size']
@@ -105,13 +107,16 @@ class Model(object):
         """
         # https://caffe2.ai/doxygen-python/html/core_8py_source.html#l00222
         # https://github.com/caffe2/caffe2/blob/master/caffe2/python/examples/resnet50_trainer.py
-        suffix = "_fp16" if self.dtype == "float16" else ""
+        suffix = '_fp32' if self.dtype == 'float16' else ''
+        # Input data tensor with name 'data' if it's float32 regime or 'data_fp32' if it's float16.
+        # If it's float16, we will then convert 'data_fp32' to 'data' tensor with precision float16.
         model.param_init_net.GaussianFill(
             [],
             ['data' + suffix],
             shape=(self.batch_size,) + self.input_shape
         )
         if self.dtype == 'float16':
+            print("[INFO] Using 'float16' data type (converting input tensor with synthetic data to float16 tensor).")
             model.param_init_net.FloatToHalf('data' + suffix, 'data')
 
         if add_labels is True:
@@ -124,7 +129,7 @@ class Model(object):
             )
         # data = model.StopGradient(data, data)
 
-    def add_data_inputs(self, model, reader, use_gpu_transform):
+    def add_data_inputs(self, model, reader, use_gpu_transform, num_decode_threads = 1):
         """Adds real data pipeline.
 
         Multiple GPUs in one box will share the same reader masking sure they use
@@ -132,6 +137,10 @@ class Model(object):
 
         :param model_helper.ModelHelper model: Model to add update parameters operators for.
         :param obj reader: Something returned by model.CreateDB(...)
+        :param int num_decode_threads: Number of image decoding threads. For deep computationally
+                                       expensive models this can be as small as 1. For high
+                                       throughput models such as AlexNetOWT a value of 6-8 for 4
+                                       GPUs seems to be reasonable (Voltas, ~9k images/second)
         """
         data, _ = brew.image_input(       # data, label
             model,
@@ -143,11 +152,11 @@ class Model(object):
             use_caffe_datum=True,
             mean=128.,
             #std=128.,
-            scale=256,
+            scale=self.input_shape[2],
             crop=self.input_shape[2],
             mirror=True,
             is_test=False,
-            decode_threads=1
+            decode_threads=num_decode_threads
         )
         data = model.StopGradient(data, data)
 
@@ -164,6 +173,7 @@ class Model(object):
         """
         v = brew.fc(model, v, fc_name, dim_in=dim_in, dim_out=self.num_classes)
         if self.dtype == 'float16':
+            print("[INFO] Converting logits from float16 to float32 for softmax layer")
             v = model.net.HalfToFloat(v, v + '_fp32')
         if self.phase == 'inference':
             softmax = brew.softmax(model, v, 'softmax')

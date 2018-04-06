@@ -58,6 +58,7 @@ from caffe2.python import workspace
 from caffe2.python import core
 from caffe2.python import brew
 from caffe2.python import model_helper
+from caffe2.python import optimizer
 from caffe2.python import data_parallel_model as dpm
 from caffe2.python.modeling.initializers import Initializer, pFP16Initializer
 from caffe2_benchmarks.models.model import Model
@@ -90,7 +91,7 @@ def run_n_times(model, num_warmup_batches, num_batches):
     return batch_times
 
 
-def create_model(model_builder, model, enable_tensor_core, loss_scale=1.0):
+def create_model(model_builder, model, enable_tensor_core, float16_compute, loss_scale=1.0):
     """Creates one model replica.
 
     :param obj model_builder: A model instance that contains `forward_pass_builder` method.
@@ -104,9 +105,26 @@ def create_model(model_builder, model, enable_tensor_core, loss_scale=1.0):
     with brew.arg_scope([brew.conv, brew.fc],
                         WeightInitializer=initializer,
                         BiasInitializer=initializer,
-                        enable_tensor_core=enable_tensor_core):
+                        enable_tensor_core=enable_tensor_core,
+                        float16_compute=float16_compute):
         outputs = model_builder.forward_pass_builder(model, loss_scale=loss_scale)
     return outputs
+
+
+def build_optimizer(model, float16_compute = False):
+    if False: # float16_compute:   # A newwer versions of Caffe support this
+        print("[INFO] Building FP16 SGD optimizer.")
+        opt = optimizer.build_fp16_sgd(
+            model, 0.1, momentum=0.9, policy='step', gamma=0.1, weight_decay=1e-4
+        )
+    else:
+        print("[INFO] Building Multi-precision SGD optimizer.")
+        optimizer.add_weight_decay(model, 1e-4)
+        #opt = optimizer.build_sgd(
+        opt = optimizer.build_multi_precision_sgd(
+            model, 0.1, momentum=0.9, policy='fixed', gamma=0.1
+        )
+    return opt
 
 
 def benchmark(opts):
@@ -140,8 +158,21 @@ def benchmark(opts):
     opts['num_gpus'] = opts.get('num_gpus', 1)
     opts['dtype'] = opts.get('dtype', 'float')
     opts['enable_tensor_core'] = opts.get('enable_tensor_core', False)
+    opts['num_decode_threads'] = opts.get('num_decode_threads', 1)
+    opts['float16_compute'] = opts.get('float16_compute', False)
     
-    model = model_helper.ModelHelper(name=opts['model'])    
+    if opts['device'] == 'gpu':
+        print("[INFO] Creating ModelHelper for GPU. Optimizations are applied.")
+        arg_scope = {
+            'order': 'NCHW',
+            'use_cudnn': opts['use_cudnn'],
+            'cudnn_exhaustive_search': opts['cudnn_exhaustive_search'],
+            'ws_nbytes_limit': (opts['cudnn_workspace_limit_mb'] * 1024 * 1024)
+        }
+        model = model_helper.ModelHelper(name=opts['model'], arg_scope=arg_scope)
+    else:
+        print("[WARNING] Creating ModelHelper for CPU. TODO: Apply similar optimziations as for GPUs.")
+        model = model_helper.ModelHelper(name=opts['model'])
     if opts['phase'] == 'inference':
         return benchmark_inference(model, opts)
     else:
@@ -204,19 +235,38 @@ def benchmark_training(model, opts):
 
     def add_inputs(model):
         if reader is None:
+            print("[INFO] Adding synthetic data input for Caffe2 training benchmarks")
             model_builder.add_synthetic_inputs(model, add_labels=True)
         else:
-            model_builder.add_data_inputs(model, reader, use_gpu_transform=(opts['device'] == 'gpu'))
+            print("[INFO] Adding real data inputs (%s) for Caffe2 training benchmarks" % (opts['data_dir']))
+            model_builder.add_data_inputs(
+                model, reader, use_gpu_transform=(opts['device'] == 'gpu'),
+                num_decode_threads = opts['num_decode_threads']
+            )
 
     def create_net(model, loss_scale):
-        return create_model(model_builder, model, opts['enable_tensor_core'], loss_scale)
+        return create_model(model_builder, model, opts['enable_tensor_core'],
+                            opts['float16_compute'], loss_scale)
+
+    def add_post_sync_ops(model):
+        """Add ops applied after initial parameter sync."""
+        for param_info in model.GetOptimizationParamInfo(model.GetParams()):
+            if param_info.blob_copy is not None:
+                model.param_init_net.HalfToFloat(
+                    param_info.blob,
+                    param_info.blob_copy[core.DataType.FLOAT]
+                )
+    def add_optimizer(model):
+        return build_optimizer(model, float16_compute=opts['float16_compute'])
 
     if opts['device'] == 'gpu':
         dpm.Parallelize(
             model,
             input_builder_fun=add_inputs,
             forward_pass_builder_fun=create_net,
-            param_update_builder_fun=Model.add_parameter_update_ops,
+            optimizer_builder_fun=add_optimizer,
+            #param_update_builder_fun=Model.add_parameter_update_ops,
+            post_sync_builder_fun=add_post_sync_ops,
             devices=range(opts['num_gpus']),
             optimize_gradient_memory=True,
             cpu_device=(opts['device'] == 'cpu'),
@@ -252,6 +302,12 @@ if __name__ == '__main__':
     parser.add_argument('--data_backend', required=False, default='lmdb', choices=['lmdb', 'leveldb'], help='Database backend. One of "lmdb" or "leveldb".')
     parser.add_argument('--dtype', required=False, default='float', choices=['float', 'float32', 'float16'], help='Precision of data variables: float(same as float32), float32 or float16.')
     parser.add_argument('--enable_tensor_core', action='store_true', help='Enable volta\'s tensor ops (requires CUDA >= 9, cuDNN >= 7 and NVIDIA Volta GPU)')
+    parser.add_argument('--num_decode_threads', type=int, required=False, default=1, help='Number of image decode threads. For high throughput models such as AlexNetOWT set to 6-8 for 4 Voltas.')
+    parser.add_argument('--float16_compute', nargs='?', const=True, default=False, type=str2bool, help='If true, use FP16 SGD optimizer else use multi-precision SGD optimizer')
+    # These parameters affect the ModelHelper behaviour and are now applied for GPU benchmarks
+    parser.add_argument('--cudnn_workspace_limit_mb', type=int, required=False, default=64, help='CuDNN workspace limit in MBs')
+    parser.add_argument('--use_cudnn', nargs='?', const=True, default=True, type=str2bool, help='Use NVIDIA cuDNN library.')
+    parser.add_argument('--cudnn_exhaustive_search', nargs='?', const=True, default=True, type=str2bool, help='Benchmark inference (if true) else benchmark training.')
     args = parser.parse_args()
 
     if args.dtype == 'float32':
@@ -286,3 +342,4 @@ if __name__ == '__main__':
         print("__results.time_data__=%s" % (json.dumps((1000.0*times).tolist())))
     else:
         print("__results.status__=%s" % (json.dumps("failure")))
+

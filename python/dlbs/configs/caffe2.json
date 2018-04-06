@@ -10,6 +10,19 @@
       "type": "str",
       "desc": "A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline)."
     },
+    "caffe2.num_decode_threads": {
+      "val": 1,
+      "type": "int",
+      "desc": [
+        "Number of image decode threads when real dataset is used. For deep compute intensive models it can be as small as 1.",
+        "For high throughput models such as AlexNetOWT it should be set to 6-8 threads for 4 V100 to provide ~ 9k images/second"
+      ]
+    },
+    "caffe2.float16_compute": {
+      "val": "$('${exp.dtype}' == 'float16')$",
+      "type": "bool",
+      "desc": "Enable FP16 SGD optimizer. If false, multi-precision SGD optimizer will be used."
+    },
     "caffe2.data_backend": {
       "val": "lmdb",
       "type": "str",
@@ -27,7 +40,9 @@
         "--data_dir=$('' if not '${caffe2.data_dir}' else '${caffe2.data_dir}' if ${exp.docker} is False else '/workspace/data')$",
         "--data_backend=${caffe2.data_backend}",
         "--dtype=${exp.dtype}",
-        "$('--enable_tensor_core' if ${exp.use_tensor_core} is True else '')$"
+        "$('--enable_tensor_core' if ${exp.use_tensor_core} is True else '')$",
+        "--num_decode_threads=${caffe2.num_decode_threads}",
+        "--float16_compute=$('true' if ${caffe2.float16_compute} else 'false')$"
       ],
       "type": "str",
       "desc": "Command line arguments that launcher uses to launch caffe2_benchmark script."
