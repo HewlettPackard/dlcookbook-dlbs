@@ -113,8 +113,8 @@
         "--pid=host",
         "--volume=${DLBS_ROOT}/models/${exp.model}:/workspace/model",
         "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
-        "$('--volume=${caffe.data_dir}:/workspace/data' if '${caffe.data_dir}' else '')$",
-        "$('--volume=${caffe.data_mean_file_path}:/workspace/image_mean' if '${caffe.data_dir}' else '')$",
+        "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
+        "$('--volume=${caffe.data_mean_file_path}:/workspace/image_mean' if '${exp.data_dir}' else '')$",
         "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
         "${exp.docker_args}",
         "${caffe.docker_image}"
@@ -256,7 +256,7 @@
     },
     {
       "condition":  { "exp.framework": ["bvlc_caffe", "nvidia_caffe", "intel_caffe"], "exp.docker": false },
-      "parameters": { 
+      "parameters": {
         "caffe.env": [
           "PATH=$('${${caffe.fork}_caffe.host_path}:\\$PATH'.strip(' \t:'))$",
           "LD_LIBRARY_PATH=$('${${caffe.fork}_caffe.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",

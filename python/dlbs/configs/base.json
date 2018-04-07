@@ -111,8 +111,15 @@
       "val_domain": ["training", "inference"],
       "desc": "Phase to benchmark. Possible values - 'inference' or 'training'."
     },
+    "exp.data_dir": {
+      "val": "${${exp.framework}.data_dir}",
+      "type": "str",
+      "desc": [
+        "A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline)."
+      ]
+    },
     "exp.data": {
-      "val":  "synthetic",
+      "val":  "$('synthetic' if '${exp.data_dir}' == '' else 'real')$",
       "type": "str",
       "val_domain": ["synthetic", "real"],
       "desc": [

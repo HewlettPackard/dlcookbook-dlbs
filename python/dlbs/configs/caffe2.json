@@ -37,7 +37,7 @@
         "--num_warmup_batches=${exp.num_warmup_batches}",
         "--num_gpus=${exp.num_local_gpus}",
         "--device=${exp.device_type}",
-        "--data_dir=$('' if not '${caffe2.data_dir}' else '${caffe2.data_dir}' if ${exp.docker} is False else '/workspace/data')$",
+        "--data_dir=$('' if not '${exp.data_dir}' else '${exp.data_dir}' if ${exp.docker} is False else '/workspace/data')$",
         "--data_backend=${caffe2.data_backend}",
         "--dtype=${exp.dtype}",
         "$('--enable_tensor_core' if ${exp.use_tensor_core} is True else '')$",
@@ -60,7 +60,7 @@
         "--volume=${DLBS_ROOT}/python/caffe2_benchmarks:/workspace/caffe2_benchmarks",
         "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
         "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
-        "$('--volume=${caffe2.data_dir}:/workspace/data' if '${caffe2.data_dir}' else '')$",
+        "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
         "${exp.docker_args}",
         "${exp.docker_image}"
       ],

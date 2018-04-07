@@ -25,7 +25,7 @@
       "type": "str",
       "var_domain": ["local", "device", "dist_sync", "dist_device_sync", "dist_async"],
       "desc": [
-        "A method to aggregate gradients (local, device, dist_sync, dist_device_sync, dist_async).", 
+        "A method to aggregate gradients (local, device, dist_sync, dist_device_sync, dist_async).",
         "See https://mxnet.incubator.apache.org/how_to/multi_devices.html for more details."
       ]
     },
@@ -44,7 +44,7 @@
         "--num_gpus=${exp.num_local_gpus}",
         "--device=${exp.device_type}",
         "--kv_store=${mxnet.kv_store}",
-        "$('' if not '${mxnet.data_dir}' else '--data_dir=${mxnet.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
+        "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
         "--dtype=${exp.dtype}"
       ],
       "type": "str",
@@ -62,7 +62,7 @@
         "--pid=host",
         "--volume=${DLBS_ROOT}/python/mxnet_benchmarks:/workspace/mxnet_benchmarks",
         "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
-        "$('--volume=${mxnet.data_dir}:/workspace/data' if '${mxnet.data_dir}' else '')$",
+        "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
         "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
         "${exp.docker_args}",
         "${exp.docker_image}"

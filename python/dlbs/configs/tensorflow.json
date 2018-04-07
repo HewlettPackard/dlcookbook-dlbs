@@ -88,7 +88,7 @@
         "--variable_update=${tensorflow.var_update}",
         "$('--all_reduce_spec=nccl' if '${exp.device_type}' == 'gpu' and ${tensorflow.use_nccl} else 'false')$",
         "--local_parameter_device=${tensorflow.local_parameter_device}",
-        "$('' if not '${tensorflow.data_dir}' else '--data_dir=${tensorflow.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
+        "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
         "$('--data_name=${tensorflow.data_name}' if '${tensorflow.data_name}' else '')$",
         "--distortions=$('true' if ${tensorflow.distortions} else 'false')$",
         "--num_intra_threads=${tensorflow.num_intra_threads}",
@@ -109,7 +109,7 @@
         "--pid=host",
         "--volume=${DLBS_ROOT}/python/tf_cnn_benchmarks:/workspace/tf_cnn_benchmarks",
         "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
-        "$('--volume=${tensorflow.data_dir}:/workspace/data' if '${tensorflow.data_dir}' else '')$",
+        "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
         "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
         "${exp.docker_args}",
         "${tensorflow.docker_image}"

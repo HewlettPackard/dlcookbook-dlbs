@@ -71,7 +71,7 @@
         "--num_warmup_batches=${exp.num_warmup_batches}",
         "--num_gpus=${exp.num_local_gpus}",
         "--device=${exp.device_type}",
-        "$('' if not '${pytorch.data_dir}' else '--data_dir=${pytorch.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
+        "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
         "--data_backend=${pytorch.data_backend}",
         "--data_shuffle=$('true' if ${pytorch.data_shuffle} else 'false')$",
         "--num_loader_threads=${pytorch.num_loader_threads}",
@@ -95,7 +95,7 @@
         "--ipc=host",
         "--volume=${DLBS_ROOT}/python/pytorch_benchmarks:/workspace/pytorch_benchmarks",
         "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
-        "$('--volume=${pytorch.data_dir}:/workspace/data' if '${pytorch.data_dir}' else '')$",
+        "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
         "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
         "${exp.docker_args}",
         "${exp.docker_image}"

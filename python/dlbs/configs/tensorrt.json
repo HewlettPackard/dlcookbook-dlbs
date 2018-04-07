@@ -1,16 +1,16 @@
 {
   "parameters": {
-    "tensorrt.launcher": { 
+    "tensorrt.launcher": {
       "val": "${DLBS_ROOT}/scripts/launchers/tensorrt.sh",
       "type": "str",
       "desc": "Path to script that launches TensorRT benchmarks."
     },
-    "tensorrt.env": { 
+    "tensorrt.env": {
       "val": "${runtime.EXPORT_CUDA_CACHE_PATH}",
       "type": "str",
       "desc": "Environmental variables to set for TensorRT benchmarks."
     },
-    "tensorrt.args": { 
+    "tensorrt.args": {
       "val": [
         "--model ${tensorrt.model_dir}/${tensorrt.model_file}",
         "--batch_size ${exp.replica_batch}",
@@ -24,22 +24,22 @@
       "type": "str",
       "desc": "Command line arguments that launcher uses to launch TensorRT."
     },
-    "tensorrt.model_file": { 
+    "tensorrt.model_file": {
       "val": "${exp.id}.model.prototxt",
       "type": "str",
       "desc": "Caffe's prototxt inference (deploy) model file."
     },
-    "tensorrt.model_dir": { 
+    "tensorrt.model_dir": {
       "val": "$('${DLBS_ROOT}/models/${exp.model}' if ${exp.docker} is False else '/workspace/model')$",
       "type": "str",
       "desc": "Directory where Caffe's model file is located. Different for host/docker benchmarks."
     },
-    "tensorrt.docker_image": { 
+    "tensorrt.docker_image": {
       "val": "hpe/tensorrt:cuda8-cudnn5",
       "type": "str",
       "desc": "The name of a docker image to use for TensorRT."
     },
-    "tensorrt.docker_args": { 
+    "tensorrt.docker_args": {
       "val": [
         "-i",
         "--security-opt seccomp=unconfined",
@@ -53,22 +53,22 @@
       "type": "str",
       "desc": "In case if containerized benchmarks, this are the docker parameters."
     },
-    "tensorrt.profile": { 
+    "tensorrt.profile": {
       "val": false,
       "type": "bool",
       "desc": "If true, per layer statistics are measured."
     },
-    "tensorrt.input": { 
+    "tensorrt.input": {
       "val": "data",
       "type": "str",
       "desc": "Name of an input data tensor (data)"
     },
-    "tensorrt.output": { 
+    "tensorrt.output": {
       "val": "prob",
       "type": "str",
       "desc": "Name of an output tensor (prob)"
     },
-    "tensorrt.host_path": { 
+    "tensorrt.host_path": {
       "val": "${DLBS_ROOT}/src/tensorrt/build",
       "type": "str",
       "desc": "Path to a tensorrt executable in case of bare metal run."
@@ -79,12 +79,20 @@
       "desc": "Basically, it's a LD_LIBRARY_PATH for TensorRT in case of a bare metal run (should be empty)."
     }
   },
+  "tensorrt.data_dir": {
+    "val": "",
+    "type": "str",
+    "desc": [
+      "*** This parameter is not used since TensorRT backend does not support real data. ***",
+      "*** It is here for compatibility reasons with exp.data_dir ***"
+    ]
+  },
   "extensions": [
     {
       "condition":{ "exp.framework": "tensorrt" },
-      "parameters": { 
+      "parameters": {
         "exp.framework_title": "TensorRT",
-        "exp.status": "$('disabled' if ('${exp.phase}'=='training') or ('${exp.device_type}'=='cpu') or (${exp.num_local_gpus}>1) else 'ok')$" 
+        "exp.status": "$('disabled' if ('${exp.phase}'=='training') or ('${exp.device_type}'=='cpu') or (${exp.num_local_gpus}>1) else 'ok')$"
       }
     },
     {
