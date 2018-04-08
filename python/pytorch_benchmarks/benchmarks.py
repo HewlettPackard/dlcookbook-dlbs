@@ -116,7 +116,7 @@ def benchmark_training(model, opts):
 
     :param obj model: A model to benchmark
     :param dict opts: A dictionary of parameters.
-    :rtype: tuple
+    :rtype: tuple:
     :return: A tuple of (model_name, list of batch times)
     """
     if opts['phase'] != 'training':
@@ -129,6 +129,7 @@ def benchmark_training(model, opts):
         cudnn.fastest = opts['cudnn_fastest']
         # Data parallel schema over all avaialble GPUs - use CUDA_VISIBLE_DEVICES to
         # set GPUs to use.
+        # http://pytorch.org/docs/master/nn.html#torch.nn.DataParallel
         model = nn.DataParallel(model).cuda()
         criterion = criterion.cuda()
     half_precision = opts['dtype'] == 'float16'
@@ -144,11 +145,14 @@ def benchmark_training(model, opts):
     num_iterations_done = 0
     model.train()
     batch_times = np.zeros(opts['num_batches'])
+    data_load_times = np.zeros(opts['num_batches'])
+    end_time = timeit.default_timer()
     while not done:
+        #print ("[INFO] Starting new epoch")
         for batch_data, batch_labels in data_loader:
-            start_time = timeit.default_timer()
+            #data_load_time = timeit.default_timer() - end_time
             if with_cuda:
-                batch_data = batch_data.cuda(non_blocking=True)
+                batch_data = batch_data.cuda(non_blocking=False)
                 batch_labels = batch_labels.cuda(non_blocking=True)
             data_var = torch.autograd.Variable(batch_data)
             labels_var = torch.autograd.Variable(batch_labels)
@@ -164,20 +168,23 @@ def benchmark_training(model, opts):
             loss.backward()
             optimizer.step()
 
-            end_time = timeit.default_timer()
-
             # Track progress
             num_iterations_done += 1
+            cur_time = timeit.default_timer()
             if is_warmup and num_iterations_done >= opts['num_warmup_batches']:
                 is_warmup = False
                 num_iterations_done = 0
             else:
                 if opts['num_batches'] != 0:
-                    batch_times[num_iterations_done-1] = end_time - start_time
+                    batch_times[num_iterations_done-1] = cur_time - end_time
+                    #data_load_times[num_iterations_done-1] = data_load_time
                 if num_iterations_done >= opts['num_batches']:
                     done = True
                     break
+            end_time = cur_time
 
+    #print("[INFO] Mean data load time: %s" % (json.dumps(1000.0*np.mean(data_load_times))))
+    #print("[INFO] Data Load Times: %s" % json.dumps((1000.0*data_load_times).tolist()))
     return (model.module.name, batch_times)
 
 

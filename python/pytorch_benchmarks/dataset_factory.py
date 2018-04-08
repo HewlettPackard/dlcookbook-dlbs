@@ -20,6 +20,7 @@ from __future__ import print_function
 import os
 import pickle
 import numpy as np
+import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
@@ -96,7 +97,7 @@ class CaffeLMDBDataset(data.Dataset):
 
 class SyntheticDataset(data.Dataset):
     """An implementation of a synthetic dataset. Provides random batch data and labels."""
-    def __init__(self, size=100, shape=(3, 227, 227), num_classes=1000):
+    def __init__(self, size=1024*200, shape=(3, 227, 227), num_classes=1000):
         """Initialize synthetic dataset
 
         :param int size: Size of a dataset.
@@ -138,6 +139,29 @@ class SyntheticDataset(data.Dataset):
         return instance, label
 
 
+# http://pytorch.org/docs/master/_modules/torch/utils/data/dataloader.html
+# It seems that default DataLoader is not efficient or I did not
+# figure out how to use it properly with synthetic data.
+# This synthetic data loader will iterate forever.
+# TODO: Place tensors into GPU memory. This will require rewriting 
+#       benchmarking loop and nn.DataParallelModel.
+class SyntheticDataLoader(object):
+    def __init__(self, batch_size, input_shape, num_classes, device='gpu'):
+        # Create two random tensors - one for data and one for label
+        data_shape = (batch_size,) + input_shape
+        self.data = torch.randn(data_shape)
+        self.labels = torch.from_numpy(np.random.randint(0, num_classes, batch_size).astype(np.long))
+        if device == 'gpu':
+            self.data = self.data.pin_memory()
+            self.labels = self.labels.pin_memory()
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        return (self.data, self.labels)
+
+
 class DatasetFactory(object):
     """Creates various dataset loaders"""
 
@@ -147,13 +171,16 @@ class DatasetFactory(object):
 
         :param obj model: A model to benchmark
         :param dict opts: A dictionary of parameters.
+        :param int batch_size: Effective batch size
 
         :return: An instance of data loader
         """
         if opts['data_dir'] == '':
-            dataset = SyntheticDataset(size=opts['batch_size'] * 10,
-                                       shape=model.module.input_shape,
-                                       num_classes=model.module.num_classes)
+            #dataset = SyntheticDataset(size=opts['batch_size'] * 200,
+            #                           shape=model.module.input_shape,
+            #                           num_classes=model.module.num_classes)
+            return SyntheticDataLoader(batch_size, model.module.input_shape,
+                                       model.module.num_classes, opts['device'])
         else:
             # Assuming (Channels, Height, Width). This is for image data now.
             # TODO: handle other types of data
