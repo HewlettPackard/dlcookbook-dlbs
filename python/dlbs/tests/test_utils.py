@@ -205,6 +205,26 @@ class TestDictUtils(unittest.TestCase):
         )
         self.assertEquals(len(matches), 0)
 
+    def test_match_6(self):
+        """Test empty strings can match"""
+        dictionary = {'exp.framework': "bvlc_caffe", 'exp.data_dir': ""}
+        #
+        matches = {}
+        for val in ('', ' ', '  ', '    '):
+            self.assertEquals(
+                DictUtils.match(dictionary, {'exp.framework': val}, policy='strict', matches=matches),
+                False
+            )
+            self.assertEqual(len(matches), 0)
+        #
+        self.assertEquals(
+            DictUtils.match(dictionary, {'exp.data_dir': ''}, policy='strict', matches=matches),
+            True
+        )
+        self.assertEqual(len(matches), 1)
+        self.assertIn('exp.data_dir_0', matches)
+        self.assertEqual(matches['exp.data_dir_0'], '')
+
 
 if __name__ == '__main__':
     unittest.main()

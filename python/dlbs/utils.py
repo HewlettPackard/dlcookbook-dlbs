@@ -17,6 +17,7 @@
 import os
 import copy
 import json
+import gzip
 import re
 import logging
 import subprocess
@@ -25,6 +26,23 @@ from multiprocessing import Process
 from multiprocessing import Queue
 from glob import glob
 from dlbs.exceptions import ConfigurationError
+
+
+class OpenFile(object):
+    """Class that can work with gzipped and regular textual files."""
+    def __init__(self, fname, mode='r'):
+        self.__fname = fname
+        self.__flags = ['rb', 'r'] if mode == 'r' else ['wb', 'w']
+
+    def __enter__(self):
+        if self.__fname.endswith('.gz'):
+            self.__fobj = gzip.open(self.__fname, self.__flags[0])
+        else:
+            self.__fobj = open(self.__fname, self.__flags[1])
+        return self.__fobj
+
+    def __exit__(self, type, value, traceback):
+        self.__fobj.close()
 
 
 class IOUtils(object):
@@ -105,6 +123,54 @@ class IOUtils(object):
             if attempt >= max_attempts:
                 msg = "Cannot find non existing file from pattern %s"
                 raise ValueError(msg % file_name)
+
+    @staticmethod
+    def check_file_extensions(fname, extensions):
+        """Checks that fname has one of the provided extensions.
+
+        :param str fname: The file name to check.
+        :param tuple extensions: A tuple of extensions to use.
+
+        Raises exception of fname does not end with one of the extensions.
+        """
+        if fname is None:
+            return
+        assert isinstance(extensions, tuple), "The 'extensions' must be a tuple."
+        if not fname.endswith(extensions):
+            raise ValueError("Invalid file extension (%s). Must be one of %s" % extensions)
+
+    @staticmethod
+    def read_json(fname, check_extension=False):
+        """Reads JSON object from file 'fname'.
+
+        :param str fname: File name.
+        :param boolean check_extension: If True, raises exception if fname does not end
+                                        with '.json' or '.json.gz'.
+        :rtype: None or JSON object
+        :return: None of fname is None else JSON loaded from the file.
+        """
+        if fname is None:
+            return None
+        if check_extension:
+            IOUtils.check_file_extensions(fname, ('.json', '.json.gz'))
+        with OpenFile(fname, 'r') as fobj:
+            return json.load(fobj)
+
+    @staticmethod
+    def write_json(fname, data, check_extension=False):
+        """ Dumps *dictionary* as a json object to a file with *file_name* name.
+
+        :param dict dictionary: Dictionary to serialize.
+        :param any data: A data to dump into a JSON file. 
+        :param str file_name: Name of a file to serialie dictionary in.
+        """
+        if fname is None:
+            raise ValueError("File name is None")
+        if check_extension:
+            IOUtils.check_file_extensions(fname, ('.json', '.json.gz'))
+        IOUtils.mkdirf(fname)
+        with OpenFile(fname, 'w') as fobj:
+            json.dump(data, fobj, indent=4)
 
 
 class DictUtils(object):
@@ -203,7 +269,7 @@ class DictUtils(object):
                 json.dump(dictionary, file_obj, indent=4)
 
     @staticmethod
-    def add(dictionary, iterable, pattern, must_match=True, add_only_keys=None):
+    def add(dictionary, iterable, pattern, must_match=True, add_only_keys=None, ignore_errors=False):
         """ Updates *dictionary* with items from *iterable* object.
 
         This method modifies/updates *dictionary* with items from *iterable*
@@ -232,6 +298,7 @@ class DictUtils(object):
                                 *pattern*. If True and not match, raises exception.
         :param list add_only_keys: If not None, specifies keys that are added into\
                                    *dictionary*. Others are ignored.
+        :param boolean ignore_erros: If true, ignore errors.
 
         :raises ConfigurationError: If *must_match* is True and not match or if value\
                                     is not a json-parseable string.
@@ -248,11 +315,12 @@ class DictUtils(object):
             try:
                 value = match.group(2).strip()
                 value = json.loads(value) if len(value) > 0 else None
+                if add_only_keys is None or key in add_only_keys:
+                    dictionary[key] = value
+                    logging.debug("Key-value item (%s=%s) has been parsed and added to dictionary", key, str(value))
             except ValueError as err:
-                raise ConfigurationError("Cannot parse JSON string '%s' with key '%s' (key-value definition: '%s'). Error is %s" % (value, key, line, str(err)))
-            if add_only_keys is None or key in add_only_keys:
-                dictionary[key] = value
-                logging.debug("Key-value item (%s=%s) has been parsed and added to dictionary", key, str(value))
+                if not ignore_errors:
+                    raise ConfigurationError("Cannot parse JSON string '%s' with key '%s' (key-value definition: '%s'). Error is %s" % (value, key, line, str(err)))
 
     @staticmethod
     def match(dictionary, query, policy='relaxed', matches=None):
@@ -304,15 +372,23 @@ class DictUtils(object):
                 if matches is not None:
                     matches['%s_0' % (field)] = dictionary[field]
             else:
-                match = re.compile(value).match(dictionary[field])
-                if not match:
-                    return False
-                else:
-                    if matches is not None:
+                if value == '':
+                    # Take special care if value is an empty string
+                    if value != dictionary[field]:
+                        return False
+                    elif matches is not None:
                         matches['%s_0' % (field)] = dictionary[field]
-                        for index, group in enumerate(match.groups()):
-                            matches['%s_%d' % (field, index+1)] = group
                     continue
+                else:
+                    match = re.compile(value).match(dictionary[field])
+                    if not match:
+                        return False
+                    else:
+                        if matches is not None:
+                            matches['%s_0' % (field)] = dictionary[field]
+                            for index, group in enumerate(match.groups()):
+                                matches['%s_%d' % (field, index+1)] = group
+                        continue
         return True
 
 class ConfigurationLoader(object):
