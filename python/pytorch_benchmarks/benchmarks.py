@@ -52,8 +52,8 @@ def benchmark(opts):
     """
     assert 'model' in opts, "Missing 'model' in options."
     assert 'phase' in opts, "Missing 'phase' in options."
-    assert opts['phase'] in ['inference', 'training'],\
-           "Invalid value for 'phase' (%s). Must be 'inference' or 'training'." % (opts['phase'])
+    assert opts['phase'] in ['inference', 'training', 'data_ingestion'],\
+           "Invalid value for 'phase' (%s). Must be 'inference', 'training' or 'data_ingestion'." % (opts['phase'])
 
     opts['batch_size'] = opts.get('batch_size', 16)
     opts['num_warmup_batches'] = opts.get('num_warmup_batches', 10)
@@ -64,10 +64,59 @@ def benchmark(opts):
     opts['data_dir'] = opts.get('data_dir', '')
     #opts['enable_tensor_core'] = opts.get('enable_tensor_core', False)
 
+    if opts['phase'] == 'data_ingestion':
+        # A little bit ugly - models expect 'inference' or 'training'. Anyway, model will
+        # not be used - we just need to know input shape and number of classes.
+        model = ModelFactory.get_model(dict(opts, phase='inference'))
+        return benchmark_data_ingestion(model, opts)
+
     model = ModelFactory.get_model(opts)
     if opts['phase'] == 'inference':
         return benchmark_inference(model, opts)
     return benchmark_training(model, opts)
+
+
+def benchmark_data_ingestion(model, opts):
+    """ Benchmark data ingestion part of the workload.
+
+    :param obj model: A neural network model. We need this model
+                      to provide number of classes and input shapes
+                      to data loader. The model itself will not be
+                      instantiated.
+    :param dict opts: A dictionary of parameters.
+    :rtype: tuple
+    :return: A tuple of (model_name, list of data ingestion times)
+    """
+    if opts['data_dir'] == '':
+        raise ValueError('Data ingestion benchmarks: dataset not provided')
+    data_loader = DatasetFactory.get_data_loader(
+        opts, get_effective_batch_size(opts),
+        model.input_shape, model.num_classes
+    )
+    data_load_times = np.zeros(opts['num_batches'])
+    num_iterations_done = 0
+    is_warmup = (opts['num_warmup_batches'] > 0)
+    done = (opts['num_batches'] == 0)
+    end_time = timeit.default_timer()
+    while not done:
+        print ("[INFO] Starting new epoch")
+        for batch_data, batch_labels in data_loader:
+            data_load_time = timeit.default_timer() - end_time
+            num_iterations_done += 1
+            if is_warmup:
+                if num_iterations_done >= opts['num_warmup_batches']:
+                    is_warmup = False
+                    num_iterations_done = 0
+            else:
+                data_load_times[num_iterations_done-1] = data_load_time
+                #if True:
+                #    print("[DEBUG] Data fetch time for batch %d is %f" % (num_iterations_done, data_load_time))
+                #    sys.stdout.flush()
+                if num_iterations_done >= opts['num_batches']:
+                    done = True
+                    break
+            end_time = timeit.default_timer()
+    return (model.name, data_load_times)
 
 
 def benchmark_inference(model, opts):
@@ -138,7 +187,10 @@ def benchmark_training(model, opts):
         criterion = criterion.half()
 
     optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
-    data_loader = DatasetFactory.get_data_loader(model, opts, get_effective_batch_size(opts))
+    data_loader = DatasetFactory.get_data_loader(
+        opts, get_effective_batch_size(opts), model.module.input_shape,
+        model.module.num_classes
+    )
 
     is_warmup = opts['num_warmup_batches'] > 0
     done = opts['num_warmup_batches'] == 0
@@ -171,9 +223,10 @@ def benchmark_training(model, opts):
             # Track progress
             num_iterations_done += 1
             cur_time = timeit.default_timer()
-            if is_warmup and num_iterations_done >= opts['num_warmup_batches']:
-                is_warmup = False
-                num_iterations_done = 0
+            if is_warmup:
+                if num_iterations_done >= opts['num_warmup_batches']:
+                    is_warmup = False
+                    num_iterations_done = 0
             else:
                 if opts['num_batches'] != 0:
                     batch_times[num_iterations_done-1] = cur_time - end_time
@@ -203,6 +256,10 @@ def main():
     parser.add_argument(
         '--model', type=str, required=True, default='',
         help="A model to benchmark ('alexnet', 'googlenet' ...)"
+    )
+    parser.add_argument(
+        '--data_loader_only', nargs='?', const=True, default=False, type=str2bool,
+        help="Benchmark only data ingestion pipeline (data loader)."
     )
     parser.add_argument(
         '--forward_only', nargs='?', const=True, default=False, type=str2bool,
@@ -282,7 +339,10 @@ def main():
             raise ValueError(msg % (args.num_gpus, args.dtype))
 
         opts = vars(args)
-        opts['phase'] = 'inference' if args.forward_only else 'training'
+        if args.data_loader_only:
+            opts['phase'] = 'data_ingestion'
+        else:
+            opts['phase'] = 'inference' if args.forward_only else 'training'
         model_title, times = benchmark(opts)
     except Exception, err:
         #TODO: this is not happenning, program terminates earlier.
@@ -292,13 +352,15 @@ def main():
         print ("Critical error while running benchmarks (%s). See stacktrace below." % (str(err)))
         traceback.print_exc(file=sys.stdout)
 
-    if times.size > 0:
-        mean_time = np.mean(times)                                   # seconds
-        mean_throughput = get_effective_batch_size(opts) / mean_time # images / sec
-        print("__results.time__=%s" % (json.dumps(1000.0 * mean_time)))
+    if times.size > 0:  
+        times = 1000.0 * times                                              # from seconds to milliseconds
+        mean_time = np.mean(times)                                          # average time in milliseconds
+        mean_throughput = get_effective_batch_size(opts) / (mean_time/1000) # images / sec
+        print("__results.time__=%s" % (json.dumps(mean_time)))
+        print("__results.time_std__=%s" % (json.dumps(np.std(times))))
         print("__results.throughput__=%s" % (json.dumps(int(mean_throughput))))
         print("__exp.model_title__=%s" % (json.dumps(model_title)))
-        print("__results.time_data__=%s" % (json.dumps((1000.0*times).tolist())))
+        print("__results.time_data__=%s" % (json.dumps(times.tolist())))
     else:
         print("__results.status__=%s" % (json.dumps("failure")))
 
