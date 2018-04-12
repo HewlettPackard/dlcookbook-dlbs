@@ -19,9 +19,9 @@ from __future__ import absolute_import
 import mxnet as mx
 from mxnet_benchmarks.models.model import Model
 
-class AlexNet(Model):
+class AlexNetOWT(Model):
 
-    implements = 'alexnet'
+    implements = 'alexnet_owt'
 
     @property
     def output(self):
@@ -30,35 +30,30 @@ class AlexNet(Model):
     def __init__(self, params):
         Model.check_parameters(
             params,
-            {'name': 'AlexNet', 'input_shape':(3, 227, 227), 'num_classes': 1000,
+            {'name': 'AlexNetOWT', 'input_shape':(3, 227, 227), 'num_classes': 1000,
              'phase': 'training',
              'dtype': 'float32'}
         )
         Model.__init__(self, params)
-        if self.dtype == 'float16':
-            print("[WARNING] MxNet does not provide half precision kernel for LRN layer. It will be disabled. "\
-                  "Thus, comparison with single precision version or other frameworks will not be totally fair.")
-
         training = self.phase == 'training'
+
         data = self.add_data_node()
 
-        conv1 = mx.symbol.Convolution(name='conv1', data=data, kernel=(11, 11), stride=(4, 4), num_filter=96)
+        conv1 = mx.symbol.Convolution(name='conv1', data=data, kernel=(11, 11), stride=(4, 4), num_filter=64)
         relu1 = mx.symbol.Activation(name='relu1', data=conv1, act_type='relu')
-        norm1 = self.maybe_lrn(relu1, 'norm1')
-        pool1 = mx.symbol.Pooling(name='pool1', data=norm1, pool_type="max", kernel=(3, 3), stride=(2, 2))
+        pool1 = mx.symbol.Pooling(name='pool1', data=relu1, pool_type="max", kernel=(3, 3), stride=(2, 2))
 
-        conv2 = mx.symbol.Convolution(name='conv2', data=pool1, kernel=(5, 5), pad=(2, 2), num_filter=256, num_group=1)
+        conv2 = mx.symbol.Convolution(name='conv2', data=pool1, kernel=(5, 5), pad=(2, 2), num_filter=192)
         relu2 = mx.symbol.Activation(name='relu2', data=conv2, act_type="relu")
-        norm2 = self.maybe_lrn(relu2, 'norm2')
-        pool2 = mx.symbol.Pooling(name='pool2', data=norm2, kernel=(3, 3), stride=(2, 2), pool_type="max")
+        pool2 = mx.symbol.Pooling(name='pool2', data=relu2, kernel=(3, 3), stride=(2, 2), pool_type="max")
 
         conv3 = mx.symbol.Convolution(name='conv3', data=pool2, kernel=(3, 3), pad=(1, 1), num_filter=384)
         relu3 = mx.symbol.Activation(name='relu3', data=conv3, act_type="relu")
 
-        conv4 = mx.symbol.Convolution(name='conv4', data=relu3, kernel=(3, 3), pad=(1, 1), num_filter=384, num_group=1)
+        conv4 = mx.symbol.Convolution(name='conv4', data=relu3, kernel=(3, 3), pad=(1, 1), num_filter=256)
         relu4 = mx.symbol.Activation(name='relu4', data=conv4, act_type="relu")
 
-        conv5 = mx.symbol.Convolution(name='conv5', data=relu4, kernel=(3, 3), pad=(1, 1), num_filter=256, num_group=1)
+        conv5 = mx.symbol.Convolution(name='conv5', data=relu4, kernel=(3, 3), pad=(1, 1), num_filter=256)
         relu5 = mx.symbol.Activation(name='relu5', data=conv5, act_type="relu")
         pool5 = mx.symbol.Pooling(name='pool5', data=relu5, kernel=(3, 3), stride=(2, 2), pool_type="max")
 

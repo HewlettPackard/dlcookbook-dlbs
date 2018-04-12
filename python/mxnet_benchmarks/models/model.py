@@ -51,7 +51,8 @@ class Model(object):
         """Add data node casting it to float16 is required"""
         data = mx.sym.Variable(name=name)
         if self.dtype == 'float16':
-            data = mx.sym.Cast(data=data, dtype=np.float16)
+            print("Casting input DATA tensor to np.float16")
+            data = mx.sym.cast(data=data, dtype=np.float16)
         return data
 
     def add_head_nodes(self, v):
@@ -65,13 +66,30 @@ class Model(object):
         """
         v = mx.sym.FullyConnected(data=v, num_hidden=self.num_classes)
         if self.dtype == 'float16':
-            v = mx.sym.Cast(data=v, dtype=np.float32)
+            print("Casting logits to np.float32")
+            v = mx.sym.cast(data=v, dtype=np.float32)
         if self.phase == 'training':
             labels = mx.sym.Variable(name="softmax_label")
             v = mx.symbol.SoftmaxOutput(data=v, label=labels, name='softmax')
         else:
             v = mx.symbol.softmax(data=v, name='softmax')
         return v
+
+    def maybe_lrn(v, name):
+        """ MxNet does not have float16 kernel for LRN operator. So, we use it only
+            for float32 data type. That makes comparison not fair. Need to do something
+            about it like dropping completely these operators.
+            They are used by AlexNet and GoogleNet.
+
+            :param obj v: Input tensor.
+            :param str name: Name of the LRN operator.
+            :return: The input tensor 'v' if data type is float16 else result of LRN
+                     operator
+        """
+        if self.dtype == 'float32':
+            return mx.symbol.LRN(data=v, alpha=0.0001, beta=0.75, knorm=2, nsize=5, name=name)
+        else:
+            return v
 
     @property
     def name(self):

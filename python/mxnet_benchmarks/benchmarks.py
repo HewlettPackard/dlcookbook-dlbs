@@ -149,13 +149,14 @@ class BenchmarkingModule(mx.mod.Module):
                     monitor.tic()
                 self.forward_backward(data_batch)
                 self.update()
+                #mx.nd.waitall()
                 try:
                     # pre fetch next batch
                     next_data_batch = next(data_iter)
                     self.prepare(next_data_batch)
                 except StopIteration:
                     end_of_batch = True
-
+                #print(self._exec_group.labels_.dtype)  
                 self.update_metric(eval_metric, data_batch.label)
 
                 if monitor is not None:
@@ -334,6 +335,7 @@ def benchmark_training(model, opts):
         train_data,
         kvstore=kv,
         optimizer='sgd',
+        optimizer_params = {'multi_precision': True},
         initializer=mx.init.Normal(),
         batch_end_callback=[batch_end_callback]
     )
@@ -360,6 +362,9 @@ if __name__ == '__main__':
                                                                                         See https://mxnet.incubator.apache.org/how_to/multi_devices.html for more details.')
     parser.add_argument('--dtype', required=False, default='float', choices=['float', 'float32', 'float16'], help='Precision of data variables: float(same as float32), float32 or float16.')
     parser.add_argument('--data_dir', type=str, required=False, default='', help='Path to the image RecordIO (.rec) file or a directory path. Created with tools/im2rec.py.')
+
+    parser.add_argument('--preprocess_threads', type=int, required=False, default=4, help='Number preprocess threads for data ingestion pipeline when real data is used.')
+    parser.add_argument('--prefetch_buffer', type=int, required=False, default=10, help='Number of batches to prefetch (buffer size)')
     args = parser.parse_args()
 
     if args.dtype == 'float':

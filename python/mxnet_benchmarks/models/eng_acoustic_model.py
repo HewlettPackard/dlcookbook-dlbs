@@ -17,7 +17,7 @@ from mxnet_benchmarks.models.model import Model
 
 class EngAcousticModel(Model):
     
-    implements = 'eng_acoustic_model'
+    implements = 'acoustic_model'
     
     @property
     def output(self):
@@ -26,7 +26,7 @@ class EngAcousticModel(Model):
     def __init__(self, params):
         Model.check_parameters(
             params,
-            {'name': 'EngAcousticModel', 'input_shape':(540),
+            {'name': 'AcousticModel', 'input_shape':(540),
              'num_classes': 8192, 'phase': 'training',
              'dtype': 'float32'}
         )

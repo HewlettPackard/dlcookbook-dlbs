@@ -34,6 +34,16 @@
       "type": "str",
       "desc": "A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline)."
     },
+    "mxnet.preprocess_threads": {
+      "val": 4,
+      "type": "int",
+      "desc": "Number preprocess threads for data ingestion pipeline when real data is used."
+    },
+    "mxnet.prefetch_buffer": {
+      "val": 10,
+      "type": "int",
+      "desc": "Number of batches to prefetch (buffer size)."
+    },
     "mxnet.args": {
       "val": [
         "--model=${exp.model}",
@@ -45,7 +55,9 @@
         "--device=${exp.device_type}",
         "--kv_store=${mxnet.kv_store}",
         "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
-        "--dtype=${exp.dtype}"
+        "--dtype=${exp.dtype}",
+        "--preprocess_threads=${mxnet.preprocess_threads}",
+        "--prefetch_buffer=${mxnet.prefetch_buffer}"
       ],
       "type": "str",
       "desc": "Command line arguments that launcher will pass to a mxnet_benchmarks script."

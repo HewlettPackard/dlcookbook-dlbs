@@ -58,18 +58,22 @@ class GoogleNet(Model):
              'dtype': 'float32'}
         )
         Model.__init__(self, params)
-        training = self.phase == 'training'
 
+        if self.dtype == 'float16':
+            print("[WARNING] MxNet does not provide half precision kernel for LRN layer. It will be disabled. "\
+                  "Thus, comparison with single precision version or other frameworks will not be totally fair.")
+
+        training = self.phase == 'training'
         data = self.add_data_node()
 
         conv1 = ConvFactory(data, 64, kernel=(7, 7), stride=(2, 2), pad=(3, 3), name="conv1/7x7_s2")
         pool1 = mx.sym.Pooling(conv1, kernel=(3, 3), stride=(2, 2), pool_type="max", name="pool1/3x3_s2")
-        norm1 = mx.symbol.LRN(data=pool1, alpha=0.0001, beta=0.75, knorm=2, nsize=5, name='pool1/norm1')
+        norm1 = self.maybe_lrn(pool1, 'pool1/norm1')
 
         conv2_reduce = ConvFactory(norm1, 64, kernel=(1, 1), stride=(1, 1), name="conv2/3x3_reduce")
 
         conv2 = ConvFactory(conv2_reduce, 192, kernel=(3, 3), stride=(1, 1), pad=(1, 1), name="conv2/3x3")
-        norm2 = mx.symbol.LRN(data=conv2, alpha=0.0001, beta=0.75, knorm=2, nsize=5, name='conv2/norm2')
+        norm2 = self.maybe_lrn(conv2, 'conv2/norm2')
         pool2 = mx.sym.Pooling(norm2, kernel=(3, 3), stride=(2, 2), pool_type="max", name='pool2/3x3_s2')
 
         in3a = InceptionFactory(pool2, 64, 96, 128, 16, 32, "max", 32, name="inception_3a")

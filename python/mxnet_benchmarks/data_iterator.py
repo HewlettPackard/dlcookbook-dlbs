@@ -132,6 +132,8 @@ class DataIteratorFactory(object):
                 rand_crop=True,
                 rand_mirror=True,
                 #dtype=opts['dtype'],
+                preprocess_threads = opts.get('preprocess_threads', 4),
+                prefetch_buffer = opts.get('prefetch_buffer ', 10),
                 dtype='float32',
                 num_parts=nworker,
                 part_index=rank
