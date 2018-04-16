@@ -1,4 +1,4 @@
-# __Introduction__
+# __Introduction to Benchmarking Suite__
 
 Every benchmark is defined by a set of parameters. Every parameter is a key-value pair. Parameters define everything - frameworks, batch sizes, log files, models etc. Benchmark can be defined manually be enumerating all parameters, or automatically, by providing a configuration that defines how parameters should vary from one experiment to another. A script called [exerimenter](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/dlbs/experimenter.py) varies parameters (basically, by doing Cartesian product) and creates multiple benchmarks with different parameters.
 

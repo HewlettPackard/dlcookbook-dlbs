@@ -54,9 +54,7 @@ python experimenter.py ... --Pnvidia_caffe.precision=`"mixed"` ...
 The `exp.use_tensor_core` does not affect behavior of NVIDIA Caffe at this point.
 
 ### TensorRT
-TensorRT supports single, half and int8 inference. Use `exp.dtype` to control it. If I am
-not mistaken, at this point (we use 2.1 version) TensorRT does not support tensor core
-operations on Volta GPUs - the `exp.use_tensor_core` does not affect behavior of TensorRT at this point.
+TensorRT supports single, half and int8 inference. Use `exp.dtype` to control it.
 
 ### MXNet
 The MXNet framework supports float32/float16 with optional tensor core math. DL Benchmarking
@@ -64,7 +62,7 @@ Suite will set up the environment. Use standard parameters `exp.dtype` and `exp.
 to specify benchmark settings. The data type can be either float32 or float16.
 The tensor core math is controlled via environmental variable MXNET_CUDA_ALLOW_TENSOR_CORE. See
 this [code snippet](https://github.com/apache/incubator-mxnet/blob/a36bf573ad82550dbb6692a89d7ddd1d5e4487fd/src/common/cuda_utils.h)
-how it is used. This environmental variable will be set automatically by benchmarking tool.
+how it is used. This environmental variable will be set automatically by benchmarking suite.
 
 ### Caffe2
 The Caffe2 framework supports float32/float16 data types, tensor core operations and

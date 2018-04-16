@@ -66,7 +66,7 @@ on it now. The source code for the models contains references of the original im
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/pytorch_benchmarks/models/deep_mnist.py)</td>
   </tr>
   <tr>
-    <td>eng_acoustic_model</td><td>[EngAcousticModel](http://ethereon.github.io/netscope/#/gist/10f5dee56b6f7bbb5da26749bd37ae16)</td>
+    <td>eng_acoustic_model</td><td>[AcousticModel](http://ethereon.github.io/netscope/#/gist/10f5dee56b6f7bbb5da26749bd37ae16)</td>
     <td>540x1x1</td>
     <td>34,678,784</td><td>133</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/models/engacoustic_model.py)</td>
@@ -181,7 +181,7 @@ The experimenter script accepts ``--model`` command line argument that specifies
 
 1. __AlexNet__ Same as [BVLC Caffe's version](https://github.com/BVLC/caffe/tree/master/models/bvlc_alexnet) _without_ grouped convolutions in layers 2, 4 and 5 (`group=1`). This does not significantly change number of  trainable parameters but does change computational profile - roughly from 0.7 gFLOP to 1.14 gFLOP for forward pass.
 2. __DeepMNIST__ A fully-connected architecture mentioned [here](http://yann.lecun.com/exdb/mnist/) described in this [paper](http://arxiv.org/abs/1003.0358).
-3. __EngAcousticModel__ A fully-connected architecture that's typically used in hybrid HMM-DNN speech recognition systems (English language) for acoustic modeling. Similar to a speech network described in Large Scale Distributed Deep Networks [paper](https://research.google.com/archive/large_deep_networks_nips2012.html).
+3. __AcousticModel__ A fully-connected architecture that's typically used in hybrid HMM-DNN speech recognition systems (English language) for acoustic modeling. Similar to a speech network described in Large Scale Distributed Deep Networks [paper](https://research.google.com/archive/large_deep_networks_nips2012.html).
 4. __GoogleNet__ Same as version implemented in BVLC Caffe [here](https://github.com/BVLC/caffe/tree/master/models/bvlc_googlenet). Reference publication is [here](http://arxiv.org/abs/1409.4842).
 5. __Inception3__ and __Inception4__ are based on original implementation in [tf_cnn_benchmarks](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/inception_model.py). Inception3 model publication is [here](http://arxiv.org/abs/1512.00567). Inception4 publication is [here](http://arxiv.org/abs/1602.07261).
 6. __Overfeat__ A model described in this [paper](https://arxiv.org/pdf/1312.6229.pdf). Based on Google's tf_cnn_benchmarks with additional dropout operators applied to 6th and 7th layers as described in the paper.
