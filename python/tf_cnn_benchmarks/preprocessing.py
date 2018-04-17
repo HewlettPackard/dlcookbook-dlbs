@@ -446,7 +446,10 @@ class RecordInputImagePreprocessor(object):
                shift_ratio,
                summary_verbosity,
                distort_color_in_yiq,
-               fuse_decode_and_crop):
+               fuse_decode_and_crop,
+               depth=3):
+    # Sergey: the 'depth' parameter is not used and it is here to have same API
+    # as synthetic data iterator.
     self.height = height
     self.width = width
     self.batch_size = batch_size
