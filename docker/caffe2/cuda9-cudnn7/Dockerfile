@@ -18,16 +18,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libsnappy-dev \
         protobuf-compiler \
         python-dev \
-        python-numpy \
         python-pip \
-        python-pydot \
-        python-setuptools \
-        python-scipy \
         wget \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+# --upgrade pip
+RUN pip install --no-cache-dir --upgrade setuptools wheel && \
     pip install --no-cache-dir \
         flask \
         future \
@@ -52,8 +49,8 @@ ENV CAFFE2_ROOT=/opt/caffe2
 
 ARG version=master
 RUN cd / && \
-    git clone --recursive https://github.com/caffe2/caffe2.git && cd caffe2 && \
-    git reset --hard $version && git submodule update && \
+    git clone https://github.com/caffe2/caffe2.git && cd caffe2 && \
+    git reset --hard $version && git submodule update --init --recursive && \
     mkdir ./build && cd ./build && \
     cmake -DUSE_CUDA=ON\
           -DUSE_NCCL=ON\
