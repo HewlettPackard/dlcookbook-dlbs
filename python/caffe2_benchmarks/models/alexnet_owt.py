@@ -19,7 +19,7 @@ from __future__ import absolute_import
 from caffe2.python import brew
 from caffe2_benchmarks.models.model import Model
 
-class AlexNet(Model):
+class AlexNetOWT(Model):
     """AlexNet neural network model."""
 
     implements = 'alexnet_owt'

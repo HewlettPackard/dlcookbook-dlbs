@@ -112,7 +112,7 @@
       "desc": "Phase to benchmark. Possible values - 'inference' or 'training'."
     },
     "exp.data_dir": {
-      "val": "${${exp.framework}.data_dir}",
+      "val": "${${exp.framework_family}.data_dir}",
       "type": "str",
       "desc": [
         "A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline)."

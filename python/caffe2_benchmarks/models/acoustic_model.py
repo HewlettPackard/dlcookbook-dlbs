@@ -18,15 +18,15 @@ from __future__ import absolute_import
 from caffe2.python import brew
 from caffe2_benchmarks.models.model import Model
 
-class EngAcousticModel(Model):
+class AcousticModel(Model):
     """Some deep FCNN used in hybrid HMM/DNN speech recognition systems."""
     
-    implements = 'eng_acoustic_model'
+    implements = 'acoustic_model'
 
     def __init__(self, params):
         Model.check_parameters(
             params,
-            {'name':'EngAcousticModel', 'input_shape':(540),
+            {'name':'AcousticModel', 'input_shape':(540),
              'num_classes': 8192, 'arg_scope': {'order': 'NCHW'}}
         )
         Model.__init__(self, params)

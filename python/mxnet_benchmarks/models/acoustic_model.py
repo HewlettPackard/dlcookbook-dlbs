@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import mxnet as mx
 from mxnet_benchmarks.models.model import Model
 
-class EngAcousticModel(Model):
+class AcousticModel(Model):
     
     implements = 'acoustic_model'
     

@@ -10,12 +10,12 @@ RUN apt-get update && \
         libopenblas-dev \
         libopencv-dev \
         python-dev \
-        python-numpy \
         python-pip \
-        python-setuptools \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
+RUN pip install --no-cache-dir --upgrade setuptools wheel && \
+    pip install numpy Pillow lmdb protobuf
 
 ENV PYTORCH_ROOT=/opt/pytorch
 RUN git clone --recursive https://github.com/pytorch/pytorch $PYTORCH_ROOT && \
@@ -25,8 +25,7 @@ RUN git clone --recursive https://github.com/pytorch/pytorch $PYTORCH_ROOT && \
     python setup.py install && \
     cd / && rm -rf ${PYTORCH_ROOT}
 
-RUN pip install --upgrade pip wheel && \
-    pip install Pillow lmdb protobuf
+
 
 RUN git clone https://github.com/pytorch/vision.git /pytorchvision && \
     cd /pytorchvision && python setup.py install && \

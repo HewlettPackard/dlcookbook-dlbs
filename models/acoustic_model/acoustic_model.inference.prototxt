@@ -1,4 +1,4 @@
-name: "EngAcousticModel"
+name: "AcousticModel"
 layer {
   name: "input"
   type: "Input"

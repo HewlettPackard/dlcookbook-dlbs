@@ -858,7 +858,7 @@ class BenchmarkCNN(object):
       num_classes = 10     # Digit classes
     elif params.model == 'sensor_net':
       num_classes = 16     # Number of activities
-    elif params.model == 'eng_acoustic_model':
+    elif params.model == 'acoustic_model':
       num_classes = 8192   # Clustered tri-phones classes
     else:
       num_classes = 1000   # Image classes (without one backgraound class?)

@@ -46,9 +46,29 @@ on it now. The source code for the models contains references of the original im
     <th>model</th><th>Name</th><th>Input shape (CHW)</th><th>#Parameters</th><th>#Model size (Mb)</th><th>TensorFlow</th><th>Caffe</th><th>TensorRT</th><th>Caffe2</th><th>MXNet</th><th>PyTorch</th>
   </tr>
   <tr>
+    <td>acoustic_model</td><td>[AcousticModel](http://ethereon.github.io/netscope/#/gist/10f5dee56b6f7bbb5da26749bd37ae16)</td>
+    <td>540x1x1</td>
+    <td>34,678,784</td><td>133</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/models/acoustic_model.py)</td>
+    <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/acoustic_model)</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/acoustic_model.py)</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/acoustic_model.py)</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/pytorch_benchmarks/models/acoustic_model.py)</td>
+  </tr>
+  <tr>
     <td>alexnet</td><td>[AlexNet](http://ethereon.github.io/netscope/#/gist/5c94a074f4e4ac4b81ee28a796e04b5d)</td>
     <td>3x227x227</td>
     <td>62,378,344</td><td>238</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/models/alexnet_model.py)</td>
+    <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/alexnet_owt)</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/alexnet_owt.py)</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/alexnet_owt.py)</td>
+    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/pytorch_benchmarks/models/alexnet_owt.py)</td>
+  </tr>
+  <tr>
+    <td>alexnet_owt</td><td>[AlexNetOWT](http://ethereon.github.io/netscope/#/gist/dc85cc15d59d720c8a18c4776abc9fd5)</td>
+    <td>3x227x227</td>
+    <td>61,100,840</td><td>233</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/models/alexnet_model.py)</td>
     <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/bvlc_alexnet)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/alexnet.py)</td>
@@ -64,16 +84,6 @@ on it now. The source code for the models contains references of the original im
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/deep_mnist.py)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/deep_mnist.py)</td>
     <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/pytorch_benchmarks/models/deep_mnist.py)</td>
-  </tr>
-  <tr>
-    <td>eng_acoustic_model</td><td>[AcousticModel](http://ethereon.github.io/netscope/#/gist/10f5dee56b6f7bbb5da26749bd37ae16)</td>
-    <td>540x1x1</td>
-    <td>34,678,784</td><td>133</td>
-    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/tf_cnn_benchmarks/models/engacoustic_model.py)</td>
-    <td colspan="2">[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models/eng_acoustic_model)</td>
-    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/caffe2_benchmarks/models/eng_acoustic_model.py)</td>
-    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/mxnet_benchmarks/models/eng_acoustic_model.py)</td>
-    <td>[Impl](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/pytorch_benchmarks/models/eng_acoustic_model.py)</td>
   </tr>
   <tr>
     <td>googlenet</td><td>[GoogleNet](http://ethereon.github.io/netscope/#/gist/4325909f3683e51eaf93fdaeed6b2a9b)</td>

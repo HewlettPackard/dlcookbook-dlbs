@@ -1,4 +1,4 @@
-name: "EngAcousticModel"
+name: "AcousticModel"
 
 #synthetic layer {
 #synthetic   name: "data"

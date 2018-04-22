@@ -18,15 +18,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libsnappy-dev \
         protobuf-compiler \
         python-dev \
-        python-numpy \
-        python-pip \
-        python-setuptools \
-        python-scipy && \
+        python-pip && \
     rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://github.com/xianyi/OpenBLAS.git && cd ./OpenBLAS && \
     make -j"$(nproc)" && make install PREFIX=/opt/OpenBLAS && \
     cd .. && rm -rf ./OpenBLAS
+
+# --upgrade pip
+RUN pip install --no-cache-dir --upgrade setuptools wheel && \
+    pip install --no-cache-dir \
+        numpy \
+        scipy
+
 
 # This is where Caffe will be installed
 ENV CAFFE_ROOT=/opt/caffe
@@ -37,7 +41,6 @@ ARG cuda_arch_bin="30 35 50 60 61 70"
 ARG cuda_arch_ptx="50"
 RUN git clone https://github.com/BVLC/caffe.git bvlc_caffe && cd ./bvlc_caffe && \
     git reset --hard ${version} &&\
-    pip install --upgrade pip && \
     cd python && for req in $(cat requirements.txt) pydot; do pip install $req; done && cd .. && \
     git clone https://github.com/NVIDIA/nccl.git && cd nccl && make -j install && cd .. && rm -rf nccl && \
     mkdir build && cd build && \

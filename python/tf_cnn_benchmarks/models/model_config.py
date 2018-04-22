@@ -18,7 +18,7 @@
 
 from models import alexnet_model
 from models import deepmnist_model
-from models import engacoustic_model
+from models import acoustic_model
 from models import sensornet_model
 from models import densenet_model
 from models import googlenet_model
@@ -32,7 +32,7 @@ from models import vgg_model
 
 model_titles = {
     'deep_mnist': 'DeepMNIST',
-    'eng_acoustic_model': 'EngAcousticModel',
+    'acoustic_model': 'AcousticModel',
     'sensor_net': 'SensorNet',
     'vgg11': 'VGG11',
     'vgg13': 'VGG13',
@@ -57,7 +57,7 @@ model_titles = {
 
 _model_name_to_imagenet_model = {
     'deep_mnist': deepmnist_model.DeepMNISTModel,
-    'eng_acoustic_model': engacoustic_model.EngAcousticModel,
+    'acoustic_model': acoustic_model.AcousticModel,
     'sensor_net': sensornet_model.SensorNetModel,
     'vgg11': vgg_model.Vgg11Model,
     'vgg13': vgg_model.Vgg13Model,
