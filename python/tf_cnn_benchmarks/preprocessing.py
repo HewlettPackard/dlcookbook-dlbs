@@ -15,6 +15,7 @@
 
 """Image pre-processing utilities.
 """
+import os
 import math
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
@@ -97,6 +98,33 @@ def parse_example_proto(example_serialized):
   bbox = tf.transpose(bbox, [0, 2, 1])
 
   return features['image/encoded'], label, bbox, features['image/class/text']
+
+_feature_map = {
+  'image/encoded': tf.FixedLenFeature([], dtype=tf.string, default_value=''),
+  'image/class/label': tf.FixedLenFeature([1], dtype=tf.int64, default_value=-1),
+  'image/format': tf.FixedLenFeature([], dtype=tf.string, default_value=''),
+  'image/height': tf.FixedLenFeature([], dtype=tf.int64, default_value=-1),
+  'image/width': tf.FixedLenFeature([], dtype=tf.int64, default_value=-1),
+  'image/channels': tf.FixedLenFeature([], dtype=tf.int64, default_value=-1),
+  'image/order': tf.FixedLenFeature([], dtype=tf.string, default_value='HWC'),
+}
+def parse_example_proto_with_tensor(example_serialized):
+  """
+     :rtype: Tuple
+     :return: (image, label_index) where image is a Tensor of type uint8 and
+              label_index is an integer of type tf.int32
+  """
+  # Dense features in Example proto. Do not 
+
+  features = tf.parse_single_example(example_serialized, _feature_map)
+  image = tf.decode_raw(features['image/encoded'], out_type=tf.uint8)
+  height = tf.cast(features['image/height'], tf.int32)
+  width = tf.cast(features['image/width'], tf.int32)
+  channels = tf.cast(features['image/channels'], tf.int32)
+  image_shape = tf.stack([height, width, channels])
+  image = tf.reshape(image, image_shape)
+  label = tf.cast(features['image/class/label'], dtype=tf.int32)
+  return (image, label)
 
 
 _RESIZE_METHOD_MAP = {
@@ -377,6 +405,17 @@ def train_image(image_buffer,
     return distorted_image
 
 
+def train_image_fast(image, height, width):
+    """ Image is a tensor if shape [H,W,C]
+        Crop image and random flip left-right.
+    """
+    #image = tf.image.resize_image_with_crop_or_pad(image, height, width)
+    # [H, W, C]
+    image = tf.slice(image, [0,0,0], [height,width,3])
+    image = tf.image.random_flip_left_right(image)
+    return image
+
+
 def distort_color(image, batch_position=0, distort_color_in_yiq=False,
                   scope=None):
   """Distort the color of the image.
@@ -468,6 +507,12 @@ class RecordInputImagePreprocessor(object):
           (self.batch_size, self.num_splits))
     self.batch_size_per_split = self.batch_size // self.num_splits
     self.summary_verbosity = summary_verbosity
+    # Added by Sergey Sereryakov <sergey.serebryakov@hpe.com>
+    self.fast_preprocess = False
+    fastkey = 'DLBS_TF_CNN_BENCHMARKS_FAST_PREPROCESSING'
+    self.fast_preprocess = (fastkey in os.environ and os.environ[fastkey] == '1')
+    if self.fast_preprocess:
+        print("Activating alternative fast preprocessing pipeline.")
 
   def preprocess(self, image_buffer, bbox, batch_position):
     """Preprocessing image_buffer as a function of its batch position."""
@@ -490,8 +535,13 @@ class RecordInputImagePreprocessor(object):
     return image
 
   def parse_and_preprocess(self, value, batch_position):
-    image_buffer, label_index, bbox, _ = parse_example_proto(value)
-    image = self.preprocess(image_buffer, bbox, batch_position)
+    if self.fast_preprocess is False:
+      image_buffer, label_index, bbox, _ = parse_example_proto(value)
+      image = self.preprocess(image_buffer, bbox, batch_position)
+    else:
+      # The 'image' is a tensor of type uint8 and shape [H,W,C]
+      image, label_index = parse_example_proto_with_tensor(value)
+      image = train_image_fast(image, self.height, self.width)
     return (label_index, image)
 
   def minibatch(self, dataset, subset, use_datasets, cache_data,
@@ -524,7 +574,7 @@ class RecordInputImagePreprocessor(object):
             batching.map_and_batch(
                 map_func=self.parse_and_preprocess,
                 batch_size=self.batch_size_per_split,
-                num_parallel_batches=self.num_splits))
+                num_parallel_batches=1))
         ds = ds.prefetch(buffer_size=self.num_splits)
         ds_iterator = ds.make_one_shot_iterator()
         for d in xrange(self.num_splits):

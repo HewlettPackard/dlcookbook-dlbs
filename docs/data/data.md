@@ -1,5 +1,36 @@
 # __Data__
 
+### Formats of datasets
+Current version of DLBS now supports only ImageNet dataset for CNNs. The format of input dataset is now  a framework specific. Caffe, Caffe2 and PyTorch use standard Caffe's LMDB datasets (`lmdb`). Caffe can also use data in LEVELDB format. MXNET uses data in standard RecordIO format (`recordio`). TensorFlow backend (tf_cnn_benchmark) uses TFRecord files (`tfrecord`). Additionally, the version of TF CNN Benchmarks included in DLBS can use preprocessed data stored in TFRecord format (`fast_tfrecord`). The following table summarizes formats of datasets and frameworks that DLBS can build and use:
+
+| format        | Frameworks                                          |
+|---------------|-----------------------------------------------------|
+| lmdb          | Caffe, Caffe2, PyTorch                              |
+| recordio      | MXNET                                               |
+| tfrecord      | TensorFlow                                          |
+| fast_tfrecord | TensorFlow with DLBS's version of TF CNN BENCHMARKS |
+
+How do we build these datasets? DLBS provides a [script](https://github.com/HewlettPackard/dlcookbook-dlbs/scripts/make_imagenet_data.sh) that can do it. This script can output the informative help messages with examples:
+```bash
+# Go to DLBS root folder
+cd dlbs
+# Get help
+./scripts/make_imagenet_data.sh help
+```
+
+DLBS does not implement its own converters from ImageNet to above mentioned formats. The script is a thin wrapper around other scrips/tools shipped with frameworks. DLBS thus needs frameworks and now only supports docker based installations.
+
+What's `fast_tfrecord` format? It's basically TFRecord files similar to standard TF CNN Benchamark
+format but with key differences:
+1. It does not contain all information (for instance, bounding boxes)
+2. The encoded image is a uint8 3D Tensor of shape [H, W, C]. The preprocessing pipeline just randomly slices this tensor to an appropriate size and randomly flips left-right. The intention is to replicate an ingestion pipeline similar to one used by Caffe.
+
+In certain situations in can outperform standard pipeline by 3000-4000 images/sec. Some of the implementation details are presented [here](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/dlbs/data/imagenet)
+
+__Known issues__. Since DLBS uses docker, generated folders/files will be owned by root.
+
+### Benchmarking with Real data
+
 DLBS can benchmark DL workloads with __synthetic__ or __real__ data. Synthetic data means there's no real dataset. Instead,
 a synthetic (fake, dummy) dataset stored in memory is used. This basically means that with synthetic data we do not take
 into account overhead associated with ingesting data. Why is synthetic data useful?
@@ -108,8 +139,7 @@ PyTorch work with Caffe's LMDB datasets.
    * `pytorch.num_loader_threads=4` Number of worker threads to be used by data loader (for real datasets).
 
 ### TensorFlow
-TensorFlow can work with datasets stored in \*.tfrecord files. Basically, experimenter exposes a subset of data-related parameters of
-a tf_cnn_benchmarks project.
+TensorFlow can work with datasets stored in \*.tfrecord files. Basically, experimenter exposes a subset of data-related parameters of a tf_cnn_benchmarks project.
 1. Mandatory parameters
    * `tensorflow.data_dir=""` A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline).
      See tf_cnn_benchmarks.py for more details.
@@ -118,3 +148,14 @@ a tf_cnn_benchmarks project.
 2. Critical parameters
    * `tensorflow.distortions=false` This is a 'distortions' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details.
      This activates additional image transformations and will significantly decrease throughput that ingestion pipeline can provide.
+
+To use simplified preprocessing pipeline (aka `fast_tfrecord`) with DLBS's version of TF CNN Benchmarks, define `DLBS_TF_CNN_BENCHMARKS_FAST_PREPROCESSING` environmental variable and set its value to 1. With DLBS, this can be done by providing the following command line argument:
+```bash
+-Pruntime.launcher='"DLBS_TF_CNN_BENCHMARKS_FAST_PREPROCESSING=1"'
+```
+or, alternatively, in case if JSON config file is used:
+```json
+{
+  "runtime.launcher": "DLBS_TF_CNN_BENCHMARKS_FAST_PREPROCESSING=1"
+}
+```
