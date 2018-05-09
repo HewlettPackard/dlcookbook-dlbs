@@ -196,9 +196,27 @@ def benchmark_inference(model, opts):
         "When inference is performed on a GPU, only one GPU (--num_gpus=1) must be specified."
     dev_opt = Model.get_device_option(0 if opts['device'] == 'gpu' else None)
     model_builder = ModelFactory.get_model(opts)
+    # Reader must be shared by all GPUs in a one machine.
+    reader = None
+    if 'data_dir' in opts and opts['data_dir']:
+        reader = model.CreateDB(
+            "reader",
+            db=opts['data_dir'],            # (str, path to training data)
+            db_type=opts['data_backend'],   # (str, 'lmdb' or 'leveldb')
+            num_shards=1,                   # (int, number of machines)
+            shard_id=0,                     # (int, machine id)
+        )
     with core.DeviceScope(dev_opt):
-        create_model(model_builder, model, opts['enable_tensor_core'])
-        model_builder.add_synthetic_inputs(model, add_labels=False)
+        if reader is None:
+            print("[INFO] Adding synthetic data input for Caffe2 inference benchmarks")
+            model_builder.add_synthetic_inputs(model, add_labels=False)
+        else:
+            print("[INFO] Adding real data inputs (%s) for Caffe2 inference benchmarks" % (opts['data_dir']))
+            model_builder.add_data_inputs(
+                model, reader, use_gpu_transform=(opts['device'] == 'gpu'),
+                num_decode_threads = opts['num_decode_threads']
+            )
+        create_model(model_builder, model, opts['enable_tensor_core'], opts['float16_compute'])
     workspace.RunNetOnce(model.param_init_net)
     workspace.CreateNet(model.net)
     return (model_builder.name, run_n_times(model, opts['num_warmup_batches'], opts['num_batches']))
