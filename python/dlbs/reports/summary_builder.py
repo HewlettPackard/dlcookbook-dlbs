@@ -288,10 +288,10 @@ class SummaryBuilder(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--summary-file', required=True, help="File name (json) with experiment results. This file is produced by a log parser.")
-    parser.add_argument('--report-file', required=False, default=None, help="File name of the report to be generated.")
+    parser.add_argument('--summary_file', '--summary-file', required=True, help="File name (json) with experiment results. This file is produced by a log parser.")
+    parser.add_argument('--report_file', '--report-file', required=False, default=None, help="File name of the report to be generated.")
     parser.add_argument('--type', help="Type of the report ('exploration', 'weak-scaling', 'strong-scaling')")
-    parser.add_argument('--target-variable', help="Target variable for the report. In most cases it's 'results.time'.")
+    parser.add_argument('--target_variable', '--target-variable', help="Target variable for the report. In most cases it's 'results.time'.")
     parser.add_argument('--query', required=False, type=str, default="{}",
                                    help="Optional JSON flat dictionary. Specifies query that selects experiments to build summary for.\
                                          A typical use case is to select specific framework. For instance:\

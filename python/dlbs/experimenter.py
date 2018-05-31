@@ -219,18 +219,19 @@ class Experimenter(object):
         parser.add_argument('--plan', required=False, type=str, help='Pre-built plan of an experiment (json).\
                                                                       If action is "build", a file name to write plan to.\
                                                                       If action is "run", a file name to read plan from.')
-        parser.add_argument('--progress-file', required=False, type=str, default=None, help='A JSON file that experimenter will be updating on its progress.'\
-                                                                                             'If not present, no progress info will be available.'\
-                                                                                             'Put it somewhere in /dev/shm')
+        parser.add_argument('--progress_file', '--progress-file', required=False, type=str, default=None,
+                            help='A JSON file that experimenter will be updating on its progress.'\
+                                 'If not present, no progress info will be available.'\
+                                 'Put it somewhere in /dev/shm')
         parser.add_argument('-P', action='append', required=False, default=[], help='Parameters that override parameters in configuration file.\
                                                                                      For instance, -Pexp.phase=2. Values must be json parsable (json.loads()).')
         parser.add_argument('-V', action='append', required=False, default=[], help='Variables that override variables in configuration file in section "variables". \
                                                                                      These variables are used to generate different combinations of experiments.\
                                                                                      For instance: -Vexp.framework=\'["tensorflow", "caffe2"]\'.\
                                                                                      Values must be json parsable (json.loads()).')
-        parser.add_argument('--log-level', required=False, default='info', help='Python logging level. Valid values: "critical", "error", "warning", "info" and "debug"')
-        parser.add_argument('--discard-default-config', required=False, default=False, action='store_true', help='Do not load default configuration.')
-        parser.add_argument('--no-validation', required=False, default=False, action='store_true', help='Do not perform config validation before running benchmarks.')
+        parser.add_argument('--log_level', '--log-level', required=False, default='info', help='Python logging level. Valid values: "critical", "error", "warning", "info" and "debug"')
+        parser.add_argument('--discard_default_config', '--discard-default-config', required=False, default=False, action='store_true', help='Do not load default configuration.')
+        parser.add_argument('--no_validation', '--no-validation', required=False, default=False, action='store_true', help='Do not perform config validation before running benchmarks.')
         parser.add_argument('-E', action='append', required=False, default=[], help='Extensions to add. Can be usefull to quickly customize experiments.\
                                                                                      Must be valid json parsable array element for "extension" array.')
         args = parser.parse_args()

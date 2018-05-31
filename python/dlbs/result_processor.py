@@ -170,7 +170,7 @@ def main():
         help="Action to perform ('validate', 'filter', 'update')"
     )
     parser.add_argument(
-        '--input-file', type=str, required=True, default=None,
+        '--input_file', '--input-file', type=str, required=True, default=None,
         help='An input JSON file. This file is never modified.'
     )
     parser.add_argument(
@@ -178,7 +178,7 @@ def main():
         help="JSON array or object OR string. If string it's considered as a file name."
     )
     parser.add_argument(
-        '--output-file', required=False, default=False,
+        '--output_file', '--output-file', required=False, default=False,
         help="Output JSON file, possible, modified version of an input JSON file."
     )
     args = parser.parse_args()

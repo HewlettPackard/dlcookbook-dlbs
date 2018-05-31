@@ -72,7 +72,7 @@ class BenchStats(object):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--log_dir', type=str, required=True, default=None,
+    parser.add_argument('--log_dir', '--log-dir', type=str, required=True, default=None,
                         help="Scan this folder for *.log files. "\
                              "Scan recursively if --recursive is set.")
     parser.add_argument('--recursive', required=False, default=False, action='store_true',

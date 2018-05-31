@@ -176,7 +176,7 @@ def parse_args():
         help="Scan --log-dir folder recursively for log files."
     )
     parser.add_argument(
-        '--output_file', type=str, required=False, default=None,
+        '--output_file', '--output-file', type=str, required=False, default=None,
         help="Write summary of experiments into this file. Two types of files "\
              "are supported: *.json and *.json.gz. If multiple output files are "\
              "requested, the actual name will be '*_INDEX.json' or *_INDEX.json.gz. "\
@@ -184,7 +184,7 @@ def parse_args():
              "that file will be *_failed.json or *_failed.json.gz."
     )
     parser.add_argument(
-        '--output_params', type=str, required=False, default=None,
+        '--output_params', '--output-params', type=str, required=False, default=None,
         help="Parameters that will go into output files. If not specified, all"\
              "parameters are serialized. Keep in mind that will all parameters"\
              "output files may become qute large - you may want to use *.json.gz"\
@@ -193,13 +193,13 @@ def parse_args():
     # Only one of benchmarks-per-file or num-output-files can present.
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
-        '--benchmarks_per_file', type=int, required=False, default=None,
+        '--benchmarks_per_file', '--benchmarks-per-file', type=int, required=False, default=None,
         help="Maximal number of benchmarks per one output file. By default, "\
              "all benchmarks go into one file. Is not compatible with "\
              "--num_output_files argument."
     )
     group.add_argument(
-        '--num_output_files', type=int, required=False, default=None,
+        '--num_output_files', '--num-output-files', type=int, required=False, default=None,
         help="Number of output files. Algorithm is naive and may result in "\
              "output files being of different size: determine total number of"\
              "log files (N) and write first N/num-output-files benchmarks into"\
@@ -208,7 +208,7 @@ def parse_args():
     )
     #
     parser.add_argument(
-        '--failed_benchmarks', type=str, required=False, default='discard',
+        '--failed_benchmarks', '--failed-benchmarks', type=str, required=False, default='discard',
         choices=set(("keep", "discard", "keep_separately")),
         help="Action for failed benchmarks - those that do not contain positive "\
              "value for 'results.throughput' parameter."
@@ -216,13 +216,13 @@ def parse_args():
     # Only one filter specification is allowed
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
-        '--filter_params', type=str, required=False, default=None,
+        '--filter_params', '--filter-params', type=str, required=False, default=None,
         help="A comma separated list of parameters to use as a filter. Only "\
              "those benchmarks will be serialized that contain all parameters "\
              "defined here."
     )
     group.add_argument(
-        '--filter_query', type=str, required=False, default=None,
+        '--filter_query', '--filter-query', type=str, required=False, default=None,
         help="A JSON dictionary that sets constraints parameter names. In order "\
              "to match, benchmark must contain all parameters defined in query "\
              "with exactly the same values. Format is similar to 'condition' "\

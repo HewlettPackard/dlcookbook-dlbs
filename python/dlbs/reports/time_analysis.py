@@ -60,10 +60,10 @@ if __name__ == "__main__":
         exit(1)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--log-dir', type=str, required=False, default=None,
+    parser.add_argument('--log_dir', '--log-dir', type=str, required=False, default=None,
                         help="Scan this folder for *.log files. "\
                              "Scan recursively if --recursive is set.")
-    parser.add_argument('--log-file', type=str, required=False, default=None,
+    parser.add_argument('--log_file', '--log-file', type=str, required=False, default=None,
                         help="Get batch statistics from this experiment.")
     parser.add_argument('--recursive', required=False, default=False, action='store_true',
                         help='Scan --log-dir folder recursively for log files.')
