@@ -41,12 +41,21 @@ print_help() {
     echo "--num_workers K                    Number of workers (parallel jobs) to use to create dataset. [default: 1]"
     echo "--bboxes_dir DIR                   A path to a folder with ImageNet original XML files containing bounding boxes."
   fi
+  if [[ "$format" =~ ^tensors(1|4)$ ]]; then
+    echo "--images_per_file  M               Number of images in one output file. [default: 1]"
+    echo "--nimages          N               Set this value to > 0 to convert only this number of images. [default: 0]"
+    echo "--shuffle          true|false      Randomly shuffle list of image file names. Useful with --nimages. [default: false]"
+    echo "--num_workers      K               Number of workers. You may want to increase this number if your dataset is large."
+    echo "                                   Each worker will operate on its own unique set of input files. No two workers write"
+    echo "                                   the same output file. Select number of threads and images per file depending on size"
+    echo "                                   of your dataset. [default: 1]"
+  fi
   echo ""
   echo "Usage:"
   echo "  $usage_example"
 }
 
-if [[ "$1" =~ ^(help|-h)$ ]]; then
+if [[ "$1" =~ ^(help|-h|--help)$ ]]; then
   if [ "$2" == "lmdb" ]; then
     print_help "lmdb" "LMDB" "Caffe, Caffe2 and PyTorch" \
                "$0 --dataset lmdb --input /storage/imagenet --output /storage/lmdb --docker_image hpe/bvlc_caffe:cuda9-cudnn7 --img_size 300 --docker docker --caffe_dir /opt/caffe/bin"
@@ -59,20 +68,25 @@ if [[ "$1" =~ ^(help|-h)$ ]]; then
   elif [ "$2" == "fast_tfrecord" ]; then
     print_help "fast_tfrecord" "Fast TFRecord" "TensorFlow (tf_cnn_benchmarks version from DLBS)" \
                "$0 --dataset fast_tfrecord --input /storage/imagenet --output /storage/fast_tfrecord --docker_image hpe/tensorflow:cuda9-cudnn7 --img_size 300 --docker nvidia-docker --num_shards 24 --num_workers 8"
+  elif [[ "$2" =~ ^tensors(1|4)$ ]]; then
+    [ "$2" == "tensors4" ] && data_name="4 byte (float32) binary" || data_name="1 byte (unsigned char) binary"
+    print_help "$2" "$data_name" "Inference (TensorRT) benchmark tool" \
+           "$0 --input_dir=/mnt/input --output_dir=/mnt/output --size=227 --images_per_file=20000 --shuffle --num_workers=5"
   else
     echo "Generate benchmark dataset based on ImageNet data. The tool can generate"
     echo "datasets in the following formats:"
-    echo "--------------------------------------------------"
-    echo "| Format        | Frameworks                     |"
-    echo "|---------------|--------------------------------|"
-    echo "| lmdb          | Caffe, Caffe2 , PyTorch        |"
-    echo "| recordio      | MXNET                          |"
-    echo "| tfrecord      | TensorFlow                     |"
-    echo "| fast_tfrecord | TensorFlow (tf_cnn_benchmarks) |"
-    echo "--------------------------------------------------"
+    echo "------------------------------------------------------"
+    echo "| Format            | Frameworks                     |"
+    echo "|-------------------|--------------------------------|"
+    echo "| lmdb              | Caffe, Caffe2 , PyTorch        |"
+    echo "| recordio          | MXNET                          |"
+    echo "| tfrecord          | TensorFlow                     |"
+    echo "| fast_tfrecord     | TensorFlow (tf_cnn_benchmarks) |"
+    echo "| tensors1/tensors4 | TensorRT                       |"
+    echo "------------------------------------------------------"
     echo "Get more help: "
     echo "   $0 help FORMAT"
-    echo "where FORMAT is one of [lmdb, recordio, tfrecord, fast_tfrecord]"
+    echo "where FORMAT is one of [lmdb, recordio, tfrecord, fast_tfrecord, tensors1, tensors4]"
   fi
   exit 0
 fi
@@ -96,7 +110,12 @@ mxnet_dir=/opt/mxnet/bin
 caffe_dir=/opt/caffe/bin         # Two options in general
                                  #    /opt/caffe/bin
                                  #    /opt/caffe/build/tools
-# ./scripts/make_imagenet_data.sh --docker_image hpe/bvlc_caffe:cuda8-cudnn6 --input /fdata/serebrya/imagenet/data/train --output /fdata/serebrya/imagenet/data/lmdb  --dataset lmdb --img_size 300
+# TensorRT: binary format with 1 or 4 bytes per element
+shuffle="false"
+nimages=0
+images_per_file=1
+
+
 
 unknown_params_action=set
 . ./scripts/environment.sh
@@ -157,6 +176,12 @@ elif [ "$dataset" == "fast_tfrecord" ]; then
   docker_args="--rm -ti --volume=${DLBS_ROOT}:/workspace --volume=${input}:/imagenet/input --volume=${output}:/imagenet/output ${docker_image}"
   converter="/workspace/python/dlbs/data/imagenet/tensorflow_data.py"
   script="PYTHONPATH=/workspace/python python $converter --input_dir /imagenet/input --num_shards $num_shards --output_dir /imagenet/output --num_workers $num_workers --img_size $img_size"
+elif [[ "$dataset" =~ ^tensors(1|4)$ ]]; then
+  [ "$dataset" == "tensors1" ] && dtype="uchar" || dtype="float"
+  [ "$shuffle" == "true" ] && shuffle_param="--shuffle" || shuffle_param=""
+  docker_args="--rm -ti --volume=${input}:/imagenet/input --volume=${output}:/imagenet/output ${docker_image}"
+  script="images2tensors --input_dir=/imagenet/input --output_dir=/imagenet/output --size=${img_size} --nimages=${nimages} --nthreads=${num_workers}"
+  script="${script} ${shuffle_param} --images_per_file=${images_per_file} --dtype=${dtype}"
 else
   logfatal "Invalid dataset: ${dataset}"
 fi

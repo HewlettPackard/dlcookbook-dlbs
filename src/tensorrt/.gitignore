@@ -4,5 +4,7 @@
 # But not these files...
 !.gitignore
 !CMakeLists.txt
-!main.cpp
+!*.cpp
+!*.hpp
+!*.ipp
 !README.md

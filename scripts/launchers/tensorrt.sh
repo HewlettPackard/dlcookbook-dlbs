@@ -8,25 +8,30 @@ if [ "$exp_status" = "simulate" ]; then
     echo "${tensorrt_env} ${runtime_launcher} tensorrt ${tensorrt_args}"
     exit 0
 fi
-# Check batch is small enough for this experiment
-__batch_file__="$(dirname ${exp_log_file})/${exp_framework}_${exp_device_type}_${exp_model}.batch"
-is_batch_good "${__batch_file__}" "${exp_replica_batch}" || {
-  report_and_exit "skipped" "The replica batch size (${exp_replica_batch}) is too large for given SW/HW configuration." "${exp_log_file}";
-}
-# Make sure model exists
-host_model_dir=$DLBS_ROOT/models/${exp_model}
-model_file=$(find ${host_model_dir}/ -name "*.${exp_phase}.prototxt")
-file_exists "$model_file" || report_and_exit "failure" "A model file ($model_file) does not exist." "${exp_log_file}"
+# Do model checking and preparation only if not fake inference.
+if [ "${tensorrt_fake_inference}" == "false" ]; then
+    # Check batch is small enough for this experiment
+    __batch_file__="$(dirname ${exp_log_file})/${exp_framework}_${exp_device_type}_${exp_model}.batch"
+    is_batch_good "${__batch_file__}" "${exp_replica_batch}" || {
+        report_and_exit "skipped" "The replica batch size (${exp_replica_batch}) is too large for given SW/HW configuration." "${exp_log_file}";
+    }
+    # Make sure model exists
+    host_model_dir=$DLBS_ROOT/models/${exp_model}
+    model_file=$(find ${host_model_dir}/ -name "*.${exp_phase}.prototxt")
+    file_exists "$model_file" || report_and_exit "failure" "A model file ($model_file) does not exist." "${exp_log_file}"
 
-# Copy model file and replace batch size there.
-remove_files "${host_model_dir}/${caffe_model_file}"
-cp ${model_file} ${host_model_dir}/${caffe_model_file} || {
-  report_and_exit "failure" "Cannot copy \"${model_file}\" to \"${host_model_dir}/${caffe_model_file}\"" "${exp_log_file}"
-}
+    # Copy model file and replace batch size there.
+    remove_files "${host_model_dir}/${caffe_model_file}"
+    cp ${model_file} ${host_model_dir}/${caffe_model_file} || {
+        report_and_exit "failure" "Cannot copy \"${model_file}\" to \"${host_model_dir}/${caffe_model_file}\"" "${exp_log_file}"
+    }
 
-sed -i "s/__EXP_DEVICE_BATCH__/${exp_replica_batch}/g" ${host_model_dir}/${caffe_model_file}
-net_name=$(get_value_by_key "${host_model_dir}/${caffe_model_file}" "name")
-echo "__exp.model_title__= \"${net_name}\"" >> ${exp_log_file}
+    sed -i "s/__EXP_DEVICE_BATCH__/${exp_replica_batch}/g" ${host_model_dir}/${caffe_model_file}
+    net_name=$(get_value_by_key "${host_model_dir}/${caffe_model_file}" "name")
+    echo "__exp.model_title__= \"${net_name}\"" >> ${exp_log_file}
+fi
+# If does not exist, create calibration cache path
+[ ! -z ${tensorrt_cache} ] && mkdir -p ${tensorrt_cache}
 # This script is to be executed inside docker container or on a host machine.
 # Thus, the environment must be initialized inside this scrip lazily.
 [ -z "${runtime_launcher}" ] && runtime_launcher=":;"
@@ -49,4 +54,6 @@ else
     eval $script >> ${exp_log_file} 2>&1
 fi
 
-remove_files "${host_model_dir}/${caffe_model_file}"
+if [ "${tensorrt_fake_inference}" == "false" ]; then
+    remove_files "${host_model_dir}/${caffe_model_file}"
+fi

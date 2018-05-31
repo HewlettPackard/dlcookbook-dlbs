@@ -6,20 +6,113 @@
       "desc": "Path to script that launches TensorRT benchmarks."
     },
     "tensorrt.env": {
-      "val": "${runtime.EXPORT_CUDA_CACHE_PATH}",
+      "val": [
+        "${runtime.EXPORT_CUDA_CACHE_PATH}"
+      ],
       "type": "str",
       "desc": "Environmental variables to set for TensorRT benchmarks."
     },
+    "tensorrt.cache": { 
+      "val": "${HOME}/.tensorrt_cache",
+      "type": "str",
+      "desc": [
+        "A path to store calibration caches for TensorRT when running in INT8 inference regime.",
+        "If empty, no cache will be used and calibration will be done with every benchmark what's",
+        "not desireable for models that's input size is large. The advice is to run quick runs for",
+        "every model with this path set what will result in cache being populated. Then run real benchmarks",
+        "and provide same cache path."
+      ]
+    },
+    "tensorrt.report_frequency": {
+      "val": -1,
+      "type": "int",
+      "desc": [
+        "Report progress every N-th processed batch. Default value (-1) means do not report progress,",
+        "report only final overall statistics"
+      ]
+    },
+    "tensorrt.no_batch_times": {
+      "val": false,
+      "type": "bool",
+      "desc": "If set, DLBS won't log individual batch times."
+    },
+    "tensorrt.resize_method": {
+      "val": "resize",
+      "type": "str",
+      "val_domain": ["resize", "crop"],
+      "desc": [
+        "Method to resize images: normal resize or crop. Resize is expensive, crop is not.",
+        "If crop is not applicable due to image being smaller, resize is used instead."
+      ]
+    },
+    "tensorrt.num_prefetchers": {
+      "val": "$(${exp.num_gpus} * 3)$",
+      "type": "int",
+      "desc": "Number of prefetch threads (data readers)"
+    },
+    "tensorrt.num_decoders": {
+      "val": "$(${exp.num_gpus} * 3)$",
+      "type": "int",
+      "desc": "Number of decoder threads (preprocessors that convert images to tensors)."
+    },
+    "tensorrt.prefetch_queue_size": {
+      "val": "$(${exp.num_gpus} * 3)$",
+      "type": "int",
+      "desc": "Maximal number of batches of images in a queue of loaded but non-decoded images."
+    },
+    "tensorrt.prefetch_batch_size": {
+      "val": "${exp.replica_batch}",
+      "type": "int",
+      "desc": "Size of a prefetch batch."
+    },
+    "tensorrt.inference_queue_size": {
+      "val": "$(${exp.num_gpus} * 3)$",
+      "type": "int",
+      "desc": "Number of pre-allocated inference requests."
+    },
+    "tensorrt.fake_decoder": {
+      "val": false,
+      "type": "bool",
+      "desc": [
+        "If set, fake decoder will be used. Fake decoder is a decoder that does not decode JPEG images into",
+        "different representation, but just passes through itself inference requests. This option is useful",
+        "to benchmark prefetchers and/or storage."
+      ]
+    },
+    "tensorrt.fake_inference": {
+      "val": false,
+      "type": "bool",
+      "desc": [
+        "If set, fake inference engine will be used. Fake engine is an engine that does not perform inference.",
+        "It just fetches requests and pushes them immidiiately into response queue. This option is useful",
+        "to benchmark ingestion pipeline and/or storage."
+      ]
+    },
     "tensorrt.args": {
       "val": [
-        "--model ${tensorrt.model_dir}/${tensorrt.model_file}",
+        "--model ${exp.model}",
+        "--model_file ${tensorrt.model_dir}/${tensorrt.model_file}",
         "--batch_size ${exp.replica_batch}",
         "--dtype ${exp.dtype}",
         "--num_warmup_batches ${exp.num_warmup_batches}",
         "--num_batches ${exp.num_batches}",
         "$('--profile' if ${tensorrt.profile} is True else '')$",
         "--input ${tensorrt.input}",
-        "--output ${tensorrt.output}"
+        "--output ${tensorrt.output}",
+        "--cache $('' if '${tensorrt.cache}' == '' else '${tensorrt.cache}' if ${exp.docker} is False else '/workspace/tensorrt_cache')$",
+        "--report_frequency=${tensorrt.report_frequency}",
+        "$('--no_batch_times' if ${tensorrt.no_batch_times} else '')$",
+        "--gpus ${exp.gpus}",
+        "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data/')$",
+        "--resize_method ${tensorrt.resize_method}" ,
+        "--num_prefetchers ${tensorrt.num_prefetchers}",
+        "--num_decoders ${tensorrt.num_decoders}",
+        "--prefetch_queue_size ${tensorrt.prefetch_queue_size}",
+        "--prefetch_batch_size ${tensorrt.prefetch_batch_size}",
+        "--inference_queue_size ${tensorrt.inference_queue_size}",
+        "$('--fake_decoder' if ${tensorrt.fake_decoder} else '')$",
+        "$('--fake_inference' if ${tensorrt.fake_inference} else '')$",
+        "--data_name=${tensorrt.data_name}"
       ],
       "type": "str",
       "desc": "Command line arguments that launcher uses to launch TensorRT."
@@ -35,7 +128,7 @@
       "desc": "Directory where Caffe's model file is located. Different for host/docker benchmarks."
     },
     "tensorrt.docker_image": {
-      "val": "hpe/tensorrt:cuda8-cudnn5",
+      "val": "hpe/tensorrt:cuda9-cudnn7",
       "type": "str",
       "desc": "The name of a docker image to use for TensorRT."
     },
@@ -46,9 +139,11 @@
         "--pid=host",
         "--volume=${DLBS_ROOT}/models/${exp.model}:/workspace/model",
         "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
+        "$('--volume=${tensorrt.cache}:/workspace/tensorrt_cache' if '${tensorrt.cache}' != '' else '')$",
         "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
+        "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
         "${exp.docker_args}",
-        "${tensorrt.docker_image}"
+        "${exp.docker_image}"
       ],
       "type": "str",
       "desc": "In case if containerized benchmarks, this are the docker parameters."
@@ -77,22 +172,29 @@
       "val": "",
       "type": "str",
       "desc": "Basically, it's a LD_LIBRARY_PATH for TensorRT in case of a bare metal run (should be empty)."
+    },
+    "tensorrt.data_dir": {
+      "val": "",
+      "type": "str",
+      "desc": [
+        "*** This parameter is not used since TensorRT backend does not support real data. ***",
+        "*** It is here for compatibility reasons with exp.data_dir ***"
+      ]
+    },
+    "tensorrt.data_name": {
+      "val": "images",
+      "type": "str",
+      "desc": [
+        "Name of an input dataset - 'images' or 'tensors'"
+      ]
     }
-  },
-  "tensorrt.data_dir": {
-    "val": "",
-    "type": "str",
-    "desc": [
-      "*** This parameter is not used since TensorRT backend does not support real data. ***",
-      "*** It is here for compatibility reasons with exp.data_dir ***"
-    ]
   },
   "extensions": [
     {
       "condition":{ "exp.framework": "tensorrt" },
       "parameters": {
         "exp.framework_title": "TensorRT",
-        "exp.status": "$('disabled' if ('${exp.phase}'=='training') or ('${exp.device_type}'=='cpu') or (${exp.num_local_gpus}>1) else 'ok')$"
+        "exp.status": "$('disabled' if ('${exp.phase}'=='training') or ('${exp.device_type}'=='cpu') else 'ok')$"
       }
     },
     {
