@@ -41,13 +41,13 @@ The inference benchmark tool is tightly integrated with Deep Learning Benchmarki
 Suite and it's the most easiest way to run benchmarks (framework is `tensorrt`).
 If you need to run benchmarks with real data, make sure you read the following:
 
-1. Read about [dataset options](./datasets.md) for this tool
-2. Convert images to a binary format with [images2tensors](./images2tensors.md)
+1. Read about [dataset options](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/src/tensorrt/docs/datasets.md) for this tool
+2. Convert images to a binary format with [images2tensors](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/src/tensorrt/docs/images2tensors.md)
    tool.
 3. Find out at what rate you can stream images from your storage with
-   [benchmark_tensor_dataset](./dataset_benchmarks.md) tool.
+   [benchmark_tensor_dataset](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/src/tensorrt/docs/dataset_benchmarks.md) tool.
 4. Additionally, the inference benchmark tool can be configured with
-   [environment variables](./inference_benchmarks.md).
+   [environment variables](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/src/tensorrt/docs/inference_benchmarks.md).
 
 For overview of Deep Learning Benchmarking Suite, read this
 [introduction](https://hewlettpackard.github.io/dlcookbook-dlbs/#/). We have a
