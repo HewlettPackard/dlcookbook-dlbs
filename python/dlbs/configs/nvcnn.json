@@ -57,7 +57,7 @@
         "$('' if not '${nvcnn.data_dir}' else '--data_dir=${nvcnn.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
         "--batch_size=${exp.replica_batch}",
         "--nstep_burnin=${exp.num_warmup_batches}",
-        "--num_batches=${exp.num_batches}",
+        "--num_batches=$(${exp.num_batches} + ${exp.num_warmup_batches})$",
         "$('--nccl' if ${nvcnn.use_nccl} else '--nonccl')$",
         "$('--xla' if ${nvcnn.use_xla} else '--noxla')$",
         "$('--distort_color' if ${nvcnn.use_distort_color} else '--nodistort_color')$",
