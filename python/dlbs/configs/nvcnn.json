@@ -70,7 +70,7 @@
       "desc": "These are a command line arguments passed to nvcnn_benchmarks script."
     },
     "nvcnn.docker_image": {
-      "val": "hpe/tensorflow:cuda9-cudnn7",
+      "val": "nvcr.io/nvidia/tensorflow:18.04-py3",
       "type": "str",
       "desc": "The name of a docker image to use for NVCNN (TensorFlow) if containerized benchmark is requested."
     },
