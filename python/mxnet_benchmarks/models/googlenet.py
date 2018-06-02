@@ -59,10 +59,6 @@ class GoogleNet(Model):
         )
         Model.__init__(self, params)
 
-        if self.dtype == 'float16':
-            print("[WARNING] MxNet does not provide half precision kernel for LRN layer. It will be disabled. "\
-                  "Thus, comparison with single precision version or other frameworks will not be totally fair.")
-
         training = self.phase == 'training'
         data = self.add_data_node()
 

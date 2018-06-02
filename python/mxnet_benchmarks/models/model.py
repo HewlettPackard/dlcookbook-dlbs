@@ -13,6 +13,7 @@
 # limitations under the License.
 """Base class for all models"""
 from __future__ import print_function
+import os
 import mxnet as mx
 import numpy as np
 
@@ -35,6 +36,18 @@ class Model(object):
         self.__num_classes = params['num_classes']
         self.__phase = params['phase']
         self.__dtype = params['dtype']
+        self.__have_float16_lrn = 'DLBS_MXNET_NO_FLOAT16_LRN' not in os.environ
+        if self.__dtype == 'float16' and self.__have_float16_lrn:
+            print("[WARNING] The data type is 'float16' and I assume MXNET provides a float16 kernel for LRN layer. " \
+                  "If this model uses LRN and your MXNET version is outdated, you will get error. In this case, to "\
+                  "disable LRN layers in float16 regime, define the following variable 'DLBS_MXNET_NO_FLOAT16_LRN' " \
+                  "(the value of this variable does not matter) i.e.: "\
+                  "-Pruntime.launcher='\"DLBS_MXNET_NO_FLOAT16_LRN=1 \"'")
+        if self.__dtype == 'float16' and not self.__have_float16_lrn:
+            print("[WARNING] The data type is 'float16' and you disable LRN layers. All calls to Model.maybe_lrn " \
+                  " will do nothing. If your MXNET version is up to date and provides LRN float16 kernel make sure "\
+                  "DLBS_MXNET_NO_FLOAT16_LRN environment variable is not defined. All this is relevant only if this "\
+                  "model uses LRN operators.")
 
     @staticmethod
     def check_parameters(params, default_params):
@@ -82,12 +95,14 @@ class Model(object):
             about it like dropping completely these operators.
             They are used by AlexNet and GoogleNet.
 
+            UPDATE: Seems like mxnet now provides this kernel.
+
             :param obj v: Input tensor.
             :param str name: Name of the LRN operator.
             :return: The input tensor 'v' if data type is float16 else result of LRN
                      operator
         """
-        if self.dtype == 'float32':
+        if self.dtype == 'float32' or self.__have_float16_lrn:
             return mx.symbol.LRN(data=v, alpha=0.0001, beta=0.75, knorm=2, nsize=5, name=name)
         else:
             return v
