@@ -836,7 +836,7 @@ def inference_acoustic_model(net, input_layer):
     net.use_batch_norm = False
     x = net.input_layer(input_layer)
     x = net.flatten(x)
-    for i in xrange(5):
+    for i in range(5):
         x = net.fully_connected(x, 2048)
     return x
 
