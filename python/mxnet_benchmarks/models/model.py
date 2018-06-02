@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Base class for all models"""
+from __future__ import print_function
 import mxnet as mx
 import numpy as np
 
@@ -75,7 +76,7 @@ class Model(object):
             v = mx.symbol.softmax(data=v, name='softmax')
         return v
 
-    def maybe_lrn(v, name):
+    def maybe_lrn(self, v, name):
         """ MxNet does not have float16 kernel for LRN operator. So, we use it only
             for float32 data type. That makes comparison not fair. Need to do something
             about it like dropping completely these operators.
