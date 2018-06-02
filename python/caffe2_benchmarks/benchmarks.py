@@ -111,17 +111,21 @@ def create_model(model_builder, model, enable_tensor_core, float16_compute, loss
     return outputs
 
 
-def build_optimizer(model, float16_compute = False):
+def build_optimizer(model, float16_compute=False):
     if False: # float16_compute:   # A newwer versions of Caffe support this
         print("[INFO] Building FP16 SGD optimizer.")
         opt = optimizer.build_fp16_sgd(
             model, 0.1, momentum=0.9, policy='step', gamma=0.1, weight_decay=1e-4
         )
     else:
-        print("[INFO] Building Multi-precision SGD optimizer.")
         optimizer.add_weight_decay(model, 1e-4)
-        #opt = optimizer.build_sgd(
-        opt = optimizer.build_multi_precision_sgd(
+        try:
+            opt_builder = optimizer.build_multi_precision_sgd
+            print("[INFO] Building Multi-precision SGD optimizer.")
+        except AttributeError:
+            opt_builder = optimizer.build_sgd
+            print("[INFO] Building SGD optimizer (Multi-precision SGD is not available).")
+        opt = opt_builder(
             model, 0.1, momentum=0.9, policy='fixed', gamma=0.1
         )
     return opt
@@ -129,20 +133,20 @@ def build_optimizer(model, float16_compute = False):
 
 def benchmark(opts):
     """Runs inference or training benchmarks depending on **opts['phase']** value.
-    
+
     You may want to call **workspace.ResetWorkspace()** to clear everything once
     this method has exited.
-    
+
     :param dict opts: Options for a benchmark. Must contain `model` and 'phase'.\
                       Other options are optional.
     :return: Tuple of model title and numpy array containing batch times.
     :rtype: (string, numpy array)
-    
+
     Usage example:
 
     >>> opts = {'model': 'resnet50', 'phase': 'training'}
     >>> model_title, times = benchmark(opts)
-    
+
     This function checks that **opts** contains all mandatory parameters, sets
     optional parameters to default values and depending on **phase** value,
     calls either :py:func:`benchmark_inference` or :py:func:`benchmark_training`.
@@ -150,7 +154,7 @@ def benchmark(opts):
     assert 'model' in opts, "Missing 'model' in options."
     assert 'phase' in opts, "Missing 'phase' in options."
     assert opts['phase'] in ['inference', 'training'], "Invalid value for 'phase' (%s). Must be 'inference' or 'training'." % (opts['phase'])
-    
+
     opts['batch_size'] = opts.get('batch_size', 16)
     opts['num_warmup_batches'] = opts.get('num_warmup_batches', 10)
     opts['num_batches'] = opts.get('num_batches', 10)
@@ -160,7 +164,7 @@ def benchmark(opts):
     opts['enable_tensor_core'] = opts.get('enable_tensor_core', False)
     opts['num_decode_threads'] = opts.get('num_decode_threads', 1)
     opts['float16_compute'] = opts.get('float16_compute', False)
-    
+
     if opts['device'] == 'gpu':
         print("[INFO] Creating ModelHelper for GPU. Optimizations are applied.")
         arg_scope = {
@@ -177,7 +181,6 @@ def benchmark(opts):
         return benchmark_inference(model, opts)
     else:
         return benchmark_training(model, opts)
-    
 
 def benchmark_inference(model, opts):
     """ Runs N inferences and returns array of batch times in seconds.
@@ -214,7 +217,7 @@ def benchmark_inference(model, opts):
             print("[INFO] Adding real data inputs (%s) for Caffe2 inference benchmarks" % (opts['data_dir']))
             model_builder.add_data_inputs(
                 model, reader, use_gpu_transform=(opts['device'] == 'gpu'),
-                num_decode_threads = opts['num_decode_threads']
+                num_decode_threads=opts['num_decode_threads']
             )
         create_model(model_builder, model, opts['enable_tensor_core'], opts['float16_compute'])
     workspace.RunNetOnce(model.param_init_net)
@@ -259,7 +262,7 @@ def benchmark_training(model, opts):
             print("[INFO] Adding real data inputs (%s) for Caffe2 training benchmarks" % (opts['data_dir']))
             model_builder.add_data_inputs(
                 model, reader, use_gpu_transform=(opts['device'] == 'gpu'),
-                num_decode_threads = opts['num_decode_threads']
+                num_decode_threads=opts['num_decode_threads']
             )
 
     def create_net(model, loss_scale):
@@ -337,7 +340,7 @@ if __name__ == '__main__':
         print("__caffe2.cuda_version__=%s" % (json.dumps(workspace.GetCUDAVersion())))
         print("__caffe2.cudnn_version__=%s" % (json.dumps(workspace.GetCuDNNVersion())))
 
-    try:        
+    try:
         opts = vars(args)
         opts['phase'] = 'inference' if args.forward_only else 'training'
         model_title, times = benchmark(opts)
@@ -360,4 +363,3 @@ if __name__ == '__main__':
         print("__results.time_data__=%s" % (json.dumps((1000.0*times).tolist())))
     else:
         print("__results.status__=%s" % (json.dumps("failure")))
-
