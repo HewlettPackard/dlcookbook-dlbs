@@ -208,6 +208,9 @@ class SyntheticDataLoader(object):
     def __iter__(self):
         return self
 
+    def __next__(self):
+        return (self.data, self.labels)
+
     def next(self):
         return (self.data, self.labels)
 

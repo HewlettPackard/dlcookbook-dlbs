@@ -37,7 +37,7 @@ class ResnetModule(nn.Module):
             )
         # Branch 2
         if bottle_neck:
-            bottleneck_channels = num_filters/4
+            bottleneck_channels = num_filters // 4
             self.main = nn.Sequential(
                 # Block 2A
                 nn.Conv2d(num_input_channels, bottleneck_channels, kernel_size=1, stride=1, padding=0, bias=False),

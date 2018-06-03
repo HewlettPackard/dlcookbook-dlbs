@@ -251,6 +251,9 @@ def main():
     print("[PyTorch benchmakrs] torch.cuda.is_available()=%s" % torch.cuda.is_available())
     print("[PyTorch benchmakrs] torch.version.cuda=%s" % torch.version.cuda)
     print("[PyTorch benchmakrs] torch.backends.cudnn.version()=%s" % torch.backends.cudnn.version())
+    ver = torch.version.__version__.split('.')
+    if len(ver) >= 2 and ver[0] == '0' and int(ver[1]) < 4:
+        print("[WARNING] Expecting PyTorch version 0.4 or above. Most likely something will fail.")
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -344,7 +347,7 @@ def main():
         else:
             opts['phase'] = 'inference' if args.forward_only else 'training'
         model_title, times = benchmark(opts)
-    except Exception, err:
+    except Exception as err:
         #TODO: this is not happenning, program terminates earlier.
         # For now, do not rely on __results.status__=...
         times = np.zeros(0)

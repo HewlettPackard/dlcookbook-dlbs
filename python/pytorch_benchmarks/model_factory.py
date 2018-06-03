@@ -23,6 +23,7 @@ To list supported models, run the following code:
 >>> print(ModelFactory.models.keys())
 """
 from __future__ import absolute_import
+from builtins import str
 import glob
 import os
 import importlib
@@ -48,12 +49,12 @@ def import_models():
             if not model_cls or not inspect.isclass(model_cls) or not hasattr(model_cls, 'implements'):
                 continue
             implements = getattr(model_cls, 'implements')
-            if isinstance(implements, basestring):
+            if isinstance(implements, str):
                 implements = [implements]
             assert isinstance(implements, list), "The 'implements' static member must be either a string or a list of strings"\
                                                  "Error in %s:%s class definition" % (fname, model_cls.__name__)
             for model_id in implements:
-                assert isinstance(model_id, basestring), "The 'implements' static member must be either a string or a list of strings"\
+                assert isinstance(model_id, str), "The 'implements' static member must be either a string or a list of strings"\
                                                          "Error in %s:%s class definition" % (fname, model_cls.__name__)
                 assert model_id not in models, "Model %s implements same model as %s (%s)" % (model_cls.__name__, models[model_id].__name__, model_id)
                 models[model_id] = model_cls
