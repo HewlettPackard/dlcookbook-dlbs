@@ -80,7 +80,7 @@ The `results.time` - is an average time in milliseconds to process one batch of 
 study ./benchmarks/my_experiment/tf.log for error messages. The `results.throughput` parameter is the number
 of instances per second, in this case, number of images/seconds.
 
-The [advanced introduction](./intro/advanced_intro.md?id=advanced-introduction-to-benchmarking-suite) contains more examples of what DLBS can do.
+The [advanced introduction](/docs/intro/advanced_intro.md?id=advanced-introduction-to-benchmarking-suite) contains more examples of what DLBS can do.
 
 
 ## Contact us
