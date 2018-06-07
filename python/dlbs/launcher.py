@@ -28,6 +28,7 @@ import signal
 from dlbs.worker import Worker
 from dlbs.utils import DictUtils
 from dlbs.utils import ResourceMonitor
+from dlbs.utils import param2str
 
 class ProgressReporter(object):
     def __init__(self, num_experiments, num_active_experiments, file_name=None):
@@ -210,7 +211,7 @@ class Launcher(object):
                 assert not isinstance(param_val, list),\
                        "Here, this must not be the list but (%s=%s)" % (param, str(param_val))
                 if not isinstance(param_val, bool):
-                    command.extend(['--%s' % (param.replace('.', '_')), str(param_val)])
+                    command.extend(['--%s' % (param.replace('.', '_')), param2str(param_val)])
                 else:
                     command.extend(['--%s' % (param.replace('.', '_')), ('true' if param_val else 'false')])
             # Prepare environmental variables

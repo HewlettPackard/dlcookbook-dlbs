@@ -28,6 +28,18 @@ from glob import glob
 from dlbs.exceptions import ConfigurationError
 
 
+def param2str(val):
+    """Convert value val of some benchmark parameter to a string."""
+    if isinstance(val, dict):
+        try:
+            return json.dumps(val)
+        except TypeError:
+            s = str(val)
+            print("[WARNING] cannot convert value ('%s') to a string with json.dumps" % s)
+
+    return str(val)
+
+
 class OpenFile(object):
     """Class that can work with gzipped and regular textual files."""
     def __init__(self, fname, mode='r'):

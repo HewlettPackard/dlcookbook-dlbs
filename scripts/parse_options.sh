@@ -36,6 +36,8 @@ ignore_unknown_params=${ignore_unknown_params:-false}
 # 'ignore' - ignore (skip) this parameter
 # 'set' - create new variable and set its value
 unknown_params_action=${unknown_params_action:-'ignore'}
+# Optionally, print found command line arguments
+__print_parsed_args=${__print_parsed_args:-false}
 
 while true; do
   [ -z "${1:-}" ] && break;  # break if there are no arguments
@@ -88,6 +90,9 @@ while true; do
     # Why is dollar escaped? Read this - https://stackoverflow.com/a/9715377/575749.
     # Another option is to use declare $name=$2
       eval $name=\"\$2\";
+      [ "$__print_parsed_args" = "true" ] && {
+        echo "Found new command line argument: $name = ${!name}"
+      }
 
     # Check that Boolean-valued arguments are really Boolean.
       if $was_bool && [[ "$2" != "true" && "$2" != "false" ]]; then

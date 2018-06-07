@@ -82,7 +82,11 @@ class Worker(threading.Thread):
             # supposed to be created is exp.log_file or exp_log_file in the script.
             # Other output of the launching script will be printed by this pyhton code
             # to a stanard output.
-            self.process = subprocess.Popen(self.command, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=self.environ)
+            try:
+                self.process = subprocess.Popen(self.command, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=self.environ)
+            except OSError:
+                print("[ERROR] Failed to run command '%s' (make sure file exists and is executable)" % str(self.command))
+                raise
             while True:
                 output = self.process.stdout.readline()
                 if output == '' and self.process.poll() is not None:
