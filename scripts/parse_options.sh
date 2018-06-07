@@ -85,7 +85,9 @@ while true; do
 
     # Set the variable to the right value-- the escaped quotes make it work if
     # the option had spaces, like --cmd "queue.pl -sync y"
-      eval $name=\"$2\";
+    # Why is dollar escaped? Read this - https://stackoverflow.com/a/9715377/575749.
+    # Another option is to use declare $name=$2
+      eval $name=\"\$2\";
 
     # Check that Boolean-valued arguments are really Boolean.
       if $was_bool && [[ "$2" != "true" && "$2" != "false" ]]; then
