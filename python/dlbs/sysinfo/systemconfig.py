@@ -43,11 +43,6 @@ import logging
 from collections import OrderedDict
 from dlbs.utils import Modules
 
-if Modules.HAVE_NUMPY:
-    import numpy as np
-if Modules.HAVE_PANDAS:
-    import pandas as pd
-
 class SysInfo(object):
 
     def __init__(self,
@@ -123,16 +118,16 @@ class SysInfo(object):
             return None
 
         output_lines = re.split(r'\n', re.sub(r'\\x03', '', re.sub(r"\\x0312", "", output)))[2:-1]
-        info = OrderedDict()
+        inxi_info = OrderedDict()
         for _, line in enumerate(output_lines):
             if line[0] != ' ': # key
                 try:
                     key, prop = line.split(":")
-                    info[key] = [prop.strip()]
+                    inxi_info[key] = [prop.strip()]
                 except ValueError as err:
                     logging.warn("INXI output parsing error on line: " + line)
                     logging.exception(err)
-        return info
+        return inxi_info
 
     @staticmethod
     def cpuinfo():
@@ -168,7 +163,7 @@ class SysInfo(object):
         """
         try:
             with open('/proc/meminfo', 'r') as fhandle:
-                info = OrderedDict([
+                mem_info = OrderedDict([
                     (x[0], x[1].strip())
                     for x in [
                         re.sub(r'\t', '', l.strip()).split(':') for l in
@@ -178,7 +173,7 @@ class SysInfo(object):
         except IOError:
             return None
 
-        return info
+        return mem_info
 
     @staticmethod
     def lscpu():
@@ -193,68 +188,90 @@ class SysInfo(object):
         except OSError:
             return None
 
-        info = OrderedDict([
+        lscpu_info = OrderedDict([
             (x[0], x[1].strip())
             for x in [
                 re.sub(r'\t', '', l.strip()).split(':') for l in output if len(l.strip()) > 0
             ]
         ])
-        return info
+        return lscpu_info
 
     @staticmethod
     def nvidiasmi():
         """Description ...
         """
         try:
-            process = subprocess.Popen(shlex.split("/usr/bin/nvidia-smi -q"),
+            process = subprocess.Popen(['/usr/bin/nvidia-smi', '-q'],
                                        stdin=subprocess.PIPE,
                                        stdout=subprocess.PIPE,
                                        close_fds=True)
-            output = process.communicate()[0][3:]
+            output, _ = process.communicate()
+            output = output.split('\n')
+            #print(output)
         except OSError:
             return None
+        gpu_info = {}               # Top level dictionary containing parsed information
+        groups = [(gpu_info, -1)]   # Stack of group properties (group, level)
+        # These are shortcuts for top element in groups
+        group = gpu_info            # Current group
+        level = -1                  # Current level. The value of '-1' means root group.
 
-        output_lines = re.split(r'\n', re.sub(r'\\x03', '', re.sub(r"\\x0312", "", output)))[2:-1]
-        lines = [line for line in output_lines if len(line.strip()) > 0]
+        def __move_to_level(groups, target_level):
+            while len(groups) > 0:
+                if groups[-1][1] == target_level:
+                    return groups[-1]
+                groups.pop()
+            return (None, None)
 
-        lines = lines[3:]
-        recs = []
-        maxlevel = 0
-        for l in lines:
-            l = l.rstrip()
-            m = l.strip()
-            level = int((len(l)-len(m))/4)
-            maxlevel = max(level, maxlevel)
-            key_val = re.split(' : ', m)
-            key = key_val[0].strip()
-            if len(key_val) == 2:
-                val = key_val[1].strip()
-            else:
-                val = ''
-            recs.append((level, key, val))
-        row = [None]*(maxlevel+2)
-        rows = []
-        values = []
-        for rec in recs:
-            (level, key, val) = rec
-            row[level] = key
-            for i in range(level+1, len(row)):
-                row[i] = None
-            rows.append(list(row))
-            values.append(val)
-        data_frame = pd.DataFrame(rows)
-        data_frame = data_frame.replace(np.nan, '', regex=True)
-        data_frame[data_frame.columns.values] = data_frame[data_frame.columns.values].astype(str)
-        gpus = OrderedDict()
-        for row, value in zip(data_frame.iterrows(), values):
-            if value == '':
+        kvpattern = re.compile("([ ]*)([a-zA-Z0-9]+([ ]+[a-zA-Z0-9]+)*)[ ]+[:][ ]+(.+)")
+        for line in output:
+            line = line.rstrip(' ')
+            if not line or line.startswith('='):
                 continue
-            row = row[1].values
-            if row[0] not in gpus:
-                gpus[row[0]] = OrderedDict()
-            key = '/'.join([str(f) for f in row[1:] if f != ''])
-            gpus[row[0]][key] = value
-        return gpus
+            kv = kvpattern.match(line)
+            # If matched, then:
+            #   group(0) : Entire string
+            #   group(1) : Current level
+            #   group(2) : Property name
+            #   group(4) : Property value
+            if not kv:
+                # This is a new group
+                gname = line.lstrip(' ')
+                glevel = (len(line) - len(gname)) / 4
+                if glevel > level + 1:
+                    #print("[WARNING] Found group (name=%s, level=%d) at level %d" % (gname, glevel, level))
+                    #return gpu_info
+                    pass
+                elif glevel <= level:
+                    #print("[INFO] Found group (name=%s, level=%d) at level %d, moving back to level %d" % (gname, glevel, level, glevel-1))
+                    group, level = __move_to_level(groups, glevel-1)
+                    if not group:
+                        print("[WARNING] Found group (name=%s, level=%d) at level %d but could not move back to level %d" % (gname, glevel, level, glevel-1))
+                        return gpu_info
+                else:
+                    #print("[INFO] Found group (name=%s, level=%d) at level %d" % (gname, glevel, level))
+                    pass
+                group[gname] = {}
+                groups.append((group[gname], glevel))
+                group, level = groups[-1]
+            else:
+                # This a new property
+                plevel = len(kv.group(1)) / 4
+                pname = kv.group(2)
+                pvalue = kv.group(4)
+                if plevel > level + 1:
+                    #print("[WARNING] Found property (name=%s, level=%d) at level %d" % (pname, plevel, level))
+                    #return gpu_info
+                    pass
+                elif plevel <= level:
+                    #print("[INFO] Found property (name=%s, level=%d) at level %d, moving back to level %d" % (pname, plevel, level, plevel-1))
+                    group, level = __move_to_level(groups, plevel-1)
+                    if not group:
+                        print("[WARNING] Found property (name=%s, level=%d) at level %d but could not move back to level %d" % (pname, plevel, level, plevel-1))
+                        return gpu_info
+                group[pname] = pvalue
+        return gpu_info
+
 
 #def nvidatopo(jsonfile):
 #    """Description ...
@@ -281,5 +298,5 @@ class SysInfo(object):
 
 
 if __name__ == "__main__":
-    info = SysInfo().collect()
-    print(json.dumps(info, indent=2))
+    sysinfo = SysInfo.nvidiasmi()
+    print(json.dumps(sysinfo, indent=4))
