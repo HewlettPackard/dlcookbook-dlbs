@@ -90,6 +90,9 @@ class Model(object):
             v = mx.sym.cast(data=v, dtype=np.float32)
         if self.phase == 'training':
             labels = mx.sym.Variable(name="softmax_label")
+            # Just in case labels are of shape (batch_size, 1) we need to
+            # reshape them to (batch_size,).
+            labels = mx.sym.Reshape(labels, shape=(-1,))
             v = mx.symbol.SoftmaxOutput(data=v, label=labels, name='softmax')
         else:
             v = mx.symbol.softmax(data=v, name='softmax')
