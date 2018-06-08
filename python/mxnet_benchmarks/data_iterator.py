@@ -24,7 +24,7 @@ class SyntheticDataIterator(DataIter):
     https://github.com/apache/incubator-mxnet/blob/master/example/image-classification/common/data.py
     Works with two standard input tensors - data tensor and label tensor.
     """
-    def __init__(self, num_classes, data_shape, max_iter=100, dtype=np.float32):
+    def __init__(self, data_shape, label_shape, labels_range, max_iter=100, dtype=np.float32):
         """MXNet partitions data batch evenly among the available GPUs. Here, the
            batch size is the effective batch size.
            
@@ -49,8 +49,12 @@ class SyntheticDataIterator(DataIter):
             dtype=self.dtype,
             ctx=mx.Context('cpu_pinned', 0)
         )
+        self.label_shape = label_shape
+        if not self.label_shape:
+            self.label_shape = [self.batch_size,]
+        print(str(label_shape))
         self.label = mx.nd.array(
-            np.random.randint(0, num_classes, [self.batch_size,]),
+            np.random.randint(labels_range[0], labels_range[1] + 1, self.label_shape),
             dtype=self.dtype,
             ctx=mx.Context('cpu_pinned', 0)
         )
@@ -64,7 +68,7 @@ class SyntheticDataIterator(DataIter):
 
     @property
     def provide_label(self):
-        return [mx.io.DataDesc('softmax_label', (self.batch_size,), self.dtype)]
+        return [mx.io.DataDesc('softmax_label', self.label_shape, self.dtype)]
 
     def next(self):
         """For DataBatch definition, see this page:
@@ -95,7 +99,7 @@ class DataIteratorFactory(object):
     is actually an ImageRecordIter.
     """
     @staticmethod
-    def get(num_classes, data_shape, opts, kv_store=None):
+    def get(data_shape, label_shape, labels_range, opts, kv_store=None):
         """Creates data iterator.
         
         :param int num_classes: Number of classes.
@@ -109,8 +113,9 @@ class DataIteratorFactory(object):
         data_iter = None
         if 'data_dir' not in opts or not opts['data_dir']:
             data_iter = SyntheticDataIterator(
-                num_classes,
                 data_shape,
+                label_shape,
+                labels_range,
                 max_iter=opts['num_warmup_batches'] + opts['num_batches'],
                 #dtype=opts['dtype']
                 #dtype=np.float32

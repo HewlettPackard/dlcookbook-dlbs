@@ -47,6 +47,7 @@
     "mxnet.args": {
       "val": [
         "--model=${exp.model}",
+        "--model_opts='${exp.model_opts}'",
         "--forward_only=$('true' if '${exp.phase}'=='inference' else 'false')$",
         "--batch_size=${exp.replica_batch}",
         "--num_batches=${exp.num_batches}",
