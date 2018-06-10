@@ -54,7 +54,7 @@
     "nvcnn.args": {
       "val": [
         "--model=${exp.model}",
-        "$('' if not '${nvcnn.data_dir}' else '--data_dir=${nvcnn.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
+        "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
         "--batch_size=${exp.replica_batch}",
         "--nstep_burnin=${exp.num_warmup_batches}",
         "--num_batches=$(${exp.num_batches} + ${exp.num_warmup_batches})$",
@@ -81,10 +81,10 @@
         "--pid=host",
         "--volume=${DLBS_ROOT}/python/nvcnn_benchmarks:/workspace/nvcnn_benchmarks",
         "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
-        "$('--volume=${nvcnn.data_dir}:/workspace/data' if '${nvcnn.data_dir}' else '')$",
+        "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
         "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
         "${exp.docker_args}",
-        "${nvcnn.docker_image}"
+        "${exp.docker_image}"
       ],
       "type": "str",
       "desc": "In case if containerized benchmarks, this are the docker parameters."

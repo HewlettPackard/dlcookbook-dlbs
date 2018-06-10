@@ -276,7 +276,7 @@
       ]
     },
     "exp.docker_image": {
-      "val": "${${exp.framework}.docker_image}",
+      "val": "${${exp.framework_family}.docker_image}",
       "type": "str",
       "desc": ["Docker image to use for current benchmark. Must exist in the system."]
     },
