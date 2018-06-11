@@ -41,7 +41,6 @@ import json
 import logging
 #import functools
 from collections import OrderedDict
-from dlbs.utils import Modules
 
 class SysInfo(object):
 
@@ -67,7 +66,7 @@ class SysInfo(object):
         if 'lscpu' in self.specs:
             info[_key('lscpu')] = SysInfo.lscpu()
         if 'nvidiasmi' in self.specs:
-            info[_key('nvidiasmi')] = SysInfo.nvidiasmi() if Modules.HAVE_NUMPY and Modules.HAVE_PANDAS  else {}
+            info[_key('nvidiasmi')] = SysInfo.nvidiasmi()
         if 'dmi' in self.specs:
             info[_key('dmi')] = SysInfo.dmi()
 
