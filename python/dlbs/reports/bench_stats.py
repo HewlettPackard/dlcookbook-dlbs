@@ -47,26 +47,41 @@ class BenchStats(object):
         :return: Dictionary with experiment statistics.
         """
         files = IOUtils.find_files(log_dir, "*.log", recursive)
-        exps = LogParser.parse_log_files(files)
+        benchmarks, failed_benchmarks = LogParser.parse_log_files(files)
+        def _get(d, key, val=''):
+            return d[key] if key in d else val
 
         stats = {
             'num_log_files': len(files),
             'num_failed_exps': 0,
             'num_successful_exps': 0,
-            'failed_exps': {}
+            'failed_exps': {},
+            'node_ids': set(),
+            'node_titles': set(),
+            'gpu_titles': set()
         }
-        for exp in exps:
-            time_val = str(exp['results.time']).strip() if 'results.time' in exp else ''
+        for bench in benchmarks:
+            time_val = str(bench['results.time']).strip() if 'results.time' in bench else ''
             if not time_val:
                 stats['num_failed_exps'] += 1
-                stats['failed_exps'][exp['exp.id']] = {
-                    'msg': 'No %s time found in log file.' % exp['exp.phase'],
-                    'log_file': exp['exp.log_file'],
-                    'phase': exp['exp.phase'],
-                    'framework_title': exp['exp.framework_title']
+                if 'exp.id' not in bench:
+                    print("[ERROR] No exp.id found in benchmark (%s)" % str(bench))
+                    continue
+                stats['failed_exps'][bench['exp.id']] = {
+                    'msg': 'No %s time found in log file.' % _get(bench, 'exp.phase', 'PHASE_UNKNOWN'),
+                    'log_file': _get(bench, 'exp.log_file', 'LOG_FILE_UNKNOWN'),
+                    'phase': _get(bench, 'exp.phase', 'PHASE_UNKNOWN'),
+                    'framework_title': _get(bench, 'exp.framework_title', 'FRAMEWORK_TITLE_UNKNOWN')
                 }
             else:
                 stats['num_successful_exps'] += 1
+            #
+            for key in [('exp.node_id', 'node_ids'), ('exp.node_title', 'node_titles'), ('exp.gpu_title', 'gpu_titles')]:
+                if key[0] in bench:
+                    stats[key[1]].add(bench[key[0]])
+
+        for key in ['node_ids', 'node_titles', 'gpu_titles']:
+            stats[key] = list(stats[key])
         return stats
 
 
