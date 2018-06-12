@@ -40,6 +40,7 @@ class Model(object):
         self.__model_opts = copy.deepcopy(params['model_opts'])
         self.__have_float16_lrn = 'DLBS_MXNET_NO_FLOAT16_LRN' not in os.environ
         self._eval_metric = 'acc'
+        self._needs_labels = True
         # The following two parameters are used by data providers.
         self._labels_shape = (1,)                      # Shape of labels tensor excluding leading batch dimension
         self._labels_range = (0, self.num_classes-1)   # Possible labels' values inclusive
@@ -115,6 +116,30 @@ class Model(object):
             return mx.symbol.LRN(data=v, alpha=0.0001, beta=0.75, knorm=2, nsize=5, name=name)
         else:
             return v
+
+    def rnn_begin_state(self, rnn_cell, func=mx.sym.zeros, **kwargs):
+        """Provide initial RNN state for various high level mxnet's RNN symbols.
+        
+        We need this here because standard implementation does not work with float16
+        data type.
+        https://mxnet.incubator.apache.org/_modules/mxnet/rnn/rnn_cell.html#FusedRNNCell
+        """
+        if self.dtype == 'float32':
+            return None   # mxnet will initialzie this
+        assert not rnn_cell._modified, \
+            "After applying modifier cells (e.g. DropoutCell) the base " \
+            "cell cannot be called directly. Call the modifier cell instead."
+        states = []
+        for info in rnn_cell.state_info:
+            rnn_cell._init_counter += 1
+            if info is None:
+                state = func(name='%sbegin_state_%d'%(rnn_cell._prefix, rnn_cell._init_counter),dtype=np.float16, **kwargs)
+            else:
+                kwargs.update(info)
+                print("Creating hidden state of shape %s" % str(kwargs['shape']))
+                state = func(name='%sbegin_state_%d'%(rnn_cell._prefix, rnn_cell._init_counter),dtype=np.float16, **kwargs)
+            states.append(state)
+        return states
 
     def render_to_file(self, node, bsize, fname):
         """Render the neural network to JPG file.
@@ -198,6 +223,11 @@ class Model(object):
     def eval_metric(self):
         """Return evaluation metric"""
         return self._eval_metric
+
+    @property
+    def needs_labels(self):
+        """Return True if this model needs labels during training phase"""
+        return self._needs_labels
 
     @property
     def labels_shape(self):

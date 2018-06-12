@@ -93,13 +93,13 @@ def get_devices(opts):
 
 
 class BenchmarkingModule(mx.mod.Module):
-    """This is a copy past from mxnet project. 
-    
+    """This is a copy past from mxnet project.
+
     I think, the source file is https://github.com/apache/incubator-mxnet/blob/master/python/mxnet/module/base_module.py
-    The reason to have it here is to be able to perform predefined number of iterations 
-    that include warmup and benchmark iterations. There are two major differences 
+    The reason to have it here is to be able to perform predefined number of iterations
+    that include warmup and benchmark iterations. There are two major differences
     compared to mxnet implementation:
-    
+
     1. Numer of epochs is ignored
     2. BatchEndCallback returns False indicating that training must be stopped.
     """
@@ -158,8 +158,14 @@ class BenchmarkingModule(mx.mod.Module):
                     self.prepare(next_data_batch)
                 except StopIteration:
                     end_of_batch = True
-                #print(self._exec_group.labels_.dtype)  
-                self.update_metric(eval_metric, data_batch.label)
+                #print(self._exec_group.labels_.dtype)
+                if data_batch.label is not None:
+                    self.update_metric(eval_metric, data_batch.label)
+                else:
+                    #print("Data shape %s, predictions shape %s" % (str(data_batch.data[0].shape), str(self.get_outputs()[0].shape)))
+                    eval_metric.update(labels=data_batch.data[0], preds=self.get_outputs()[0])
+                #print(data_batch.data)
+                #self.update_metric(eval_metric, data_batch.data)
 
                 if monitor is not None:
                     monitor.toc_print()
@@ -329,22 +335,24 @@ def benchmark_training(model, opts):
     kv = mx.kvstore.create(opts['kv_store'])
     train_data = DataIteratorFactory.get(
         (get_effective_batch_size(opts),) + model.input_shape,
-        (get_effective_batch_size(opts),) + model.labels_shape,
-        model.labels_range,
         opts,
-        kv_store=kv
+        kv_store=kv,
+        labels_shape=((get_effective_batch_size(opts),) + model.labels_shape) if model.needs_labels else None,
+        labels_range=model.labels_range if model.needs_labels else None,
+        provide_labels=model.needs_labels
     )
     devices = get_devices(opts)
 
-    mod = BenchmarkingModule(symbol=model.output, context=devices)
+    mod = BenchmarkingModule(symbol=model.output, context=devices,
+                             label_names=['softmax_label'] if model.needs_labels else None)
     batch_end_callback = BatchEndCallback(opts['num_warmup_batches'], opts['num_batches'])
     #print ("Starting benchmarks.")
     mod.fit(
         train_data,
         kvstore=kv,
         optimizer='sgd',
-        optimizer_params = {'multi_precision': True},
-        eval_metric = model.eval_metric,
+        optimizer_params={'multi_precision': True},
+        eval_metric=model.eval_metric,
         initializer=mx.init.Normal(),
         batch_end_callback=[batch_end_callback]
     )
