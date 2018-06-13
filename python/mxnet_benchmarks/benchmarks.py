@@ -163,7 +163,13 @@ class BenchmarkingModule(mx.mod.Module):
                     self.update_metric(eval_metric, data_batch.label)
                 else:
                     #print("Data shape %s, predictions shape %s" % (str(data_batch.data[0].shape), str(self.get_outputs()[0].shape)))
-                    eval_metric.update(labels=data_batch.data[0], preds=self.get_outputs()[0])
+                    #eval_metric.update(labels=data_batch.data[0], preds=self.get_outputs()[0])
+                    for i, texec in enumerate(self._exec_group.execs):
+                        #print(texec.outputs[0].asnumpy().shape)
+                        #print(mod._exec_group.data_arrays[0][i][1].asnumpy().shape)
+                        eval_metric.update(labels=self._exec_group.data_arrays[0][i][1], preds=texec.outputs[0])
+                        pass
+                    #print(eval_metric.sum_metric)
                 #print(data_batch.data)
                 #self.update_metric(eval_metric, data_batch.data)
 

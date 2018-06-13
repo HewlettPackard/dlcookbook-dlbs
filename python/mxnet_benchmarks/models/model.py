@@ -73,8 +73,9 @@ class Model(object):
         data = mx.sym.Variable(name=name)
         if self.dtype == 'float16':
             print("Casting input DATA tensor to np.float16")
-            data = mx.sym.cast(data=data, dtype=np.float16)
-        return data
+            data16 = mx.sym.cast(data=data, dtype=np.float16)
+            return (data16, data)
+        return (data, data)
 
     def add_head_nodes(self, v):
         """Adds dense and softmax head nodes.
@@ -125,6 +126,7 @@ class Model(object):
         https://mxnet.incubator.apache.org/_modules/mxnet/rnn/rnn_cell.html#FusedRNNCell
         """
         if self.dtype == 'float32':
+            #print ("Data is float32, will not provide initial RNN state.")
             return None   # mxnet will initialzie this
         assert not rnn_cell._modified, \
             "After applying modifier cells (e.g. DropoutCell) the base " \
@@ -136,7 +138,7 @@ class Model(object):
                 state = func(name='%sbegin_state_%d'%(rnn_cell._prefix, rnn_cell._init_counter),dtype=np.float16, **kwargs)
             else:
                 kwargs.update(info)
-                print("Creating hidden state of shape %s" % str(kwargs['shape']))
+                #print("Creating hidden state of shape %s" % str(kwargs['shape']))
                 state = func(name='%sbegin_state_%d'%(rnn_cell._prefix, rnn_cell._init_counter),dtype=np.float16, **kwargs)
             states.append(state)
         return states
