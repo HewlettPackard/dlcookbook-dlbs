@@ -36,6 +36,7 @@ import json
 from collections import defaultdict
 import dlbs.python_version   # pylint: disable=unused-import
 from dlbs.utils import DictUtils
+from dlbs.processor import Processor
 
 
 def load_json_file(file_name):
@@ -127,6 +128,7 @@ def filter_benchmarks(args):
         keep = True
         for key in params:
             if key not in input_benchmark or not input_benchmark[key]:
+                print ("Missing key: %s" % key)
                 keep = False
                 break
         if keep:
@@ -150,14 +152,20 @@ def update_benchmarks(args):
     """
     # Load benchmarks and parameters.
     benchmarks = load_json_file(args.input_file)['data']
-    params = get_params(args.params)
-    # Update benchmarks.
+    prefix = '__'
+    params = {prefix + k:v for k,v in get_params(args.params).items()}
+    # Add prefixed parameters to all benchmarks.
     for benchmark in benchmarks:
-        #keys = [key for key in params if key not in benchmark]
-        #for key in keys:
-        #    benchmark[key] = params[key]
-        for key in params:
-            benchmark[key] = params[key]
+        benchmark.update(params)
+    # Process and compute variables
+    Processor().compute_variables(benchmarks)
+    # Replace prefix overwriting variables in case of a conflict
+    prefixed_keys = params.keys()
+    prefix_len = len(prefix)
+    for benchmark in benchmarks:
+        for k in prefixed_keys:
+            benchmark[k[prefix_len:]] = benchmark[k]
+            del benchmark[k]
     # Serialize updated benchmarks.
     DictUtils.dump_json_to_file({"data": benchmarks}, args.output_file)
 
