@@ -92,6 +92,7 @@ import math
 import json
 from collections import defaultdict
 import argparse
+from functools import partial
 
 model_titles = {
     'deep_mnist': 'DeepMNIST',
