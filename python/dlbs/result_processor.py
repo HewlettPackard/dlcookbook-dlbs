@@ -162,10 +162,15 @@ def update_benchmarks(args):
     # Replace prefix overwriting variables in case of a conflict
     prefixed_keys = params.keys()
     prefix_len = len(prefix)
+
+    output_benchmarks = []
     for benchmark in benchmarks:
         for k in prefixed_keys:
             benchmark[k[prefix_len:]] = benchmark[k]
             del benchmark[k]
+        if benchmark['exp.model'] != '':
+            output_benchmarks.append(benchmark)
+    benchmarks = output_benchmarks
     # Serialize updated benchmarks.
     DictUtils.dump_json_to_file({"data": benchmarks}, args.output_file)
 
