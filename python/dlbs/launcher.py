@@ -25,6 +25,8 @@ import logging
 import datetime
 import json
 import signal
+import uuid
+import shutil
 from dlbs.worker import Worker
 from dlbs.utils import DictUtils
 from dlbs.utils import ResourceMonitor
@@ -87,6 +89,7 @@ class Launcher(object):
     """Launcher runs experiments."""
 
     must_exit = False
+    uuid=str(uuid.uuid4()).replace('-','')
 
     @staticmethod
     def force_redo(exp):
@@ -220,7 +223,7 @@ class Launcher(object):
                 'runtime.env.',
                 remove_prefix=True
             ))
-            # Run experiment in background and wait for complete
+            # Run experiment in background and wait for completion
             worker = Worker(command, env_vars, experiment)
             worker.work(resource_monitor)
             if worker.ret_code != 0:
@@ -231,6 +234,11 @@ class Launcher(object):
                 print("Done %d benchmarks out of %d" % (num_completed_experiments, num_active_experiments))
             progress_reporter.report_active_completed()
 
+
+        try:
+            shutil.rmtree(plan[0]['runtime.cuda_cache'], ignore_errors=True)
+        except IOError:
+            pass
         end_time = datetime.datetime.now()
         stats['launcher.end_time'] = str(end_time)
         stats['launcher.hours'] = (end_time - start_time).total_seconds() / 3600

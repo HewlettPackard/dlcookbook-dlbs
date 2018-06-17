@@ -1,0 +1,38 @@
+{
+    "parameters" : {
+        "exp.framework" : "nvcnn",
+        "exp.framework_title" : "TensorFlow 1.8 nvcnn",
+        "exp.cudnn" : "7.0",
+        "exp.cuda" : "9.0",
+        "exp.num_warmup_batches" : 100,
+        "exp.num_batches" : 400,
+        "exp.device_type" : "gpu",
+        "exp.proj_parent_name": "",
+        "exp.proj_name": "${exp.node_title}_${exp.framework_title} Singularity Test",
+        "exp.proj_description": "${exp.framework_title}'s deep learning benchmarks on ${exp.node_title}",
+        "exp.experimenter_name": "Stephen Fleischman <stephen.fleischman@hpe.com>",
+        "exp.experiment_name": "${exp.node_title}_${exp.framework_title}_Trial_${exp.trial}",
+        "exp.experiment_description": "${exp.framework_title}'s deep learning benchmarks on ${exp.node_title} for DLPG (trial ${exp.trial})",
+        "exp.node_nic": "",
+        "exp.node_id": "apollo_6500_gen10",
+        "exp.num_nodes": 1,
+        "exp.node_title": "Apollo 6500 Gen10",
+        "exp.gpu_title": "Tesla V100-PCIe-16GB",
+        "exp.docker" : false,
+        "exp.singularity" : true,
+        "exp.log_file" : "${BENCH_ROOT}/${exp.framework}/v100_sxm2_XL270d_gen10/${exp.gpufreq}/orig/${exp.data}/${exp.dtype}/${exp.model}_${exp.replica_batch}_$(\"${exp.gpus}\".replace(\",\",\".\"))$_${exp.trial}.log",
+        "exp.phase" : "training",
+        "monitor.frequency" : 5 ,
+        "exp.sys_info" : "",
+        "nvcnn.singularity_image" : "/ml/ml01/SingularityImages/tensorflow-1.8-cuda9.0-cudnn7.0-avx2.img",
+        "nvcnn.use_nccl" : true,
+        "exp.dtype" : "float16",
+        "exp.replica_batch" : 64,
+        "exp.data" : "synthetic",
+        "exp.model" : "googlenet",
+        "exp.trial" :0
+    },
+    "variables" : {
+        "exp.gpus" : ["0","0,1"]
+    }
+}

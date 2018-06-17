@@ -1,0 +1,9 @@
+Bootstrap: localimage
+FROM: nvidia_cuda_9.0_cudnn_7_ubuntu16.04.img
+
+%help
+    chown images
+    Maintainer: Stephen Fleischman
+
+%setup
+	chown sfleisch:hpcd /lvol/sfleisch/SingularityImages/*.img

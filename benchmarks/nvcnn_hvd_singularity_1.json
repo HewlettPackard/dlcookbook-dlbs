@@ -1,0 +1,141 @@
+{
+    "parameters" : {
+        "exp.framework" : "nvcnn_hvd",
+        "exp.framework_title" : "TensorFlow 1.8 nvcnn_hvd",
+        "exp.cudnn" : "7.0",
+        "exp.cuda" : "9.0",
+        "exp.status" : "disabled",
+        "exp.num_warmup_batches" : 100,
+        "exp.num_batches" : 400,
+        "exp.device_type" : "gpu",
+        "exp.proj_parent_name": "",
+        "exp.proj_name": "${exp.node_title}_${exp.framework_title} Singularity Test",
+        "exp.proj_description": "${exp.framework_title}'s deep learning benchmarks on ${exp.node_title}",
+        "exp.experimenter_name": "Stephen Fleischman <stephen.fleischman@hpe.com>",
+        "exp.experiment_name": "${exp.node_title}_${exp.framework_title}_Trial_${exp.trial}",
+        "exp.experiment_description": "${exp.framework_title}'s deep learning benchmarks on ${exp.node_title} for DLPG (trial ${exp.trial})",
+        "exp.node_nic": "",
+        "exp.node_id": "apollo_6500_gen9",
+        "exp.node_title": "Apollo 6500 Gen10",
+        "exp.gpu_title": "Tesla P100-PCIe-16GB",
+        "exp.docker" : false,
+        "exp.singularity" : true,
+        "exp.log_file" : "${BENCH_ROOT}/${exp.framework}/p100_pcie_XL270d_gen9/${exp.gpufreq}/orig/${exp.data}/${exp.dtype}/${exp.model}_${exp.replica_batch}_$(\"${exp.gpus}\".replace(\",\",\".\"))$_${exp.num_nodes}N_${exp.test}_T${exp.trial}.log",
+        "exp.phase" : "training",
+        "monitor.frequency" : 5 ,
+        "exp.sys_info" : "",
+        "nvcnn_hvd.singularity_image" : "/lvol/sfleisch/SingularityImages/tensorflow-1.8-cuda9.0-cudnn7.0-avx2.img"
+    },
+    "variables" : {
+        "exp.replica_batch" : [64],
+        "exp.dtype" : ["float16"],
+        "exp.model" : ["inception3"],
+        "exp.test" : ["test3"],
+        "exp.trial" :[0],
+        "exp.data" : ["synthetic"]
+    },
+    "extensions": [
+        {
+           "condition":  { "exp.model":["resnet152"], "exp.replica_batch":[32]},
+           "parameters": {"exp.status": ""}
+        },
+        {
+          "condition":  { "exp.model":["googlenet", "inception3", "resnet50", "vgg16"], "exp.replica_batch":[64, 128]},
+          "parameters": {"exp.status": ""}
+        },
+        {
+           "condition":  { "exp.model":["alexnet"], "exp.replica_batch":[256,512]},
+           "parameters": {"exp.status": ""}
+        },
+        {
+           "condition":  {"exp.test":"test1"},
+           "parameters": 
+                    {"nvcnn_hvd.mpirun_num_tasks" : "1",
+                     "nvcnn_hvd.mpirun_hosts" : "192.168.0.152:1",
+                     "exp.num_nodes": 1,
+                     "exp.gpus" : "0"
+                    }
+        },
+        {
+           "condition":  {"exp.test":"test2"},
+           "parameters": 
+                    {"nvcnn_hvd.mpirun_num_tasks" : "1",
+                     "nvcnn_hvd.mpirun_hosts" : "192.168.0.151:1",
+                     "exp.num_nodes": 1,
+                     "exp.gpus" : "0"
+                    }
+        },
+        {
+           "condition":  {"exp.test":"test3"},
+           "parameters": 
+                    {"nvcnn_hvd.mpirun_num_tasks" : "2",
+                     "nvcnn_hvd.mpirun_hosts" : "192.168.0.152:2",
+                     "exp.num_nodes": 1,
+                     "exp.gpus" : "0,1"
+                    }
+        },
+        {
+           "condition":  {"exp.test":"test4"},
+           "parameters": 
+                    {"nvcnn_hvd.mpirun_num_tasks" : "2",
+                     "nvcnn_hvd.mpirun_hosts" : "192.168.0.152:1,192.168.0.151:1",
+                     "exp.num_nodes": 2,
+                     "exp.gpus" : "0"
+                    }
+        },
+        {
+           "condition":  {"exp.test":"test5"},
+           "parameters": 
+                    {"nvcnn_hvd.mpirun_num_tasks" : "4",
+                     "nvcnn_hvd.mpirun_hosts" : "192.168.0.152:4",
+                     "exp.num_nodes": 1,
+                     "exp.gpus" : "0,1,2,3"
+                    }
+        },
+        {
+           "condition":  {"exp.test":"test6"},
+           "parameters": 
+                    {"nvcnn_hvd.mpirun_num_tasks" : "4",
+                     "nvcnn_hvd.mpirun_hosts" : "192.168.0.152:2,192.168.0.151:2",
+                     "exp.num_nodes": 2,
+                     "exp.gpus" : "0,1"
+                    }
+        },
+        {
+           "condition":  {"exp.test":"test7"},
+           "parameters": 
+                    {"nvcnn_hvd.mpirun_num_tasks" : "8",
+                     "nvcnn_hvd.mpirun_hosts" : "192.168.0.152:8",
+                     "exp.num_nodes": 1,
+                     "exp.gpus" : "0,1,2,3,4,5,6,7"
+                    }
+        },
+        {
+           "condition":  {"exp.test":"test8"},
+           "parameters": 
+                    {"nvcnn_hvd.mpirun_num_tasks" : "8",
+                     "nvcnn_hvd.mpirun_hosts" : "192.168.0.152:4,192.168.0.151:4",
+                     "exp.num_nodes": 2,
+                     "exp.gpus" : "0,1,2,3"
+                    }
+        },
+        {
+           "condition":  {"exp.test":"test9"},
+           "parameters":
+                    {"nvcnn_hvd.mpirun_num_tasks" : "16",
+                     "nvcnn_hvd.mpirun_hosts" : "192.168.0.152:8,192.168.0.151:8",
+                     "exp.num_nodes": 2,
+                     "exp.gpus" : "0,1,2,3,4,5,6,7"
+                    }
+        },
+        {
+           "condition":{"exp.data"  : "real"}, 
+           "parameters":
+                    {"nvcnn_hvd.data_dir" : "/lvol/sfleisch/ilsvrc12_data_tf",
+                     "nvcnn_hvd.data_name" : "imagenet"
+                    }
+        }
+
+    ]
+
+}

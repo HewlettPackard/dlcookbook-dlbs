@@ -736,7 +736,10 @@ class ResourceMonitor(object):
         """Deletes pif file from disk."""
         try:
             os.remove(self.pid_file)
+            p= os.path.dirname(os.path.abspath(self.pid_file))
+            os.rmdir(p)
         except OSError:
+            logging.error("Error in remove_pid_file {} {}".format(self.pid_file,p))
             pass
 
     def empty_pid_file(self):

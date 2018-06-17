@@ -1,0 +1,29 @@
+You must supply the following:
+
+Base Docker image.
+nvidia_cuda_9.0_cudnn_7_ubuntu16.04.img
+Use the Singularity.nv script to pull the Docker base image and convert to a Singularity image.
+This is for efficiency when you're sitting behind 7 proxies. Run:
+    sudo /opt/singularity/bin/singularity build nvidia_cuda_9.0_cudnn_7_ubuntu16.04.img Singularity.nv
+
+Mellanox OFED drivers
+MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tgz
+	http://www.mellanox.com/page/mlnx_ofed_eula?mtag=linux_sw_drivers&mrequest=downloads&mtype=ofed&mver=MLNX_OFED-4.2-1.2.0.0&mname=MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tgz
+Requires clicking on acceptance of EULA. So can't wget from the recipe file unless you do something crafty.
+
+Mellanox HPCX SDK. Includes OpenMPI.
+hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64.tbz
+	http://content.mellanox.com/hpc/hpc-x/v2.0/hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64.tbz
+You can uncomment the wget in the recipe file but this is more efficient.
+
+tensorrt
+nv-tensorrt-repo-ubuntu1604-cuda9.0-rc-trt4.0.0.3-20180329_1-1_amd64.deb
+    https://developer.nvidia.com/tensorrt
+Another EULA requirement so download first.
+
+nv-peer-memory
+  nvidia-peer-memory_1.0-5_all.deb
+  nvidia-peer-memory-dkms_1.0-5_all.deb
+On the host install with instructions from: https://github.com/Mellanox/nv_peer_memory
+Up through dpkg-buildpackage -us -uc. This will create the .deb packages above.
+Alternatively you can do it all in the recipe file by uploading the original tar file, nvidia-peer-memory_1.0.5.tar.gz.

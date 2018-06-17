@@ -13,77 +13,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-from __future__ import print_function
-"""
-Differences from original nvcnn.py:
-  - The AlexNet implementation was renamed to 'alexnet_owt'
-  - Classical AlexNet model with LRN layers was added with 'alexnet' name.
-  - Added method that implements LRN.
-  - Additional logging lines were added specific to DLBS.
-  - Added functionality to print a model title (human readeable name).
-  - Added ResNet200 and ResNet269 models.
-  - Added fully connected models - AcousticModel and DeepMNIST neural nets. They
-    do not support real data, only dummy. The original acoustic model uses 540 input
-    features (MFCC coefficients). To make compatible with CNN inputs, it emulates those
-    inputs with 23x23 image that gets flatten right away.
-"""
-
 
 """
 Changelog:
-1.6
-  - Center crop evaluation images.
-  - Enable LARC learning rate control
-  - Correctly order global_step update in training graph.
+1.1
+  - Center crop evaluation images
+  - Implement LARC learning rate control
   - Set default learning rate policy to polynomial decay.
   - Add cmd line options for checkpoint and summary intervals.
+  - Add loss scaling.
   - Scale resnet learning rate by batch size.
-1.5
-  - Ignore (with warning) --fp16 flag for inference
-  - Use only single GPU for inference.
-1.4
-  - Fixed minor bug in model name exception
-  - Added fallback to support PNG images in input dataset
-
-1.3
-  - Added support for synthetic data when no --data_dir is specified
-  - Added support for overfeat model
-  - Disabled color distortions by default
-  - Disabled XLA by default
-  - Disabled zero_debias_moving_mean in batch norm
-  - Converted is_training from placeholder to constant
-  - Simplified dropout by avoiding in-graph is_training conditional
-  - Merge all gradients into a contiguous buffer and use a single nccl.all_sum
-
-1.2
-  - Added support for half-precision training, enabled via the --fp16 flag
-  - Forced trainable weights to always be stored as float32
-  - Added loss-scaling to improve numerical stability
-  - Fixed trivial and lenet models by disabling batchnorm
-  - Tweaked ranges of aspect ratio and area distortions
-
-1.1
-  - Disable all image distortions when in evaluation mode
-  - Fixed bug in final FC layer of evaluation mode
-  - Apply FLAGS.display_every in evaluation mode too
-  - Changed keep_checkpoint_every_n_hours from 1 to 3
-  - Remove reference to tf.python module
-  - Tabs --> spaces
+1.0
+  - Initial version based on nvcnn.py 1.4
 """
-from builtins import range
 
-__version__ = "1.6"
+from __future__ import print_function
+from builtins import range
 
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import data_flow_ops
 from tensorflow.python.ops import init_ops
-try:
-    from tensorflow.contrib import nccl
-    have_nccl = True
-except ImportError:
-    have_nccl = False
-    print("WARNING: NCCL support not available")
 
 import sys
 import os
@@ -93,43 +43,27 @@ import json
 from collections import defaultdict
 import argparse
 
-model_titles = {
-    'deep_mnist': 'DeepMNIST',
-    'acoustic_model': 'AcousticModel',
-    'vgg11': 'VGG11',
-    'vgg13': 'VGG13',
-    'vgg16': 'VGG16',
-    'vgg19': 'VGG19',
-    'lenet': 'LeNet',
-    'googlenet': 'GoogleNet',
-    'overfeat': 'Overfeat',
-    'alexnet': 'AlexNet',
-    'alexnet_owt': 'AlexNetOWT',
-    'trivial': 'Trivial',
-    'inception3': 'InceptionV3',
-    'inception4': 'InceptionV4',
-    'resnet18': 'ResNet18',
-    'resnet34': 'ResNet34',
-    'resnet50': 'ResNet50',
-    'resnet101': 'ResNet101',
-    'resnet152': 'ResNet152',
-    'resnet200': 'ResNet200',
-    'resnet269': 'ResNet269'
-}
+try:
+    import horovod.tensorflow as hvd
+except:
+    print("Failed to import horovod module. "
+          "%s is intended for use with Uber's Horovod distributed training "
+          "framework. To create a Docker image with Horovod support see "
+          "docker-examples/Dockerfile.horovod." % __file__)
+    raise
+
+__version__ = "1.1"
 
 def tensorflow_version_tuple():
     v = tf.__version__
     major, minor, patch = v.split('.')
     return (int(major), int(minor), patch)
-def tensorflow_version():
-    vt = tensorflow_version_tuple()
-    return vt[0]*100 + vt[1]
 
-class DummyScope(object):
-    def __enter__(self):
-        pass
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+hvd.init()
+
+def print_r0(*args, **kwargs):
+    if hvd.rank() == 0:
+        print(*args, **kwargs)
 
 def float32_variable_storage_getter(getter, name, shape=None, dtype=None,
                                     initializer=None, regularizer=None,
@@ -156,18 +90,13 @@ class GPUNetworkBuilder(object):
                  batch_norm_config = {'decay':   0.9,
                                       'epsilon': 1e-4,
                                       'scale':   True,
-                                      'zero_debias_moving_mean': False},
-                 use_xla=False):
+                                      'zero_debias_moving_mean': False}):
         self.dtype             = dtype
         self.activation_func   = activation
         self.is_training       = is_training
         self.use_batch_norm    = use_batch_norm
         self.batch_norm_config = batch_norm_config
         self._layer_counts     = defaultdict(lambda: 0)
-        if use_xla:
-            self.jit_scope = tf.contrib.compiler.jit.experimental_jit_scope
-        else:
-            self.jit_scope = DummyScope
     def _count_layer(self, layer_type):
         idx  = self._layer_counts[layer_type]
         name = layer_type + str(idx)
@@ -212,11 +141,10 @@ class GPUNetworkBuilder(object):
             return self._bias(input_layer)
     def input_layer(self, input_layer):
         """Converts input data into the internal format"""
-        with self.jit_scope():
-            x = self._from_nhwc(input_layer)
-            x = tf.cast(x, self.dtype)
-            # Rescale and shift to [-1,1]
-            x = x * (1./127.5) - 1
+        x = self._from_nhwc(input_layer)
+        x = tf.cast(x, self.dtype)
+        # Rescale and shift to [-1,1]
+        x = x * (1./127.5) - 1
         return x
     def conv(self, input_layer, num_filters, filter_size,
              filter_strides=(1,1), padding='SAME',
@@ -367,8 +295,7 @@ class GPUNetworkBuilder(object):
                 kernel_strides[1] != 1):
                 input_layer = self.conv(input_layer, num_outputs, [1, 1],
                                         kernel_strides, activation='LINEAR')
-            with self.jit_scope():
-                x = self.activate(input_layer + output_layer, activation)
+            x = self.activate(input_layer + output_layer, activation)
             return x
     def dropout(self, input_layer, keep_prob=0.5):
         """Applies a dropout layer if is_training"""
@@ -379,13 +306,6 @@ class GPUNetworkBuilder(object):
                 return tf.nn.dropout(input_layer, keep_prob_tensor)
         else:
             return input_layer
-
-    def lrn(self, input_layer, radius=5, alpha=0.0001, beta=0.75, bias=1.0):
-        with tf.variable_scope(self._count_layer('lrn')):
-            lrn_func = tf.nn.local_response_normalization
-            x = lrn_func(input_layer, depth_radius=radius, alpha=alpha,
-                         beta=beta, bias=bias)
-        return x
 
 def deserialize_image_record(record):
     feature_map = {
@@ -467,7 +387,6 @@ class ImagePreprocessor(object):
     def __init__(self, height, width, subset='train', dtype=tf.uint8):
         self.height = height
         self.width  = width
-        self.num_devices = FLAGS.num_gpus
         self.subset = subset
         self.dtype = dtype
         self.nsummary = 10 # Max no. images to generate summaries for
@@ -497,36 +416,34 @@ class ImagePreprocessor(object):
                     tf.summary.image('distorted_color_image',
                                      tf.expand_dims(image, 0))
         return image
-    def device_minibatches(self, total_batch_size):
+    def minibatch(self, batch_size):
         record_input = data_flow_ops.RecordInput(
             file_pattern=os.path.join(FLAGS.data_dir, '%s-*' % self.subset),
             parallelism=64,
+            seed=301+hvd.rank(),
             # Note: This causes deadlock during init if larger than dataset
             buffer_size=FLAGS.input_buffer_size,
-            batch_size=total_batch_size)
+            batch_size=batch_size)
         records = record_input.get_yield_op()
         # Split batch into individual images
-        records = tf.split(records, total_batch_size, 0)
+        records = tf.split(records, batch_size, 0)
         records = [tf.reshape(record, []) for record in records]
         # Deserialize and preprocess images into batches for each device
-        images = defaultdict(list)
-        labels = defaultdict(list)
+        images = []
+        labels = []
         with tf.name_scope('input_pipeline'):
             for i, record in enumerate(records):
                 imgdata, label, bbox, text = deserialize_image_record(record)
                 image = self.preprocess(imgdata, bbox, thread_id=i)
                 label -= 1 # Change to 0-based (don't use background class)
-                device_num = i % self.num_devices
-                images[device_num].append(image)
-                labels[device_num].append(label)
-            # Stack images back into a sub-batch for each device
-            for device_num in range(self.num_devices):
-                images[device_num] = tf.parallel_stack(images[device_num])
-                labels[device_num] = tf.concat(labels[device_num], 0)
-                images[device_num] = tf.reshape(images[device_num],
-                                                [-1, self.height, self.width, 3])
-                images[device_num] = tf.clip_by_value(images[device_num], 0., 255.)
-                images[device_num] = tf.cast(images[device_num], self.dtype)
+                images.append(image)
+                labels.append(label)
+            # Stack images back into a single tensor
+            images = tf.parallel_stack(images)
+            labels = tf.concat(labels, 0)
+            images = tf.reshape(images, [-1, self.height, self.width, 3])
+            images = tf.clip_by_value(images, 0., 255.)
+            images = tf.cast(images, self.dtype)
         return images, labels
 
 def stage(tensors):
@@ -542,67 +459,6 @@ def stage(tensors):
                    for (gt,t) in zip(get_tensors, tensors)]
     return put_op, get_tensors
 
-def all_sync_params(tower_params, devices):
-    """Assigns the params from the first tower to all others"""
-    if len(devices) == 1:
-        return tf.no_op()
-    sync_ops = []
-    # TODO(benbarsdell): Re-enable this once tf.contrib.nccl.broadcast is fixed
-    #                    See https://github.com/tensorflow/tensorflow/issues/15425#issuecomment-361835192
-    if False and have_nccl and FLAGS.nccl:
-        for param_on_devices in zip(*tower_params):
-            # Note: param_on_devices is [paramX_gpu0, paramX_gpu1, ...]
-            param0 = param_on_devices[0]
-            received = nccl.broadcast(param0)
-            for device, param in zip(devices[1:], param_on_devices[1:]):
-                with tf.device(device):
-                    sync_op = param.assign(received)
-                    sync_ops.append(sync_op)
-    else:
-        params0 = tower_params[0]
-        for device, params in zip(devices, tower_params):
-            with tf.device(device):
-                for param, param0 in zip(params, params0):
-                    sync_op = param.assign(param0.read_value())
-                    sync_ops.append(sync_op)
-    return tf.group(*sync_ops)
-
-def all_avg_gradients(tower_gradvars, devices, param_server_device='/gpu:0'):
-    if len(devices) == 1:
-        return tower_gradvars
-
-    if have_nccl and FLAGS.nccl:
-        new_tower_grads = []
-        contig_list = []
-        for d, grad_list in zip(devices, tower_gradvars):
-            with tf.device(d):
-                flat_grads = [tf.reshape(g, [-1]) for (g, _) in grad_list]
-                contig_grads = tf.concat(flat_grads, 0)
-                contig_list.append(contig_grads)
-
-        summed_grads = nccl.all_sum(contig_list)
-        for d, s, grad_list in zip(devices, summed_grads, tower_gradvars):
-            with tf.device(d):
-                new_grad_list = [];
-                sizes = [tf.size(g) for (g, _) in grad_list]
-                flat_grads = tf.split(s, sizes)
-                for newg, (oldg, v) in zip(flat_grads, grad_list):
-                    newg = tf.reshape(newg, tf.shape(oldg))
-                    newg *= 1. / len(devices)
-                    new_grad_list.append((newg, v))
-                new_tower_grads.append(new_grad_list)
-        return new_tower_grads
-    else:
-        num_devices = len(tower_gradvars)
-        avg_gradvars = []
-        for layer in zip(*tower_gradvars):
-            grads_on_devices, vars_on_devices = zip(*layer)
-            with tf.device(param_server_device):
-                avg_grad = tf.reduce_mean(tf.stack(grads_on_devices), 0)
-            avg_grads_on_devices = [avg_grad]*num_devices
-            avg_gradvars_on_devices = zip(*(avg_grads_on_devices, vars_on_devices))
-            avg_gradvars.append(avg_gradvars_on_devices)
-        return list(zip(*avg_gradvars))
 
 class FeedForwardTrainer(object):
     def __init__(self, preprocessor, loss_func, nstep_per_epoch=None):
@@ -629,154 +485,117 @@ class FeedForwardTrainer(object):
                 decay_steps=FLAGS.lr_decay_epochs*nstep_per_epoch,
                 decay_rate=FLAGS.lr_decay_rate,
                 staircase=True)
-    def make_optimizer(self):
-        opt = tf.train.MomentumOptimizer(self.learning_rate, FLAGS.momentum,
-                                         use_nesterov=True)
-        return opt
-    def training_step(self, total_batch_size, devices):
-        preload_ops = [] # CPU pre-load
-        gpucopy_ops = [] # H2D transfer
-        self.tower_params = []
-        tower_losses   = []
-        tower_gradvars = []
-        tower_top1s    = []
-        tower_top5s    = []
+    def training_step(self, batch_size):
         if type(self.image_preprocessor) is not DummyPreprocessor:
             with tf.device('/cpu:0'):
-                dev_images, dev_labels = self.image_preprocessor.device_minibatches(
-                    total_batch_size)
-        # Each device has its own copy of the model, referred to as a tower
-        for device_num, device in enumerate(devices):
-            if type(self.image_preprocessor) is not DummyPreprocessor:
-                images, labels = dev_images[device_num], dev_labels[device_num]
-                with tf.device('/cpu:0'):
-                    # Stage images on the host
-                    preload_op, (images, labels) = stage([images, labels])
-                    preload_ops.append(preload_op)
-            with tf.device(device):
-                if type(self.image_preprocessor) is not DummyPreprocessor:
-                    # Copy images from host to device
-                    gpucopy_op, (images, labels) = stage([images, labels])
-                    gpucopy_ops.append(gpucopy_op)
-                else:
-                    input_shape = [self.image_preprocessor.batch, 
-                                   self.image_preprocessor.height,
-                                   self.image_preprocessor.width,
-                                   3]
-                    images = tf.truncated_normal(
-                        input_shape,
-                        dtype=tf.float32,
-                        stddev=1.e-1,
-                        name='synthetic_images')
-                    labels = tf.random_uniform(
-                        [self.image_preprocessor.batch],
-                        minval=0,
-                        maxval=self.image_preprocessor.nclass-1,
-                        dtype=tf.int32,
-                        name='synthetic_labels')
-                # Evaluate the loss and compute the gradients
-                with tf.variable_scope(
-                        'GPU_%i' % device_num,
-                        # Force all variables to be stored as float32
-                        custom_getter=float32_variable_storage_getter) \
-                        as var_scope, \
-                     tf.name_scope('tower_%i' % device_num):
-                    loss, logits = self.loss_func(images, labels, var_scope)
-                    tower_losses.append(loss)
-                    params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                                               scope=var_scope.name)
-                    self.tower_params.append(params)
-                    # Apply loss scaling to improve numerical stability
-                    if FLAGS.loss_scale != 1.:
-                        scale = FLAGS.loss_scale
-                        grads  = [grad*(1./scale)
-                                  for grad in tf.gradients(loss*scale, params)]
-                    else:
-                        grads = tf.gradients(loss, params)
-                    gradvars = list(zip(grads, params))
-                    tower_gradvars.append(gradvars)
-                    with tf.device('/cpu:0'): # No in_top_k implem on GPU
-                        top1 = tf.reduce_mean(
-                            tf.cast(tf.nn.in_top_k(logits, labels, 1), tf.float32))
-                        top5 = tf.reduce_mean(
-                            tf.cast(tf.nn.in_top_k(logits, labels, 5), tf.float32))
-                    tower_top1s.append(top1)
-                    tower_top5s.append(top5)
-        # Average the losses and gradients from each tower
-        with tf.device('/cpu:0'):
-            total_loss = tf.reduce_mean(tower_losses)
-            total_top1 = tf.reduce_mean(tower_top1s)
-            total_top5 = tf.reduce_mean(tower_top5s)
+                images, labels = self.image_preprocessor.minibatch(batch_size)
+                # Stage images on the host
+                preload_op, (images, labels) = stage([images, labels])
+            with tf.device('/gpu:0'):
+                # Copy images from host to device
+                gpucopy_op, (images, labels) = stage([images, labels])
+        else:
+            with tf.device('/gpu:0'):
+                input_shape = [self.image_preprocessor.batch, 
+                               self.image_preprocessor.height,
+                               self.image_preprocessor.width,
+                               3]
+                images = tf.truncated_normal(
+                    input_shape,
+                    dtype=tf.float32,
+                    stddev=1.e-1,
+                    name='synthetic_images')
+                labels = tf.random_uniform(
+                    [self.image_preprocessor.batch],
+                    minval=0,
+                    maxval=self.image_preprocessor.nclass-1,
+                    dtype=tf.int32,
+                    name='synthetic_labels')
+                preload_op, (images, labels) = stage([images, labels])
+                gpucopy_op = None
+
+        with tf.device('/gpu:0'):
+            # Evaluate the loss and compute the gradients
+            with tf.variable_scope(
+                    'GPU_0',
+                    # Force all variables to be stored as float32
+                    custom_getter=float32_variable_storage_getter) as var_scope:
+                loss, logits = self.loss_func(images, labels, var_scope)
+ 
+        with tf.device('/cpu:0'): # No in_top_k implem on GPU
+            top1 = tf.reduce_mean(
+                tf.cast(tf.nn.in_top_k(logits, labels, 1), tf.float32))
+            top5 = tf.reduce_mean(
+                tf.cast(tf.nn.in_top_k(logits, labels, 5), tf.float32))
 
             averager = tf.train.ExponentialMovingAverage(0.90, name='loss_avg',
                                                          zero_debias=True)
-            avg_op = averager.apply([total_loss])
-            total_loss_avg = averager.average(total_loss)
+            avg_op = averager.apply([loss])
+            loss_avg = averager.average(loss)
             # Note: This must be done _after_ the averager.average() call
             #         because it changes total_loss into a new object.
             with tf.control_dependencies([avg_op]):
-                total_loss     = tf.identity(total_loss)
-                total_loss_avg = tf.identity(total_loss_avg)
+                total_loss     = tf.identity(loss)
+                total_loss_avg = tf.identity(loss_avg)
             tf.summary.scalar('total loss raw', total_loss)
             tf.summary.scalar('total loss avg', total_loss_avg)
-            tf.summary.scalar('train accuracy top-1 %', 100.*total_top1)
-            tf.summary.scalar('train accuracy top-5 %', 100.*total_top5)
+            tf.summary.scalar('train accuracy top-1 %', 100.*top1)
+            tf.summary.scalar('train accuracy top-5 %', 100.*top5)
             tf.summary.scalar('learning rate', self.learning_rate)
-        tower_gradvars = all_avg_gradients(tower_gradvars, devices)
-
-        for grad, var in tower_gradvars[0]:
-            tf.summary.histogram(var.op.name + '/values', var)
-            if grad is not None:
-                tf.summary.histogram(var.op.name + '/gradients', grad)
 
         # Apply the gradients to optimize the loss function
-        train_ops = []
-        for device_num, device in enumerate(devices):
-            with tf.device(device):
-                gradvars = tower_gradvars[device_num]
-                #Apply LARC scaling
-                if FLAGS.larc_eta is not None:
-                    LARC_eta = float(FLAGS.larc_eta)
-                    LARC_epsilon = float(FLAGS.larc_epsilon)
-                    v_list = [tf.norm(tensor=v, ord=2) for _, v in gradvars]
-                    g_list = [tf.norm(tensor=g, ord=2) if g is not None else 0.0
-                              for g, _ in gradvars]
-                    v_norms = tf.stack(v_list)
-                    g_norms = tf.stack(g_list)
-                    zeds = tf.zeros_like(v_norms)
-                    cond = tf.logical_and(
-                        tf.not_equal(v_norms, zeds),
-                        tf.not_equal(g_norms, zeds))
-                    true_vals = tf.scalar_mul(LARC_eta, tf.div(v_norms, g_norms))
-                    false_vals = tf.fill(tf.shape(v_norms), LARC_epsilon)
-                    larc_local_lr = tf.where(cond, true_vals, false_vals)
-                    if FLAGS.larc_mode != "scale":
-                        ones = tf.ones_like(v_norms)
-                        lr = tf.fill(tf.shape(v_norms), self.learning_rate)
-                        larc_local_lr = tf.minimum(tf.div(larc_local_lr, lr), ones)
+        with tf.device('/gpu:0'):
+            opt = tf.train.MomentumOptimizer(self.learning_rate, FLAGS.momentum,
+                                             use_nesterov=True)
+            opt = hvd.DistributedOptimizer(opt)
+            if FLAGS.loss_scale != 1.:
+                loss = loss * float(FLAGS.loss_scale)
+            gradvars = opt.compute_gradients(loss,
+                gate_gradients=tf.train.Optimizer.GATE_NONE)
+            if FLAGS.loss_scale != 1:
+                inv_scale = 1. / float(FLAGS.loss_scale)
+                gradvars = [(grad * inv_scale, var)
+                            for grad, var in gradvars]
 
-                    gradvars = [(tf.multiply(larc_local_lr[i], g), v)
-                                if g is not None else (None, v) 
-                                for i, (g, v) in enumerate(gradvars) ]
+            if FLAGS.larc_eta is not None:
+                LARC_eta = float(FLAGS.larc_eta)
+                LARC_epsilon = float(FLAGS.larc_epsilon)
+                v_list = [tf.norm(tensor=v, ord=2) for _, v in gradvars]
+                g_list = [tf.norm(tensor=g, ord=2) if g is not None else 0.0
+                          for g, _ in gradvars ]
+                v_norms = tf.stack(v_list)
+                g_norms = tf.stack(g_list)
+                zeds = tf.zeros_like(v_norms)
+                cond = tf.logical_and(
+                    tf.not_equal(v_norms, zeds),
+                    tf.not_equal(g_norms, zeds))
+                true_vals = tf.scalar_mul(LARC_eta, tf.div(v_norms, g_norms))
+                false_vals = tf.fill(tf.shape(v_norms), LARC_epsilon)
+                larc_local_lr = tf.where(cond, true_vals, false_vals)
+                if FLAGS.larc_mode != "scale":
+                    ones = tf.ones_like(v_norms)
+                    lr = tf.fill(tf.shape(v_norms), self.learning_rate)
+                    larc_local_lr = tf.minimum(tf.div(larc_local_lr, lr), ones)
 
-                opt = self.make_optimizer()
-                train_op = opt.apply_gradients(gradvars)
-                train_ops.append(train_op)
-        # Combine all of the ops required for a training step
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) or []
-        with tf.device('/cpu:0'):
-            with tf.control_dependencies(train_ops):
-                increment_global_step_op = tf.assign_add(self.global_step, 1)
+                gradvars = [(tf.multiply(larc_local_lr[i], g), v)
+                            if g is not None else (None, v) 
+                            for i, (g, v) in enumerate(gradvars) ]
+
+            train_op = opt.apply_gradients(gradvars, global_step=self.global_step)
+
         self.enqueue_ops = []
-        self.enqueue_ops.append(tf.group(*preload_ops))
-        self.enqueue_ops.append(tf.group(*gpucopy_ops))
-        train_and_update_ops = tf.group(*([increment_global_step_op] + update_ops))
+        self.enqueue_ops.append(preload_op)
+        if gpucopy_op is not None:
+            self.enqueue_ops.append(gpucopy_op)
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) or []
+        train_and_update_ops = tf.group(*([train_op] + update_ops))
         all_training_ops = (self.enqueue_ops + [train_and_update_ops])
         return total_loss_avg, self.learning_rate, all_training_ops
-    def init(self, sess, devices):
+    def init(self, sess):
         init_op = tf.global_variables_initializer()
-        sync_op = all_sync_params(self.tower_params, devices)
         sess.run(init_op)
+    def sync(self, sess):
+        sync_op = hvd.broadcast_global_variables(0)
         sess.run(sync_op)
     def prefill_pipeline(self, sess):
         # Pre-fill the input pipeline with data
@@ -787,38 +606,19 @@ class FeedForwardEvaluator(object):
     def __init__(self, preprocessor, eval_func):
         self.eval_func          = eval_func
         self.image_preprocessor = preprocessor
-    def evaluation_step(self, total_batch_size, devices):
-        preload_ops = [] # CPU pre-load
-        gpucopy_ops = [] # H2D transfer
-        tower_top1s = []
-        tower_top5s = []
+    def evaluation_step(self, batch_size):
         with tf.device('/cpu:0'):
-            dev_images, dev_labels = self.image_preprocessor.device_minibatches(
-                total_batch_size)
-        # Each device has its own copy of the model, referred to as a tower
-        for device_num, device in enumerate(devices):
-            images, labels = dev_images[device_num], dev_labels[device_num]
-            with tf.device('/cpu:0'):
-                # Stage images on the host
-                preload_op, (images, labels) = stage([images, labels])
-                preload_ops.append(preload_op)
-            with tf.device(device):
-                # Copy images from host to device
-                gpucopy_op, (images, labels) = stage([images, labels])
-                gpucopy_ops.append(gpucopy_op)
-                # Evaluate the loss and compute the gradients
-                with tf.variable_scope('GPU_%i' % device_num) as var_scope, \
-                     tf.name_scope('tower_%i' % device_num):
-                    top1, top5 = self.eval_func(images, labels, var_scope)
-                    tower_top1s.append(top1)
-                    tower_top5s.append(top5)
-        # Average the topN from each tower
-        with tf.device('/cpu:0'):
-            total_top1 = tf.reduce_mean(tower_top1s)
-            total_top5 = tf.reduce_mean(tower_top5s)
-        self.enqueue_ops = [tf.group(*preload_ops),
-                            tf.group(*gpucopy_ops)]
-        return total_top1, total_top5, self.enqueue_ops
+            images, labels = self.image_preprocessor.minibatch(batch_size)
+            # Stage images on the host
+            preload_op, (images, labels) = stage([images, labels])
+        with tf.device('/gpu:0'):
+            # Copy images from host to device
+            gpucopy_op, (images, labels) = stage([images, labels])
+            # Evaluate the loss and compute the gradients
+            with tf.variable_scope('GPU_0') as var_scope:
+                top1, top5 = self.eval_func(images, labels, var_scope)
+        self.enqueue_ops = [preload_op, gpucopy_op]
+        return top1, top5, self.enqueue_ops
     def prefill_pipeline(self, sess):
         # Pre-fill the input pipeline with data
         for i in range(len(self.enqueue_ops)):
@@ -830,22 +630,6 @@ def inference_trivial(net, input_layer):
     x = net.input_layer(input_layer)
     x = net.flatten(x)
     x = net.fully_connected(x, 1)
-    return x
-
-def inference_acoustic_model(net, input_layer):
-    net.use_batch_norm = False
-    x = net.input_layer(input_layer)
-    x = net.flatten(x)
-    for i in range(5):
-        x = net.fully_connected(x, 2048)
-    return x
-
-def inference_deep_mnist(net, input_layer):
-    net.use_batch_norm = False
-    x = net.input_layer(input_layer)
-    x = net.flatten(x)
-    for sz in (2500, 2000, 1500, 1500, 1000, 500):
-        x = net.fully_connected(x, sz)
     return x
 
 def inference_lenet5(net, input_layer):
@@ -874,31 +658,6 @@ def inference_overfeat(net, input_layer):
     x = net.flatten(x)
     x = net.fully_connected(x, 3072)
     x = net.fully_connected(x, 4096)
-    return x
-
-def inference_alexnet(net, input_layer):
-    """Sergey: 
-        http://ethereon.github.io/netscope/#/gist/5c94a074f4e4ac4b81ee28a796e04b5d
-        Reference AlexNet with grouped convolutions removed.
-    """
-    net.use_batch_norm = False
-    x = net.input_layer(input_layer)
-    # Note: VALID requires padding the images by 3 in width and height
-    x = net.conv(x, 96, (11,11), (4,4), 'VALID')
-    x = net.lrn(x)
-    x = net.pool(x, 'MAX', (3,3))
-    x = net.conv(x, 256,   (5,5))
-    x = net.lrn(x)
-    x = net.pool(x, 'MAX', (3,3))
-    x = net.conv(x, 384,   (3,3))
-    x = net.conv(x, 384,   (3,3))
-    x = net.conv(x, 256,   (3,3))
-    x = net.pool(x, 'MAX', (3,3))
-    x = net.flatten(x)
-    x = net.fully_connected(x, 4096)
-    x = net.dropout(x)
-    x = net.fully_connected(x, 4096)
-    x = net.dropout(x)
     return x
 
 def inference_alexnet_owt(net, input_layer):
@@ -1063,8 +822,7 @@ def resnet_bottleneck_v1(net, input_layer, depth, depth_bottleneck, stride,
             x = net.conv(x, depth_bottleneck, (1,1), (s,s))
             x = net.conv(x, depth_bottleneck, (3,3), padding='SAME')
             x = net.conv(x, depth,            (1,1), activation='LINEAR')
-        with net.jit_scope():
-            x = net.activate(x + shortcut)
+        x = net.activate(x + shortcut)
         return x
     
 def resnext_split_branch(net, input_layer, stride):
@@ -1139,8 +897,6 @@ def inference_resnet_v1(net, input_layer, nlayer):
     elif nlayer ==  50: return inference_resnet_v1_impl(net, input_layer, [3,4, 6,3])
     elif nlayer == 101: return inference_resnet_v1_impl(net, input_layer, [3,4,23,3])
     elif nlayer == 152: return inference_resnet_v1_impl(net, input_layer, [3,8,36,3])
-    elif nlayer == 200: return inference_resnet_v1_impl(net, input_layer, [3,24,36,3])
-    elif nlayer == 269: return inference_resnet_v1_impl(net, input_layer, [3,40,48,3])
     else: raise ValueError("Invalid nlayer (%i); must be one of: 18,34,50,101,152" %
                            nlayer)
         
@@ -1345,9 +1101,8 @@ def add_bool_argument(cmdline, shortname, longname=None, default=False, help=Non
     return cmdline
 
 def main():
-    block_start_time = time.time()
-    tf.set_random_seed(1234)
-    np.random.seed(4321)
+    tf.set_random_seed(1234+hvd.rank())
+    np.random.seed(4321+hvd.rank())
     cmdline = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     # Basic options
     cmdline.add_argument('-m', '--model', required=True,
@@ -1363,12 +1118,13 @@ def main():
     cmdline.add_argument('-b', '--batch_size', default=64, type=int,
                          help="""Size of each minibatch.""")
     cmdline.add_argument('--num_batches', default=50, type=int,
-                         help="""Number of batches to run.""")
+                         help="""Number of batches to run.
+                         Ignored during eval.""")
+    cmdline.add_argument('--nstep_burnin', default=20, type=int,
+                         help="""Number of burn-in steps.""")
     cmdline.add_argument('--num_epochs', default=None, type=int,
-                         help="""Number of epochs to run
-                         (overrides --num_batches).""")
-    cmdline.add_argument('-g', '--num_gpus', default=1, type=int,
-                         help="""Number of GPUs to run on.""")
+                         help="""Number of epochs to run.
+                         Overrides --num_batches. Ignored during eval.""")
     cmdline.add_argument('--log_dir', default="",
                          help="""Directory in which to write training
                          summaries and checkpoints.""")
@@ -1377,11 +1133,8 @@ def main():
                          running information.""")
     cmdline.add_argument('--save_interval', default=43200, type=int,
                          help="""Time in seconds between checkpoints.""")
-    cmdline.add_argument('--nstep_burnin', default=20, type=int,
-                         help="""Number of burn-in steps.""")
     cmdline.add_argument('--summary_interval', default=3600, type=int,
-                         help="""Time in seconds between saves of summary
-                         statistics.""")
+                         help="""Time in seconds between saves of summary statistics.""")
     cmdline.add_argument('--loss_scale', default=1., type=float,
                          help="""Loss scaling factor. Set to 1 to disable.""")
     cmdline.add_argument('--larc_eta', default=None, type=float,
@@ -1389,21 +1142,16 @@ def main():
                          disabled.""")
     cmdline.add_argument('--larc_mode', default='clip',
                          help="""LARC mode can be 'clip' or 'scale'.""")
-    add_bool_argument(cmdline, '--nccl', default=True,
-                      help="""Use the NCCL library if available.
-                      Default True.""")
-    add_bool_argument(cmdline, '--xla', default=False,
-                      help="""Use XLA compilation.
-                      Default False.""")
-    add_bool_argument(cmdline, '--distort_color',
+    add_bool_argument(cmdline, '--distort_color', default=False,
                       help="""Image augmention by distorting colors.
-					  Default: False.""")
+                      Default: False.""")
     add_bool_argument(cmdline, '--eval',
                       help="""Evaluate the top-1 and top-5 accuracy of
                       a checkpointed model.""")
     add_bool_argument(cmdline, '--fp16',
                       help="""Train using float16 (half) precision instead
                       of float32.""")
+
     global FLAGS
     FLAGS, unknown_args = cmdline.parse_known_args()
     if len(unknown_args) > 0:
@@ -1411,35 +1159,21 @@ def main():
             print("ERROR: Unknown command line arg: %s" % bad_arg)
         raise ValueError("Invalid command line arg(s)")
 
-    FLAGS.strong_scaling = False
-    #FLAGS.nccl           = True
-    #FLAGS.xla            = False
-    if FLAGS.eval:
-        if FLAGS.num_gpus != 1:
-            print("WARNING: eval always runs on a single GPU. Ignoring --num_gpus flag.")
-            FLAGS.num_gpus=1
-        if FLAGS.fp16:
-            print("WARNING: eval supports only fp32 math. Ignoring --fp16 flag.")
-            FLAGS.fp16 = False
-
     nclass = 1000
-    total_batch_size = FLAGS.batch_size
-    if not FLAGS.strong_scaling:
-        total_batch_size *= FLAGS.num_gpus
-    devices = ['/gpu:%i' % i for i in range(FLAGS.num_gpus)]
+    batch_size = FLAGS.batch_size
     subset = 'validation' if FLAGS.eval else 'train'
 
     tfversion = tensorflow_version_tuple()
-    print("TensorFlow:  %i.%i.%s" % tfversion)
-    print("This script:", __file__, "v%s" % __version__)
-    print("Cmd line args:")
-    print('\n'.join(['  '+arg for arg in sys.argv[1:]]))
-    print("Burn-in steps: ", FLAGS.nstep_burnin);
+    print_r0("TensorFlow:  %i.%i.%s" % tfversion)
+    print_r0("This script:", __file__, "v%s" % __version__)
+    print_r0("Cmd line args:")
+    print_r0('\n'.join(['  '+arg for arg in sys.argv[1:]]))
+    print_r0("Burn-in steps: ", FLAGS.nstep_burnin);
 
     if FLAGS.data_dir is not None and FLAGS.data_dir != '':
         nrecord = get_num_records(os.path.join(FLAGS.data_dir, '%s-*' % subset))
     else:
-        nrecord = FLAGS.num_batches * total_batch_size
+        nrecord = FLAGS.num_batches * batch_size * hvd.size()
 
     # Training hyperparameters
     FLAGS.learning_rate         = 0.001 # Model-specific values are set below
@@ -1452,47 +1186,47 @@ def main():
     FLAGS.input_buffer_size     = min(10000, nrecord)
     #FLAGS.distort_color         = False
     #FLAGS.nstep_burnin          = 20
-    # Scaling to avoid fp16 underflow
     FLAGS.larc_epsilon          = 1.
+
+    if FLAGS.eval:
+        if FLAGS.data_dir is None:
+            raise ValueError("eval requires data_dir to be specified")
+        if hvd.size() > 1:
+            raise ValueError("Multi-GPU evaluation is not supported")
+        if FLAGS.fp16:
+            print("WARNING: eval supports only fp32 math. Ignoring --fp16 flag.")
+            FLAGS.fp16 = False
 
     model_dtype = tf.float16 if FLAGS.fp16 else tf.float32
 
-    print("Num images: ", nrecord if FLAGS.data_dir is not None else 'Synthetic')
-    print("Model:      ", FLAGS.model)
-    print("Batch size: ", total_batch_size, 'global')
-    print("            ", total_batch_size/len(devices), 'per device')
-    print("Devices:    ", devices)
-    print("Data format:", 'NCHW')
-    print("Data type:  ", 'fp16' if model_dtype == tf.float16 else 'fp32')
-    print("Have NCCL:  ", have_nccl)
-    print("Using NCCL: ", FLAGS.nccl)
-    print("Using XLA:  ", FLAGS.xla)
-    print("Distort color:  ", FLAGS.distort_color)
+    print_r0("Num ranks:  ", hvd.size())
+    print_r0("Num images: ", nrecord if FLAGS.data_dir is not None else 'Synthetic')
+    print_r0("Model:      ", FLAGS.model)
+    print_r0("Batch size: ", batch_size, 'per device')
+    print_r0("            ", batch_size * hvd.size(), 'total')
+    print_r0("Data format:", 'NCHW')
+    print_r0("Data type:  ", 'fp16' if model_dtype == tf.float16 else 'fp32')
+    print_r0("Distort color:  ", FLAGS.distort_color)
+
 
     if FLAGS.num_epochs is not None:
         if FLAGS.data_dir is None:
             raise ValueError("num_epochs requires data_dir to be specified")
-        nstep = nrecord * FLAGS.num_epochs // total_batch_size
+        nstep = nrecord * FLAGS.num_epochs // (batch_size * hvd.size())
     else:
         nstep = FLAGS.num_batches
-        FLAGS.num_epochs = max(nstep * total_batch_size // nrecord, 1)
+        FLAGS.num_epochs = max(nstep * batch_size * hvd.size() // nrecord, 1)
 
     model_name = FLAGS.model
-    if model_name in model_titles:
-        print("__exp.model_title__=\"%s\"" % (model_titles[model_name]))
     if   model_name == 'trivial':
         height, width = 224, 224
         model_func = inference_trivial
     elif model_name == 'lenet':
         height, width = 28, 28
         model_func = inference_lenet5
-    elif model_name == 'alexnet_owt':
-        height, width = 227, 227
-        model_func = inference_alexnet_owt
-        FLAGS.learning_rate = 0.03
     elif model_name == 'alexnet':
         height, width = 227, 227
-        model_func = inference_alexnet
+        model_func = inference_alexnet_owt
         FLAGS.learning_rate = 0.03
     elif model_name == 'overfeat':
         height, width = 231, 231
@@ -1514,7 +1248,7 @@ def main():
         height, width = 224, 224
         nlayer = int(model_name[len('resnet'):])
         model_func = lambda net, images: inference_resnet_v1(net, images, nlayer)
-        FLAGS.learning_rate = 1.0 * total_batch_size / 1024.0
+        FLAGS.learning_rate = 1. * (batch_size * hvd.size() / 1024.0) if nlayer > 18 else 0.5
     elif model_name.startswith('resnext'):
         height, width = 224, 224
         nlayer = int(model_name[len('resnext'):])
@@ -1528,28 +1262,17 @@ def main():
         height, width = 299, 299
         model_func = inference_inception_resnet_v2
         FLAGS.learning_rate = 0.045
-    elif model_name == 'acoustic_model':
-        # 23 * 23 = 529 input features what is pretty close to actual 540 coefficients.
-        height, width = 23, 23
-        # Clustered tri-phones classes for English Fully Connected Acoustic Model
-        nclass = 8192
-        model_func = inference_acoustic_model
-    elif model_name == 'deep_mnist':
-        height, width = 28, 28
-        nclass = 10
-        model_func = inference_deep_mnist
     else:
         raise ValueError("Invalid model type: %s" % model_name)
 
     if FLAGS.data_dir is None:
-        preprocessor = DummyPreprocessor(height, width, total_batch_size//len(devices), nclass)
+        preprocessor = DummyPreprocessor(height, width, batch_size, nclass)
     else:
         preprocessor = ImagePreprocessor(height, width, subset)
 
     def loss_func(images, labels, var_scope):
         # Build the forward model
-        net = GPUNetworkBuilder(
-            True, dtype=model_dtype, use_xla=FLAGS.xla)
+        net = GPUNetworkBuilder(True, dtype=model_dtype)
         output = model_func(net, images)
         # Add final FC layer to produce nclass outputs
         logits = net.fully_connected(output, nclass, activation='LINEAR')
@@ -1561,15 +1284,13 @@ def main():
         if FLAGS.weight_decay is not None and FLAGS.weight_decay != 0.:
             params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                                        scope=var_scope.name)
-            with net.jit_scope():
-                l2_loss = tf.add_n([tf.nn.l2_loss(w) for w in params])
-                if l2_loss.dtype != tf.float32:
-                    l2_loss = tf.cast(l2_loss, tf.float32)
-                loss += FLAGS.weight_decay * l2_loss
+            l2_loss = tf.add_n([tf.nn.l2_loss(w) for w in params])
+            if l2_loss.dtype != tf.float32:
+                l2_loss = tf.cast(l2_loss, tf.float32)
+            loss += FLAGS.weight_decay * l2_loss
         return loss, logits
     def eval_func(images, labels, var_scope):
-        net = GPUNetworkBuilder(
-            False, dtype=model_dtype, use_xla=FLAGS.xla)
+        net = GPUNetworkBuilder(False, dtype=model_dtype)
         output = model_func(net, images)
         logits = net.fully_connected(output, nclass, activation='LINEAR')
         if logits.dtype != tf.float32:
@@ -1582,31 +1303,29 @@ def main():
         return top1, top5
 
     if FLAGS.eval:
-        if FLAGS.data_dir is None:
-            raise ValueError("eval requires data_dir to be specified")
-        if FLAGS.fp16:
-            raise ValueError("eval cannot be run with in fp16")
         evaluator = FeedForwardEvaluator(preprocessor, eval_func)
         print("Building evaluation graph")
-        top1_op, top5_op, enqueue_ops = evaluator.evaluation_step(
-            total_batch_size, devices)
+        top1_op, top5_op, enqueue_ops = evaluator.evaluation_step(batch_size)
     else:
-        nstep_per_epoch = nrecord // total_batch_size
+        nstep_per_epoch = nrecord // (batch_size * hvd.size())
         trainer = FeedForwardTrainer(preprocessor, loss_func, nstep_per_epoch)
-        print("Building training graph")
+        print_r0("Building training graph")
         total_loss, learning_rate, train_ops = trainer.training_step(
-            total_batch_size, devices)
+            batch_size)
 
-    print("Creating session")
+    print_r0("Creating session")
     config = tf.ConfigProto()
     config.intra_op_parallelism_threads = 1
+    config.inter_op_parallelism_threads = 10
+    config.gpu_options.force_gpu_compatible = True
+    config.gpu_options.visible_device_list = str(hvd.local_rank())
 
     sess = tf.Session(config=config)
 
     train_writer = None
     saver = None
     summary_ops = None
-    if len(FLAGS.log_dir):
+    if hvd.rank() == 0 and len(FLAGS.log_dir):
         log_dir = FLAGS.log_dir
         train_writer = tf.summary.FileWriter(log_dir, sess.graph)
         summary_ops = tf.summary.merge_all()
@@ -1614,8 +1333,12 @@ def main():
         saver = tf.train.Saver(keep_checkpoint_every_n_hours=3)
         last_save_time = time.time()
 
+    if not FLAGS.eval:
+        print_r0("Initializing variables")
+        trainer.init(sess)
+
     restored = False
-    if saver is not None:
+    if hvd.rank() == 0 and saver is not None:
         ckpt = tf.train.get_checkpoint_state(log_dir)
         checkpoint_file = os.path.join(log_dir, "checkpoint")
         if ckpt and ckpt.model_checkpoint_path:
@@ -1632,34 +1355,30 @@ def main():
         else:
             print("Pre-filling input pipeline")
             evaluator.prefill_pipeline(sess)
-            nstep = nrecord // total_batch_size
+            nstep = nrecord // batch_size
             run_evaluation(nstep, sess, top1_op, top5_op, enqueue_ops)
             return
 
-    if not restored:
-        print("Initializing variables")
-        trainer.init(sess, devices)
+    trainer.sync(sess)
+
+    if hvd.rank() == 0 and not restored:
         if saver is not None:
             save_path = saver.save(sess, checkpoint_file, global_step=0)
             print("Checkpoint written to", save_path)
 
-    print("Pre-filling input pipeline")
+    print_r0("Pre-filling input pipeline")
     trainer.prefill_pipeline(sess)
 
-    print("Training")
-    print("  Step Epoch Img/sec   Loss   LR")
+    print_r0("Training")
+    print_r0("  Step Epoch Img/sec   Loss   LR")
     batch_times = []
     oom = False
     step0 = int(sess.run(trainer.global_step))
-    print("__profiler.init_time__=%s" % json.dumps(time.time() - block_start_time))
-    block_start_time = time.time()
     for step in range(step0, nstep):
-        if step == FLAGS.nstep_burnin:
-            print("__profiler.warmup_time__=%s" % json.dumps(time.time() - block_start_time))
         ops_to_run = [total_loss, learning_rate] + train_ops
         try:
             start_time = time.time()
-            if (summary_ops is not None and
+            if (hvd.rank() == 0 and summary_ops is not None and
                 (step == 0 or step+1 == nstep or
                  time.time() - last_summary_time > FLAGS.summary_interval)):
                 if step != 0:
@@ -1679,7 +1398,7 @@ def main():
             lr      = -1
             oom = True
 
-        if (saver is not None and
+        if (hvd.rank() == 0 and saver is not None and
             (time.time() - last_save_time > FLAGS.save_interval or step+1 == nstep)):
             last_save_time += FLAGS.save_interval
             save_path = saver.save(sess, checkpoint_file,
@@ -1688,40 +1407,42 @@ def main():
 
         if step >= FLAGS.nstep_burnin:
             batch_times.append(elapsed)
-        img_per_sec = total_batch_size / elapsed
+        img_per_sec = batch_size / elapsed
         effective_accuracy = 100. / math.exp(min(loss,20.))
         if step == 0 or (step+1) % FLAGS.display_every == 0:
-            epoch = step*total_batch_size // nrecord
-            print("%6i %5i %7.1f %7.3f %7.5f" % (
-                step+1, epoch+1, img_per_sec, loss, lr))
+            epoch = step*batch_size*hvd.size() // nrecord
+            print_r0("%6i %5i %7.1f %7.3f %7.5f" % (
+                step+1, epoch+1, img_per_sec*hvd.size(), loss, lr))
         if oom:
             break
     nstep = len(batch_times)
     if nstep > 0:
         batch_times = np.array(batch_times)
+        total_batch_size=batch_size*hvd.size()
         speeds = total_batch_size / batch_times
         speed_mean = np.mean(speeds)
         if nstep > 2:
             stdev = np.std(speeds, ddof=1)
-            speed_uncertainty = stdev  / np.sqrt(float(nstep))
+            speed_uncertainty = stdev / np.sqrt(float(nstep))
         else:
             stdev = float('nan')
             speed_uncertainty = float('nan')
         speed_madstd = 1.4826*np.median(np.abs(speeds - np.median(speeds)))
         speed_jitter = speed_madstd
-        print('-' * 64)
-        print('Images/sec: %.1f +/- %.1f (jitter = %.1f)' % (
+        print_r0('-' * 64)
+        print_r0('Images/sec: %.1f +/- %.1f (jitter = %.1f)' % (
             speed_mean, speed_uncertainty, speed_jitter))
-        print('-' * 64)
+        print_r0('-' * 64)
         # Sergey
-        print("__results.throughput__=%s" % (json.dumps(speed_mean)))
-        print("__results.throughput_std__=%s" % (json.dumps(stdev)))
-        print("__results.throughput_stdm__=%s" % (json.dumps(speed_uncertainty)))
-        print("__results.throughput_jitter__=%s" % (json.dumps(speed_jitter)))
-        print("__results.time__=%s" % (json.dumps(1000.0*total_batch_size/speed_mean)))
-        print("__results.time_data__=%s" % (json.dumps((1000.0 * batch_times).tolist())))
+        print_r0("__results.throughput__=%s" % (json.dumps(speed_mean)))
+        print_r0("__results.throughput_std__=%s" % (json.dumps(stdev)))
+        print_r0("__results.throughput_stdm__=%s" % (json.dumps(speed_uncertainty)))
+        print_r0("__results.throughput_jitter__=%s" % (json.dumps(speed_jitter)))
+        print_r0("__results.time__=%s" % (json.dumps(1000.0*total_batch_size/speed_mean)))
+        print_r0("__results.time_data__=%s" % (json.dumps((1000.0 * batch_times).tolist())))
+
     else:
-        print("No results, did not get past burn-in phase (%i steps)" %
+        print_r0("No results, did not get past burn-in phase (%i steps)" %
               FLAGS.nstep_burnin)
 
     if train_writer is not None:

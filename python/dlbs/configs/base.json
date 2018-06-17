@@ -64,8 +64,9 @@
       "val" :  "",
       "type": "str",
       "desc": [
-        "Framework version. Usually, the value is automatically identified based on actual framework used in benchmarks (either bare metal",
-        "or docker)."
+        "Framework version. Usually, the value is automatically identified based on actual framework used in benchmarks (either bare metal,",
+        "docker",
+        "or singularity)."
       ]
     },
     "exp.framework_commit": {
@@ -280,6 +281,32 @@
         "  --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864"
       ]
     },
+    "exp.singularity": {
+      "val": false,
+      "type": "bool",
+      "desc": [
+        "If true, use singularity container to run benchmark. See 'exp.singularity_image' for more details.."
+      ]
+    },
+    "exp.singularity_launcher": {
+      "val": "singularity",
+      "type": "str",
+      "desc": [
+        "A launcher for singularity containers - 'nvidia-singularity' for GPU workloads and 'singularity' for CPU ones."
+      ]
+    },
+    "exp.singularity_image": {
+      "val": "${${exp.framework}.singularity_image}",
+      "type": "str",
+      "desc": ["Singularity image to use for current benchmark. Must exist in the system."]
+    },
+    "exp.singularity_args": {
+      "val": "$('--nv' if '${exp.device_type}' == 'gpu' else '')$",
+      "type": "str",
+      "desc": [
+        "Additional arguments to pass to singularity."
+      ]
+    },
     "monitor.timeseries": {
         "val": "time:str:1,mem_virt:float:2,mem_res:float:3,mem_shrd:float:4,cpu:float:5,mem:float:6,power:float:7,gpus:float:8:",
         "type": "str",
@@ -307,7 +334,7 @@
       ]
     },
     "monitor.pid_folder": {
-      "val": "/dev/shm/monitor",
+      "val": "$('/dev/shm/monitor_{}'.format(Launcher.uuid))$",
       "type": "str",
       "desc": [
         "A host folder that will be used by a resource monitor and benchmarking scripts to communicate process id that should be monitored.",
@@ -335,8 +362,13 @@
         "CPUs (numactl, taskset)."
       ]
     },
+    "runtime.multinode_shared_dir": {
+      "val": "/ml/ml01/sfleisch",
+      "type": "str",
+      "desc": "A shared directory or partition. This is needed for Horovod to store a temporary scripts."
+    },
     "runtime.cuda_cache": {
-      "val": "/dev/shm/dlbs",
+      "val": "$('/dev/shm/cudacache_{}'.format(Launcher.uuid))$",
       "type": "str",
       "desc": ["If not empty, use this folder as a CUDA cache (search for CUDA_CACHE_PATH environmental variable)."]
     },
@@ -357,7 +389,7 @@
       "desc": ["A variable that can be used in framework configurations to set CUDA cache path. Not used by default."]
     },
     "runtime.python": {
-      "val": "$(sys.executable if ${exp.docker} is False else 'python')$",
+      "val": "$(sys.executable if ${exp.docker} is False and ${exp.singularity} is False else 'python')$",
       "type": "str",
       "desc": [
         "In case if benchmark is a python based benchmark as most of backend implementations, this points to a particular python to use.",

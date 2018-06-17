@@ -1,0 +1,131 @@
+{
+    "parameters": {
+        "nvcnn_hvd.launcher": {
+            "val": "${DLBS_ROOT}/scripts/launchers/nvcnn_hvd.sh",
+            "type": "str",
+            "desc": "Path to a script that launches NVCNN benchmarks."
+        },
+        "nvcnn_hvd.python_path": {
+            "val": "$('${DLBS_ROOT}/python/nvcnn_hvd_benchmarks' if ${exp.singularity} is False else '/workspace/nvcnn_hvd_benchmarks')$",
+            "type": "str",
+            "desc": "Path to a NVCNN benchmarks python folder. Depends on if bare metal/singularity based benchmark is requested."
+        },
+        "nvcnn_hvd.env": {
+            "val": [
+              "PYTHONPATH=${nvcnn_hvd.python_path}:\\$PYTHONPATH",
+              "${runtime.EXPORT_CUDA_CACHE_PATH}",
+              "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}"
+            ],
+            "type": "str",
+            "desc": "Environmental variables to set for NVCNN_HVD benchmarks."
+        },
+        "nvcnn_hvd.data_dir": {
+            "val": "",
+            "type": "str",
+            "desc": [
+              "Path to dataset in TFRecord format (aka Example protobufs). Files should be named 'train-*' and 'validation-*'."
+            ]
+        },
+        "nvcnn_hvd.display_every": {
+            "val": 1000,
+            "type": "int",
+            "desc": "How often (in iterations) to print out running information."
+        },
+        "nvcnn_hvd.log_dir": {
+            "val": "",
+            "type": "str",
+            "desc": "Directory in which to write training summaries and checkpoints."
+        },
+        "nvcnn_hvd.use_nccl": {
+            "val": true,
+            "type": "bool",
+            "desc": "This is a 'nccl' parameter for nvcnn_hvd. See nvcnn_hvd.py for more details."
+        },
+        "nvcnn_hvd.use_xla": {
+            "val": false,
+            "type": "bool",
+            "desc": "Enable/disable TensorFlow XLA optimizations."
+        },
+        "nvcnn_hvd.use_distort_color": {
+            "val": false,
+            "type": "bool",
+            "desc": "Enable/disable distort colors."
+        },
+        "nvcnn_hvd.args": {
+            "val": [
+              "--model=${exp.model}",
+              "$('' if not '${nvcnn_hvd.data_dir}' else '--data_dir=${nvcnn_hvd.data_dir}' if ${exp.singularity} is False else '--data_dir=/workspace/data')$",
+              "--batch_size=${exp.replica_batch}",
+              "--nstep_burnin=${exp.num_warmup_batches}",
+              "--num_batches=$(${exp.num_batches} + ${exp.num_warmup_batches})$",
+              "$('--distort_color' if ${nvcnn_hvd.use_distort_color} else '--nodistort_color')$",
+              "--display_every=${nvcnn_hvd.display_every}",
+              "--log_dir=${nvcnn_hvd.log_dir}",
+              "$('--fp16' if '${exp.dtype}' == 'float16' else '')$"
+            ],
+            "type": "str",
+            "desc": "These are a command line arguments passed to nvcnn_hvd_benchmarks script."
+        },
+        "nvcnn_hvd.singularity_image": {
+            "val": "/ml/ml01/SingularityImages/tensorflow-1.8-cuda9.0-cudnn7.0-avx2.img",
+            "type": "str",
+            "desc": ["The name of a Singularity image to use for NVCNN (TensorFlow)",
+                     "if a containerized benchmark is requested."]
+        },
+        "nvcnn_hvd.docker_image": {
+            "val": "",
+            "type": "str",
+            "desc": "Dummy docker image. Not used."
+        },
+        "nvcnn_hvd.singularity_args": {
+            "val": [
+              "-B ${DLBS_ROOT}/python/nvcnn_hvd_benchmarks:/workspace/nvcnn_hvd_benchmarks",
+              "$('-B ${nvcnn_hvd.data_dir}:/workspace/data' if '${nvcnn_hvd.data_dir}' else '')$",
+              "${exp.singularity_args}",
+              "${nvcnn_hvd.singularity_image}"
+            ],
+            "type": "str",
+            "desc": "In case if containerized benchmarks, this are the singularity parameters."
+        },
+        "nvcnn_hvd.host_libpath": {
+            "val": "",
+            "type": "str",
+            "desc": "Basically, it's a LD_LIBRARY_PATH for NVCNN (TensorFlow) in case of a bare metal run."
+        },
+        "nvcnn_hvd.mpirun": {
+            "val": "mpirun",
+            "type": "str",
+            "desc": "The mpirun executable on the host machine."
+        },
+        "nvcnn_hvd.mpirun_args": {
+            "val": "-x NCCL_DEBUG=INFO -mca pml ob1 -mca btl openib",
+            "type": "str",
+            "desc": ["Arguments to the mpirun command.",
+                     " You can specify hosts and slots here by",
+                     "overriding the default or use nvcnn_hvd.mpirun_hosts"]
+        },
+        "nvcnn_hvd.mpirun_hosts": {
+            "val": "",
+            "type": "str",
+            "desc": "list of hosts:slots"
+        },
+        "nvcnn_hvd.mpirun_num_tasks": {
+            "val": "$(${exp.num_gpus})$",
+            "type": "str",
+            "desc": "list of hosts:slots"
+        }
+    },
+    "extensions": [
+      {
+        "condition":{ "exp.framework": "nvcnn", "exp.singularity": false },
+        "parameters": { "nvcnn_hvd.env": [
+          "PYTHONPATH=${nvcnn_hvd.python_path}:\\$PYTHONPATH",
+          "${runtime.EXPORT_CUDA_CACHE_PATH}",
+          "$('CUDA_CACHE_DISABLE=0' if '${runtime.cuda_cache}' else '')$",
+          "$('CUDA_CACHE_MAXSIZE=2147483648' if '${runtime.cuda_cache}' else '')$",
+          "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}",
+          "LD_LIBRARY_PATH=$('${nvcnn_hvd.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$"
+        ]}
+      }
+    ]
+}

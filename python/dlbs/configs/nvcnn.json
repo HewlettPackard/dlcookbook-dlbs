@@ -6,7 +6,7 @@
       "desc": "Path to a script that launches NVCNN benchmarks."
     },
     "nvcnn.python_path": {
-      "val": "$('${DLBS_ROOT}/python/nvcnn_benchmarks' if ${exp.docker} is False else '/workspace/nvcnn_benchmarks')$",
+      "val": "$('${DLBS_ROOT}/python/nvcnn_benchmarks' if ${exp.docker} is False and ${exp.singularity} is False else '/workspace/nvcnn_benchmarks')$",
       "type": "str",
       "desc": "Path to a NVCNN benchmarks python folder. Depends on if bare metal/docker based benchmark is requested."
     },
@@ -54,7 +54,7 @@
     "nvcnn.args": {
       "val": [
         "--model=${exp.model}",
-        "$('' if not '${nvcnn.data_dir}' else '--data_dir=${nvcnn.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
+        "$('' if not '${nvcnn.data_dir}' else '--data_dir=${nvcnn.data_dir}' if ${exp.docker} is False and ${exp.singularity} is False else '--data_dir=/workspace/data')$",
         "--batch_size=${exp.replica_batch}",
         "--nstep_burnin=${exp.num_warmup_batches}",
         "--num_batches=$(${exp.num_batches} + ${exp.num_warmup_batches})$",
@@ -89,6 +89,21 @@
       "type": "str",
       "desc": "In case if containerized benchmarks, this are the docker parameters."
     },
+    "nvcnn.singularity_image": {
+      "val": "/ml/ml01/SingularityImages/tensorflow-1.8-cuda9.0-cudnn7.0-avx2.img",
+      "type": "str",
+      "desc": "The name of a Singularity image to use for NVCNN (TensorFlow) if containerized benchmark is requested."
+    },
+    "nvcnn.singularity_args": {
+      "val": [
+        "-B ${DLBS_ROOT}/python/nvcnn_benchmarks:/workspace/nvcnn_benchmarks",
+        "$('-B ${nvcnn.data_dir}:/workspace/data' if '${nvcnn.data_dir}' else '')$",
+        "${exp.singularity_args}",
+        "${nvcnn.singularity_image}"
+      ],
+      "type": "str",
+      "desc": "In case if containerized benchmarks, this are the singularity parameters."
+    },
     "nvcnn.host_libpath": {
       "val": "",
       "type": "str",
@@ -97,7 +112,7 @@
   },
   "extensions": [
     {
-      "condition":{ "exp.framework": "nvcnn", "exp.docker": false },
+      "condition":{ "exp.framework": "nvcnn", "exp.docker": false, "exp.singularity": false },
       "parameters": { "nvcnn.env": [
         "PYTHONPATH=${nvcnn.python_path}:\\$PYTHONPATH",
         "${runtime.EXPORT_CUDA_CACHE_PATH}",

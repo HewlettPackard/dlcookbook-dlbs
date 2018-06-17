@@ -1,0 +1,32 @@
+Bootstrap: localimage
+FROM: nvidia_cuda_9.0_cudnn_7_ubuntu16.04.img
+
+%help
+    Build file to cleanup /tmp after build 
+    Maintainer: Stephen Fleischman
+
+%labels
+    Description Cleanup Singularity /tmp leftovers after build.
+%setup
+	ls /tmp
+    rm -f /tmp/hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64.tbz
+    rm -f /tmp/log
+    rm -f /tmp/MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tgz
+    rm -f /tmp/nvidia-examples.tgz
+    rm -f /tmp/nv-tensorrt-repo-ubuntu1604-cuda9.0-rc-trt4.0.0.3-20180329_1-1_amd64.deb
+    rm -f /tmp/requirements.txt
+    rm -f /tmp/tf.img.jup1.singularity-debug.ARIQ1I
+    rm -f /tmp/tf.img.jup1.stderr.ysJ8UQ
+    rm -f /tmp/cc*
+    rm -f /tmp/tmpxft*
+    rm -f /tmp/tf.img.jup1.stdout.f7BuYh
+    rm -f /tmp/ofed.conf
+    rm -rf /tmp/MLNX_OFED_LINUX.42687.logs
+    rm -rf /tmp/MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64
+    rm -rf /tmp/tmp.*
+    rm -rf /tmp/MLNX_OFED_LINUX.*.logs  
+
+	ls /tmp
+
+%runscript
+    echo "Cleanup Singularity /tmp leftovers after build."

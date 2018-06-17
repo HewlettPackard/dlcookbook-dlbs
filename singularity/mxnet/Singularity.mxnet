@@ -1,0 +1,162 @@
+Bootstrap: localimage
+FROM: ../common/nvidia_cuda_9.0_cudnn_7_ubuntu16.04.img
+
+%labels
+    Maintainer Stephen Fleischman
+    Framework mxnet
+    Build  CUDA 9.0 cuDNN 7.0 x86_64 AVX2 (Broadwell), OFED IB.
+
+%files
+    ../common/MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tgz /
+    ../common/hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64.tbz /
+    ../common/jupyter_notebook_config.py /
+    nvidia-mxnet-examples.tgz
+
+%help
+    mxnet GPU Singularity Container
+    Maintainer: Stephen Fleischman
+
+%environment
+    export CUDA_DIR=/usr/local/cuda
+    export HPCX_DIR=/opt/hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64
+    export HPCX_MPI_DIR=${HPCX_DIR}/ompi-v3.0.x
+    export HPCX_IPM_DIR=${HPCX_MPI_DIR}/tests/ipm-2.0.6
+#    # No version specific specifications below this line.
+    export HPCX_IPM_LIB=${HPCX_IPM_DIR}/lib/libipm.so
+    export HPCX_BUPC_DIR=${HPCX_DIR}/bupc
+    export HPCX_IBPROF_LIB=${HPCX_DIR}/ibprof/lib/libibprof.so
+    export HPCX_SHARP_DIR=${HPCX_DIR}/sharp
+    export HPCX_HCOLL_DIR=${HPCX_DIR}/hcoll
+    export HPCX_MXM_DIR=${HPCX_DIR}/mxm
+    export HPCX_UCX_DIR=${HPCX_DIR}/ucx
+    export HPCX_IBPROF_DIR=${HPCX_DIR}/ibprof
+    export HPCX_FCA_DIR=${HPCX_DIR}/fca
+    export HPCX_OSHMEM_DIR=${HPCX_MPI_DIR}
+    export HPCX_MPI_TESTS_DIR=${HPCX_OSHMEM_DIR}/tests
+    export SHMEM_HOME=${HPCX_MPI_DIR}
+    export OPAL_PREFIX=${HPCX_MPI_DIR}
+    export OMPI_HOME=${HPCX_MPI_DIR}
+    export MPI_HOME=${HPCX_MPI_DIR}
+    export OSHMEM_HOME=${HPCX_MPI_DIR}
+    export LD_LIBRARY_PATH=${HPCX_DIR}/mxm/lib:${HPCX_UCX_DIR}/lib:${HPCX_SHARP_DIR}/lib:${HPCX_HCOLL_DIR}/lib:${HPCX_MPI_DIR}/lib
+    export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${CUDA_DIR}/lib64:${CUDA_DIR}/extras/CUPTI/lib64
+    export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/.singularity.d/libs:/usr/lib/x86_64-linux-gnu
+    export PATH=${HPCX_DIR}/bupc/bin:${HPCX_DIR}/hcoll/bin:${HPCX_DIR}/ucx/bin:${HPCX_DIR}/mxm/bin
+    export PATH=${PATH}:${HPCX_MPI_DIR}/bin:${CUDA_DIR}/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    export CPATH=${HPCX_MPI_DIR}/include:${HPCX_UCX_DIR}/include:${HPCX_SHARP_DIR}/include:${HPCX_MXM_DIR}/include:${HPCX_HCOLL_DIR}/include
+    export JUPYTER_CONFIG_DIR=/.jupyter
+
+%post
+    # Update when versions change
+    export OFED=MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64
+    export HPCX=hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64
+    export HPCX_MPI_DIR=/opt/${HPCX}/ompi-v3.0.x
+
+
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        autoconf  \
+        automake  \
+        build-essential  \
+        bzip2  \
+        ca-certificates  \
+        cmake  \
+        curl  \
+        environment-modules  \
+        git  \
+        hwloc  \
+        iputils-ping  \
+        libcurl3-dev  \
+        libfreetype6-dev  \
+        libhwloc-common  \
+        libhwloc-dev  \
+        libhwloc-plugins  \
+        libibverbs-dev  \
+        libjemalloc-dev  \
+        liblapack-dev  \
+        libopenblas-dev  \
+        libopencv-dev  \
+        libpng12-dev  \
+        libtool  \
+        libzmq3-dev  \
+        lsof  \
+        nasm  \
+        net-tools  \
+        openjdk-8-jdk  \
+        openjdk-8-jre-headless  \
+        openssh-server  \
+        pkg-config  \
+        pylint  \
+        python3  \
+        python3-dev  \
+        python3-pip  \
+        python3-setuptools  \
+        python3-venv  \
+        python3-wheel  \
+        rsync  \
+        software-properties-common  \
+        tar  \
+        unzip  \
+        vim  \
+        wget  \
+        zip  \
+        zlib1g-dev
+
+    rm -rf /var/lib/apt/lists/*
+
+    # Set up our notebook config.
+    mkdir -p /.jupyter && mv /jupyter_notebook_config.py /.jupyter && chmod 777 /.jupyter && echo $(ls /.jupyter)
+
+    ln -sf /usr/bin/python3 /usr/bin/python
+    ln -sf /usr/bin/pip3 /usr/bin/pip
+    pip3 --no-cache-dir install \
+        jupyter \
+        matplotlib \
+        numpy \
+        scipy \
+        sklearn \
+        scikit-image \
+        graphviz \
+        pandas \
+        future \
+        absl-py && \
+     pip3 --no-cache-dir install \
+        flask \
+        redis \
+        Pillow
+
+    # Install Mellanox OFED drivers and HPCX SKD
+    tar xvzf /${OFED}.tgz && rm /${OFED}.tgz
+    cd $OFED &&  yes|./mlnxofedinstall --without-fw-update && cd .. &&  rm -rf $OFED
+    cd /opt &&  tar xjf /${HPCX}.tbz && rm -f /${HPCX}.tbz
+
+
+     export JPEG_TURBO_ROOT=/opt/libjpeg-turbo
+     cd /tmp && git clone https://github.com/libjpeg-turbo/libjpeg-turbo.git ./libjpeg-turbo
+     cd ./libjpeg-turbo && mkdir ./build && cd ./build
+     cmake -DENABLE_SHARED=true -DENABLE_STATIC=false -DCMAKE_C_FLAGS="-O3 -fPIC" -DCMAKE_INSTALL_PREFIX=$JPEG_TURBO_ROOT ..
+     make -j"$(nproc)" && make install && ln -s $JPEG_TURBO_ROOT/lib64 $JPEG_TURBO_ROOT/lib 
+     echo "$JPEG_TURBO_ROOT/lib64" >> /etc/ld.so.conf.d/libjpeg-turbo.conf 
+     echo "$JPEG_TURBO_ROOT/lib" >> /etc/ld.so.conf.d/libjpeg-turbo.conf 
+     ldconfig 
+     cd /tmp && rm -rf ./libjpeg-turbo
+ 
+     export MXNET_ROOT=/opt/mxnet
+     git clone https://github.com/apache/incubator-mxnet $MXNET_ROOT 
+     cd $MXNET_ROOT 
+     git reset --hard master && git submodule update --init --recursive 
+     make USE_CUDNN=1 USE_BLAS=openblas USE_CUDA=1 USE_NCCL=1 \
+          USE_OPERATOR_TUNING=1 USE_LAPACK=1 USE_JEMALLOC=1 \
+          USE_DIST_KVSTORE=0 USE_OPENMP=1 USE_OPENCV=1 USE_THREADED_ENGINE=1 \
+          USE_CUDA_PATH=/usr/local/cuda \
+          USE_LIBJPEG_TURBO=1 USE_LIBJPEG_TURBO_PATH=$JPEG_TURBO_ROOT -j$(nproc) 
+     cd ./python && python ./setup.py build && python ./setup.py install
+ 
+     ldconfig -v
+    cd /
+    tar xvzf nvidia-mxnet-examples.tgz
+    rm nvidia-mxnet-examples.tgz
+
+%runscript
+    echo "Singularity Container: mxnet"
+    echo "The image contains: Jupyter"

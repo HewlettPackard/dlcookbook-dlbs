@@ -3,12 +3,25 @@
 #-------------------------------------------------------------------------------
 
 assert_docker_img_exists() {
-  [ "$#" -ne 1 ] && logfatal "assert_docker_img_exists: one arguments expected";
+  [ "$#" -ne 1 ] && logfatal "assert_docker_img_exists: one argument expected";
   [ -z "$(docker images -q $1)" ] && \
    logfatal "docker image \"$1\" does not exist locally, \
              pull it from hub or build it manually" || return 0;
 }
+assert_not_docker_and_singularity() {
+  [ "$exp_docker"  = true -a "$exp_singularity" = true ] && \
+   logfatal "Both exp.docker and exp.singularity were set to true, however, only one container type can be selected." || return 0;
+}
+
+assert_singularity_img_exists() {
+  [ "$#" -ne 1 ] && logfatal "assert_singularity_img_exists: one argument expected";
+  [ ! -f $1 ] && \
+   echo "singularity image \"$1\" does not exist locally, pull it from hub or build it manually" || return 0;
+}
+
+export -f assert_not_docker_and_singularity
 export -f assert_docker_img_exists
+export -f assert_singularity_img_exists
 
 # This can be used like: loginfo "..."
 timestamp() { date +'%m-%d-%y %H:%M:%S';}
@@ -111,15 +124,6 @@ get_value_by_key() {
 }
 export -f get_value_by_key
 
-tf_version() {
-  [ "$#" -ne 1 ] && logfatal "tf_version: one argument expected";
-  nvidia-docker run -i $1 python -c 'import tensorflow as tf; print(tf.__version__);' && return 0 || return 1;
-}
-tf_devices() {
-  [ "$#" -ne 1 ] && logfatal "tf_devices: one argument expected";
-  nvidia-docker run -i $1 python -c 'from tensorflow.python.client import device_lib; print([x.name for x in device_lib.list_local_devices()]);' 2>/dev/null && return 0 || return 1;
-}
-export -f tf_version tf_devices
 
 caffe2_error() {
   [ "$#" -ne 1 ] && logfatal "caffe_error: one argument expected";
