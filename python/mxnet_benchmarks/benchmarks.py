@@ -52,11 +52,13 @@ To run from a command line, this module accepts the following parameters:
 from __future__ import absolute_import
 from __future__ import print_function
 import sys
+import os
 import timeit
 import time
 import json
 import argparse
 import traceback
+import logging
 import mxnet as mx
 import numpy as np
 from mxnet_benchmarks.data_iterator import DataIteratorFactory
@@ -277,7 +279,11 @@ def benchmark(opts):
     assert 'model' in opts, "Missing 'model' in options."
     assert 'phase' in opts, "Missing 'phase' in options."
     assert opts['phase'] in ['inference', 'training'], "Invalid value for 'phase' (%s). Must be 'inference' or 'training'." % (opts['phase'])
-    
+    try:
+        opts['model_opts'] = json.loads(opts.get('model_opts', "{}"))
+    except ValueError:
+        print("[ERROR] Cannot decode JSON string: '%s'" % opts['model_opts'])
+        raise
     opts['batch_size'] = opts.get('batch_size', 16)
     opts['num_warmup_batches'] = opts.get('num_warmup_batches', 10)
     opts['num_batches'] = opts.get('num_batches', 10)
@@ -319,12 +325,14 @@ def benchmark_inference(model, opts):
 
 def benchmark_training(model, opts):
     """ Creates engine that runs training. """
+    # Label tensor always have shape (N,)
     kv = mx.kvstore.create(opts['kv_store'])
     train_data = DataIteratorFactory.get(
-        model.num_classes,
         (get_effective_batch_size(opts),) + model.input_shape,
+        (get_effective_batch_size(opts),) + model.labels_shape,
+        model.labels_range,
         opts,
-        kv
+        kv_store=kv
     )
     devices = get_devices(opts)
 
@@ -336,6 +344,7 @@ def benchmark_training(model, opts):
         kvstore=kv,
         optimizer='sgd',
         optimizer_params = {'multi_precision': True},
+        eval_metric = model.eval_metric,
         initializer=mx.init.Normal(),
         batch_end_callback=[batch_end_callback]
     )
@@ -344,6 +353,8 @@ def benchmark_training(model, opts):
 
 
 if __name__ == '__main__':
+    if 'DLBS_DEBUG' in os.environ and os.environ['DLBS_DEBUG'] == '1':
+        logging.getLogger().setLevel(logging.DEBUG)
     # --model, --forward_only, -batch_size, --num_batches, --num_warmup_batches, --num_gpus, --device, --data_dir
     # --kv_store
     print("__mxnet.version__=%s" % (json.dumps(mx.__version__)))
@@ -352,6 +363,7 @@ if __name__ == '__main__':
         return v.lower() in ('true', 'on', 't', '1')
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, required=True, default='', help='A model to benchmark ("alexnet", "googlenet" ...)')
+    parser.add_argument('--model_opts', type=str, required=False, default='{}', help='Model\'s additional parameters (flat JSON dictionary).')
     parser.add_argument('--forward_only', nargs='?', const=True, default=False, type=str2bool, help='Benchmark inference (if true) else benchmark training.')
     parser.add_argument('--batch_size', type=int, required=True, default=None, help='Per device batch size')
     parser.add_argument('--num_batches', type=int, required=False, default=100, help='Number of benchmark iterations')

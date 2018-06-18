@@ -112,7 +112,7 @@
         "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
         "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
         "${exp.docker_args}",
-        "${tensorflow.docker_image}"
+        "${exp.docker_image}"
       ],
       "type": "str",
       "desc": "In case if containerized benchmarks, this are the docker parameters."

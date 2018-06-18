@@ -14,6 +14,7 @@
 """Base class for all models"""
 from __future__ import print_function
 import os
+import copy
 import mxnet as mx
 import numpy as np
 
@@ -27,7 +28,7 @@ class Model(object):
             num_classes: size of output softmax (affine) operator
             phase: 'inference' or 'training'
         """
-        for param in ['name', 'input_shape', 'num_classes', 'phase', 'dtype']:
+        for param in ['name', 'input_shape', 'num_classes', 'phase', 'dtype', 'model_opts']:
             assert param in params, "Missing mandatory neural net parameter '%s'" % param
         assert params['phase'] in ['inference', 'training'],\
                "Invalid phase: '%s'. Expecting 'inference' or 'training'" % (params['phase'])
@@ -36,7 +37,12 @@ class Model(object):
         self.__num_classes = params['num_classes']
         self.__phase = params['phase']
         self.__dtype = params['dtype']
+        self.__model_opts = copy.deepcopy(params['model_opts'])
         self.__have_float16_lrn = 'DLBS_MXNET_NO_FLOAT16_LRN' not in os.environ
+        self._eval_metric = 'acc'
+        # The following two parameters are used by data providers.
+        self._labels_shape = (1,)                      # Shape of labels tensor excluding leading batch dimension
+        self._labels_range = (0, self.num_classes-1)   # Possible labels' values inclusive
         if self.__dtype == 'float16' and self.__have_float16_lrn:
             print("[WARNING] The data type is 'float16' and I assume MXNET provides a float16 kernel for LRN layer. " \
                   "If this model uses LRN and your MXNET version is outdated, you will get error. In this case, to "\
@@ -84,6 +90,9 @@ class Model(object):
             v = mx.sym.cast(data=v, dtype=np.float32)
         if self.phase == 'training':
             labels = mx.sym.Variable(name="softmax_label")
+            # Just in case labels are of shape (batch_size, 1) we need to
+            # reshape them to (batch_size,).
+            labels = mx.sym.Reshape(labels, shape=(-1,))
             v = mx.symbol.SoftmaxOutput(data=v, label=labels, name='softmax')
         else:
             v = mx.symbol.softmax(data=v, name='softmax')
@@ -106,6 +115,53 @@ class Model(object):
             return mx.symbol.LRN(data=v, alpha=0.0001, beta=0.75, knorm=2, nsize=5, name=name)
         else:
             return v
+
+    def render_to_file(self, node, bsize, fname):
+        """Render the neural network to JPG file.
+
+        :param sym node: Head node.
+        :param int bsize: Batch size.
+        :param str fname: File name without extension.
+        """
+        g = mx.viz.plot_network(
+            node,
+            shape={'data': (bsize,) + self.input_shape},
+            node_attrs={"shape":'rect', "fixedsize":'false'},
+            save_format = 'jpg'
+        )
+        g.render(fname)
+
+    @staticmethod
+    def num_parameters(module, count_aux_params=True):
+        """Return number of parameters in a module.
+        """
+        arg_params, aux_params = module.get_params()
+        num_params = 0
+        for p in arg_params:
+            num_params += np.prod(arg_params[p].shape)
+        if count_aux_params:
+            for p in aux_params:
+                num_params += np.prod(aux_params[p].shape)
+        return num_params
+
+    @staticmethod
+    def print_parameters(module):
+        def __print(params):
+            total_params = 0
+            pnames = params.keys()
+            pnames.sort()
+            for p in pnames:
+                nparams = np.prod(params[p].shape)
+                total_params += nparams
+                print("%-30s %-30s %d" % (p, str(params[p].shape), nparams))
+            return total_params
+                
+        arg_params, aux_params = module.get_params()
+        print("Arg parameters")
+        net_params =  __print(arg_params)
+        print("Aux parameters")
+        net_params += __print(aux_params)
+        print("Total number of parameters %d" % (net_params))
 
     @property
     def name(self):
@@ -132,3 +188,23 @@ class Model(object):
     def dtype(self):
         """Get type of data ('float32' or 'float16' or 'int8')"""
         return self.__dtype
+
+    @property
+    def model_opts(self):
+        """Get additional model options (json dictionary)"""
+        return self.__model_opts
+
+    @property
+    def eval_metric(self):
+        """Return evaluation metric"""
+        return self._eval_metric
+
+    @property
+    def labels_shape(self):
+        """Shape of labels tensor excluding leading batch dimension"""
+        return self._labels_shape
+
+    @property
+    def labels_range(self):
+        """Get range for possible label values. Range is inclusive."""
+        return self._labels_range

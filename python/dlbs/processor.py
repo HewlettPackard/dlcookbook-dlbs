@@ -28,7 +28,11 @@ import json
 from dlbs.exceptions import ConfigurationError
 from dlbs.exceptions import LogicError
 from dlbs.utils import DictUtils
+<<<<<<< HEAD
 from dlbs.launcher import Launcher
+=======
+from dlbs.utils import param2str
+>>>>>>> 6affc66c160bdc9679f9675924b1b66d1008a3f7
 
 
 class Processor(object):
@@ -216,9 +220,9 @@ class Processor(object):
                 for ref_var in self.fwd_index[var]['deps']:
                     replace_pattern = "${%s}" % (ref_var)
                     if ref_var in experiment:
-                        replace_value = str(experiment[ref_var])
+                        replace_value = param2str(experiment[ref_var])
                     elif ref_var in os.environ:
-                        replace_value = str(os.environ[ref_var])
+                        replace_value = param2str(os.environ[ref_var])
                     else:
                         msg = [
                             "Variable '%s' not found. This may happen if variable's name depend",

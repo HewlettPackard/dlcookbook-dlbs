@@ -177,8 +177,7 @@
       "val": "",
       "type": "str",
       "desc": [
-        "*** This parameter is not used since TensorRT backend does not support real data. ***",
-        "*** It is here for compatibility reasons with exp.data_dir ***"
+        "A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline)."
       ]
     },
     "tensorrt.data_name": {

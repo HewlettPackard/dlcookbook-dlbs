@@ -85,6 +85,14 @@
         "can support all models. Refer to documentation (section 'models') on what frameworks support what models."
       ]
     },
+    "exp.model_opts": {
+      "val":  "{}",
+      "type": "str",
+      "desc": [
+        "Model's options. This is a flat JSON object (key/value pairs) that overrides some of the model's parameters.",
+        "Not all frameworks/models support additional parameters, study model's source code to figure out if it supports it."
+      ]
+    },
     "exp.model_title": {
       "val":  "",
       "type": "str",
@@ -269,7 +277,7 @@
       ]
     },
     "exp.docker_image": {
-      "val": "${${exp.framework}.docker_image}",
+      "val": "${${exp.framework_family}.docker_image}",
       "type": "str",
       "desc": ["Docker image to use for current benchmark. Must exist in the system."]
     },
