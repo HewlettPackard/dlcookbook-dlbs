@@ -64,9 +64,8 @@
       "val" :  "",
       "type": "str",
       "desc": [
-        "Framework version. Usually, the value is automatically identified based on actual framework used in benchmarks (either bare metal,",
-        "docker",
-        "or singularity)."
+        "Framework version. Usually, the value is automatically identified based on actual framework used in benchmarks",
+        "(either bare metal, docker or singularity)."
       ]
     },
     "exp.framework_commit": {

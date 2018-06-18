@@ -124,6 +124,15 @@ get_value_by_key() {
 }
 export -f get_value_by_key
 
+tf_version() {
+  [ "$#" -ne 1 ] && logfatal "tf_version: one argument expected";
+  nvidia-docker run -i $1 python -c 'import tensorflow as tf; print(tf.__version__);' && return 0 || return 1;
+}
+tf_devices() {
+  [ "$#" -ne 1 ] && logfatal "tf_devices: one argument expected";
+  nvidia-docker run -i $1 python -c 'from tensorflow.python.client import device_lib; print([x.name for x in device_lib.list_local_devices()]);' 2>/dev/null && return 0 || return 1;
+}
+export -f tf_version tf_devices
 
 caffe2_error() {
   [ "$#" -ne 1 ] && logfatal "caffe_error: one argument expected";

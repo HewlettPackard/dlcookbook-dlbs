@@ -235,7 +235,6 @@ class Launcher(object):
                 print("Done %d benchmarks out of %d" % (num_completed_experiments, num_active_experiments))
             progress_reporter.report_active_completed()
 
-
         try:
             shutil.rmtree(plan[0]['runtime.cuda_cache'], ignore_errors=True)
         except IOError:
