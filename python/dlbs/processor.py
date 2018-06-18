@@ -28,11 +28,8 @@ import json
 from dlbs.exceptions import ConfigurationError
 from dlbs.exceptions import LogicError
 from dlbs.utils import DictUtils
-<<<<<<< HEAD
 from dlbs.launcher import Launcher
-=======
 from dlbs.utils import param2str
->>>>>>> 6affc66c160bdc9679f9675924b1b66d1008a3f7
 
 
 class Processor(object):
