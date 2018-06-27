@@ -324,6 +324,27 @@ public:
 };
 std::ostream& operator<<(std::ostream &out, const running_average &ra);
 
+/**
+ * @brief Compute variance and other statistics based on 
+ *        Welford's method.
+ */
+class stats {
+private:
+    double mean_ = 0;
+    double variance_ = 0;
+    double min_ = 0;
+    double max_ = 0;
+public:
+    stats(const std::vector<float>& nums);
+
+    double mean() const { return mean_; }
+    double variance() const { return variance_; }
+    double stdev() const { return variance_ >= 0 ? std::sqrt(variance_) : 0.0; }
+    double min() const { return min_; }
+    double max() const { return max_; }
+};
+std::ostream& operator<<(std::ostream &out, const stats &s);
+
 class PictureTool {
 public:
     template<typename T> struct pixel{};
