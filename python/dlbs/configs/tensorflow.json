@@ -69,7 +69,7 @@
       "desc": "Enable/disable XLA."
     },
     "tensorflow.report_interval": {
-      "val": 1000,
+      "val": "${exp.num_batches}",
       "type": "int",
       "desc": "Reporting interval - number of batches (same as '--display_every' parameter). Prints mean throughput and jitter."
     },
