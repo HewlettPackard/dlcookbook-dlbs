@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +13,9 @@
 # limitations under the License.
 # ==============================================================================
 from __future__ import print_function
+
 """
-Differences from original nvcnn.py:
+  Differences from original nvcnn.py:
   - The AlexNet implementation was renamed to 'alexnet_owt'
   - Classical AlexNet model with LRN layers was added with 'alexnet' name.
   - Added method that implements LRN.
@@ -27,7 +27,6 @@ Differences from original nvcnn.py:
     features (MFCC coefficients). To make compatible with CNN inputs, it emulates those
     inputs with 23x23 image that gets flatten right away.
 """
-
 
 """
 Changelog:
@@ -84,6 +83,7 @@ try:
 except ImportError:
     have_nccl = False
     print("WARNING: NCCL support not available")
+from tensorflow.python.client import timeline
 
 import sys
 import os
@@ -118,10 +118,31 @@ model_titles = {
     'resnet269': 'ResNet269'
 }
 
+class TimeLiner:
+    _timeline_dict = None
+
+    def update_timeline(self, chrome_trace):
+        # convert crome trace to python dict
+        chrome_trace_dict = json.loads(chrome_trace)
+        # for first run store full trace
+        if self._timeline_dict is None:
+            self._timeline_dict = chrome_trace_dict
+        # for other - update only time consumption, not definitions
+        else:
+            for event in chrome_trace_dict['traceEvents']:
+                # events time consumption started with 'ts' prefix
+                if 'ts' in event:
+                    self._timeline_dict['traceEvents'].append(event)
+
+    def save(self, f_name):
+        with open(f_name, 'w') as f:
+            json.dump(self._timeline_dict, f)
+
 def tensorflow_version_tuple():
     v = tf.__version__
     major, minor, patch = v.split('.')
     return (int(major), int(minor), patch)
+
 def tensorflow_version():
     vt = tensorflow_version_tuple()
     return vt[0]*100 + vt[1]
@@ -516,6 +537,8 @@ class ImagePreprocessor(object):
             for i, record in enumerate(records):
                 imgdata, label, bbox, text = deserialize_image_record(record)
                 image = self.preprocess(imgdata, bbox, thread_id=i)
+                image = tf.clip_by_value(image, 0., 255.)
+                image = tf.cast(image, self.dtype)
                 label -= 1 # Change to 0-based (don't use background class)
                 device_num = i % self.num_devices
                 images[device_num].append(image)
@@ -526,8 +549,6 @@ class ImagePreprocessor(object):
                 labels[device_num] = tf.concat(labels[device_num], 0)
                 images[device_num] = tf.reshape(images[device_num],
                                                 [-1, self.height, self.width, 3])
-                images[device_num] = tf.clip_by_value(images[device_num], 0., 255.)
-                images[device_num] = tf.cast(images[device_num], self.dtype)
         return images, labels
 
 def stage(tensors):
@@ -1390,6 +1411,9 @@ def main():
                          disabled.""")
     cmdline.add_argument('--larc_mode', default='clip',
                          help="""LARC mode can be 'clip' or 'scale'.""")
+    cmdline.add_argument('--timeline_dir',default=None,type=str,
+                         help="""Generate a profile using tensorflow.timeline
+                         and place it in this directory.""")
     add_bool_argument(cmdline, '--nccl', default=True,
                       help="""Use the NCCL library if available.
                       Default True.""")
@@ -1651,6 +1675,11 @@ def main():
     print("  Step Epoch Img/sec   Loss   LR")
     batch_times = []
     oom = False
+    if FLAGS.timeline_dir is not None:
+        options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+        run_metadata = tf.RunMetadata()
+        many_runs_timeline = TimeLiner()
+
     step0 = int(sess.run(trainer.global_step))
     print("__profiler.init_time__=%s" % json.dumps(time.time() - block_start_time))
     block_start_time = time.time()
@@ -1666,10 +1695,16 @@ def main():
                 if step != 0:
                     last_summary_time += FLAGS.summary_interval
                 print("Writing summaries to ", log_dir)
-                summary, loss, lr = sess.run([summary_ops] + ops_to_run)[:3]
+                if FLAGS.timeline_dir is not None:
+                    summary, loss, lr = sess.run([summary_ops] + ops_to_run,options=options,run_metadata=run_metadata)[:3]
+                else:
+                    summary, loss, lr = sess.run([summary_ops] + ops_to_run)[:3]
                 train_writer.add_summary(summary, step)
             else:
-                loss, lr = sess.run(ops_to_run)[:2]
+                if FLAGS.timeline_dir is not None:
+                    loss, lr = sess.run(ops_to_run,options=options,run_metadata=run_metadata)[:2]
+                else:
+                    loss, lr = sess.run(ops_to_run)[:2]
             elapsed = time.time() - start_time
         except KeyboardInterrupt:
             print("Keyboard interrupt")
@@ -1699,6 +1734,15 @@ def main():
             break
     nstep = len(batch_times)
     if nstep > 0:
+        if FLAGS.timeline_dir is not None:
+            try:
+                tpath = os.path.join(FLAGS.timeline_dir,'nvcnn_timeline_{:d}_nsteps.json'.format(nstep))
+                many_runs_timeline.save(tpath)
+            except IOError:
+                tpath = os.path.join('/tmp','nvcnn_timeline_{:d}_nsteps.json'.format(nstep))
+                many_runs_timeline.save(tpath)
+            print('Timeline file written to {}.'.format(tpath))
+
         batch_times = np.array(batch_times)
         speeds = total_batch_size / batch_times
         speed_mean = np.mean(speeds)

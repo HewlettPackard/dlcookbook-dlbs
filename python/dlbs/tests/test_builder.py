@@ -27,32 +27,32 @@ class TestBuilder(unittest.TestCase):
     def test_builder_1(self):
         """dlbs  ->  TestBuilder::test_builder_1                         [Test for plan builder #1.]"""
         plan = Builder.build(
-            {'parameters': {'exp.framework': "TensorFlow", 'exp.model': 'vgg16'}},
+            {'parameters': {'exp.backend': "tf_cnn_benchmark", 'exp.model': 'vgg16'}},
             {},
             {}
         )
         self.assertListEqual(
             plan,
-            [{'exp.framework': "TensorFlow", 'exp.model': 'vgg16'}]
+            [{'exp.backend': "tf_cnn_benchmark", 'exp.model': 'vgg16'}]
         )
 
     def test_builder_2(self):
         """dlbs  ->  TestBuilder::test_builder_2                         [Test for plan builder #2.]"""
         plan = Builder.build(
-            {'parameters': {'exp.framework': "TensorFlow", 'exp.model': 'vgg16'}},
+            {'parameters': {'exp.backend': "tf_cnn_benchmark", 'exp.model': 'vgg16'}},
             {'exp.device_batch': 16},
             {}
         )
         self.assertListEqual(
             plan,
-            [{'exp.framework': "TensorFlow", 'exp.model': 'vgg16', 'exp.device_batch': 16}]
+            [{'exp.backend': "tf_cnn_benchmark", 'exp.model': 'vgg16', 'exp.device_batch': 16}]
         )
 
     def test_builder_3(self):
         """dlbs  ->  TestBuilder::test_builder_3                         [Test for plan builder #3.]"""
         plan = Builder.build(
             {
-                'parameters': {'exp.framework': "TensorFlow", 'exp.model': 'vgg16'},
+                'parameters': {'exp.backend': "tf_cnn_benchmark", 'exp.model': 'vgg16'},
                 'variables': {'exp.device_batch': [16, 32]}
             },
             {},
@@ -61,8 +61,8 @@ class TestBuilder(unittest.TestCase):
         self.assertListEqual(
             plan,
             [
-                {'exp.framework': "TensorFlow", 'exp.model': 'vgg16', 'exp.device_batch': 16},
-                {'exp.framework': "TensorFlow", 'exp.model': 'vgg16', 'exp.device_batch': 32}
+                {'exp.backend': "tf_cnn_benchmark", 'exp.model': 'vgg16', 'exp.device_batch': 16},
+                {'exp.backend': "tf_cnn_benchmark", 'exp.model': 'vgg16', 'exp.device_batch': 32}
             ]
         )
 
@@ -70,10 +70,10 @@ class TestBuilder(unittest.TestCase):
         """dlbs  ->  TestBuilder::test_builder_4                         [Test for plan builder #4.]"""
         plan = Builder.build(
             {
-                'parameters': {'exp.framework':'TensorFlow', 'exp.model': 'vgg16'},
+                'parameters': {'exp.backend':'tf_cnn_benchmark', 'exp.model': 'vgg16'},
                 'extensions': [
                     {
-                        'condition':{'exp.framework': "TensorFlow"},
+                        'condition':{'exp.backend': "tf_cnn_benchmark"},
                         'parameters': {'exp.device_batch': 128}
                     }
                 ]
@@ -85,7 +85,7 @@ class TestBuilder(unittest.TestCase):
         self.assertListEqual(
             plan,
             [
-                {'exp.framework': "TensorFlow", 'exp.model': 'vgg16', 'exp.device_batch': 128}
+                {'exp.backend': "tf_cnn_benchmark", 'exp.model': 'vgg16', 'exp.device_batch': 128}
             ]
         )
 
@@ -93,11 +93,11 @@ class TestBuilder(unittest.TestCase):
         """dlbs  ->  TestBuilder::test_builder_5                         [Test for plan builder #5.]"""
         plan = Builder.build(
             {
-                'parameters': {'exp.framework':'TensorFlow', 'exp.device_batch': 256},
+                'parameters': {'exp.backend':'tf_cnn_benchmark', 'exp.device_batch': 256},
                 'variables': {'exp.model': ['vgg16', 'text_cnn']},
                 'extensions': [
                     {
-                        'condition':{'exp.framework': "TensorFlow", 'exp.model': 'text_cnn'},
+                        'condition':{'exp.backend': "tf_cnn_benchmark", 'exp.model': 'text_cnn'},
                         'parameters': {'exp.device_batch': 512}
                     }
                 ]
@@ -109,53 +109,51 @@ class TestBuilder(unittest.TestCase):
         self.assertListEqual(
             plan,
             [
-                {'exp.framework': "TensorFlow", 'exp.model': 'vgg16', 'exp.device_batch': 256},
-                {'exp.framework': "TensorFlow", 'exp.model': 'text_cnn', 'exp.device_batch': 512}
+                {'exp.backend': "tf_cnn_benchmark", 'exp.model': 'vgg16', 'exp.device_batch': 256},
+                {'exp.backend': "tf_cnn_benchmark", 'exp.model': 'text_cnn', 'exp.device_batch': 512}
             ]
         )
 
     def test_builder_6(self):
         """dlbs  ->  TestBuilder::test_builder_6                         [Test for plan builder #6.]"""
+        sortedlist =lambda y: sorted(y , key=lambda elem: "{} {} {}".format(elem['exp.backend'], elem['exp.model'],elem['exp.replica_batch']))
         plan = Builder.build(
             {
-                'parameters': {'exp.device_batch': 256},
+                'parameters': {'exp.replica_batch': 256},
                 'variables': {
-                    'exp.framework':['TensorFlow', 'Caffe2'],
+                    'exp.backend':['tf_cnn_benchmark', 'caffe2'],
                     'exp.model': ['vgg16', 'text_cnn']
                 },
                 'extensions': [
                     {
-                        'condition':{'exp.framework': "TensorFlow", 'exp.model': 'text_cnn'},
-                        'parameters': {'exp.device_batch': 512}
+                        'condition':{'exp.backend': "tf_cnn_benchmark", 'exp.model': 'text_cnn'},
+                        'parameters': {'exp.replica_batch': 512}
                     }
                 ]
             },
             {},
             {}
         )
+        comparison = sortedlist([{'exp.backend': 'tf_cnn_benchmark', 'exp.model': 'vgg16', 'exp.replica_batch': 256},
+             {'exp.backend': 'tf_cnn_benchmark', 'exp.model': 'text_cnn', 'exp.replica_batch': 512},
+             {'exp.backend': 'caffe2', 'exp.model': 'vgg16', 'exp.replica_batch': 256},
+             {'exp.backend': 'caffe2', 'exp.model': 'text_cnn', 'exp.replica_batch': 256}])
         Processor().compute_variables(plan)
-        self.assertListEqual(
-            plan,
-            [
-                {'exp.framework': "TensorFlow", 'exp.model': 'vgg16', 'exp.device_batch': 256},
-                {'exp.framework': "Caffe2", 'exp.model': 'vgg16', 'exp.device_batch': 256},
-                {'exp.framework': "TensorFlow", 'exp.model': 'text_cnn', 'exp.device_batch': 512},
-                {'exp.framework': "Caffe2", 'exp.model': 'text_cnn', 'exp.device_batch': 256}
-            ]
-        )
+        plan=sortedlist(plan)
+        self.assertListEqual(plan,comparison)
 
     def test_builder_7(self):
         """dlbs  ->  TestBuilder::test_builder_7                         [Test for plan builder #7.]"""
         plan = Builder.build(
             {
-                'parameters': {'exp.framework':'TensorFlow', 'exp.model': 'vgg16'},
+                'parameters': {'exp.backend':'tf_cnn_benchmark', 'exp.model': 'vgg16'},
                 'extensions': [
                     {
-                        'condition':{'exp.framework': "TensorFlow"},
+                        'condition':{'exp.backend': "tf_cnn_benchmark"},
                         'parameters': {'exp.device_batch': 128}
                     },
                     {
-                        'condition':{'exp.framework': "TensorFlow"},
+                        'condition':{'exp.backend': "tf_cnn_benchmark"},
                         'parameters': {'exp.disabled': 'true'}
                     }
                 ]
@@ -167,7 +165,7 @@ class TestBuilder(unittest.TestCase):
         self.assertListEqual(
             plan,
             [
-                {'exp.framework': "TensorFlow", 'exp.model': 'vgg16',
+                {'exp.backend': "tf_cnn_benchmark", 'exp.model': 'vgg16',
                  'exp.device_batch': 128, 'exp.disabled': 'true'}
             ]
         )
@@ -176,15 +174,15 @@ class TestBuilder(unittest.TestCase):
         """dlbs  ->  TestBuilder::test_builder_8                         [Test for plan builder #8.]"""
         plan = Builder.build(
             {
-                'parameters': {'exp.framework':'bvlc_caffe', 'exp.model': 'vgg16'},
+                'parameters': {'exp.backend':'bvlc_caffe', 'exp.model': 'vgg16'},
                 'extensions': [
                     {
-                        'condition':{'exp.framework': "([^_]+)_(.+)"},
+                        'condition':{'exp.backend': "([^_]+)_(.+)"},
                         'parameters': {
                             'exp.device_batch': 128,
-                            'exp.framework_id': '${__condition.exp.framework_0}',   # bvlc_caffe
-                            'exp.fork': '${__condition.exp.framework_1}',           # bvlc
-                            'exp.framework': '${__condition.exp.framework_2}'       # caffe
+                            'exp.backend_id': '${__condition.exp.backend_0}',   # bvlc_caffe
+                            'exp.fork': '${__condition.exp.backend_1}',           # bvlc
+                            'exp.backend': '${__condition.exp.backend_2}'       # caffe
                         }
                     }
                 ]
@@ -196,8 +194,8 @@ class TestBuilder(unittest.TestCase):
         self.assertListEqual(
             plan,
             [
-                {'exp.framework': "caffe", 'exp.model': 'vgg16', 'exp.device_batch': 128,
-                 'exp.framework_id': 'bvlc_caffe', 'exp.fork': 'bvlc'}
+                {'exp.backend': "caffe", 'exp.model': 'vgg16', 'exp.device_batch': 128,
+                 'exp.backend_id': 'bvlc_caffe', 'exp.fork': 'bvlc'}
             ]
         )
 
@@ -206,19 +204,19 @@ class TestBuilder(unittest.TestCase):
         plan = Builder.build(
             {
                 'parameters': {
-                    'exp.framework':'bvlc_caffe',
+                    'exp.backend':'bvlc_caffe',
                     'exp.model': 'vgg16',
                     'exp.path': '${${exp.fork}_caffe.path}',
                     'bvlc_caffe.path': '/opt/caffe'
                 },
                 'extensions': [
                     {
-                        'condition':{'exp.framework': "([^_]+)_(.+)"},
+                        'condition':{'exp.backend': "([^_]+)_(.+)"},
                         'parameters': {
                             'exp.device_batch': 128,
-                            'exp.framework_id': '${__condition.exp.framework_0}',   # bvlc_caffe
-                            'exp.fork': '${__condition.exp.framework_1}',           # bvlc
-                            'exp.framework': '${__condition.exp.framework_2}'       # caffe
+                            'exp.backend_id': '${__condition.exp.backend_0}',   # bvlc_caffe
+                            'exp.fork': '${__condition.exp.backend_1}',           # bvlc
+                            'exp.backend': '${__condition.exp.backend_2}'       # caffe
                         }
                     }
                 ]
@@ -230,8 +228,8 @@ class TestBuilder(unittest.TestCase):
         self.assertListEqual(
             plan,
             [
-                {'exp.framework': "caffe", 'exp.model': 'vgg16', 'exp.device_batch': 128,
-                 'exp.framework_id': 'bvlc_caffe', 'exp.fork': 'bvlc',
+                {'exp.backend': "caffe", 'exp.model': 'vgg16', 'exp.device_batch': 128,
+                 'exp.backend_id': 'bvlc_caffe', 'exp.fork': 'bvlc',
                  'bvlc_caffe.path': '/opt/caffe', 'exp.path': '/opt/caffe'}
             ]
         )

@@ -14,7 +14,7 @@
 """Two classes are define here :py:class:`dlbs.IOUtils` and :py:class:`dlbs.DictUtils`.
 """
 
-import os
+import os,sys
 import copy
 import json
 import gzip
@@ -27,6 +27,10 @@ from multiprocessing import Queue
 from glob import glob
 from dlbs.exceptions import ConfigurationError
 
+#Python 2,3 interop.
+if sys.version_info[0] == 3:
+    basestring=str
+    long=int
 
 def param2str(val):
     """Convert value val of some benchmark parameter to a string."""
@@ -371,7 +375,7 @@ class DictUtils(object):
             return True
         assert policy in ['relaxed', 'strict'], ""
 
-        for field, value in query.iteritems():
+        for field, value in query.items():
             if field not in dictionary:
                 if policy == 'relaxed':
                     continue
@@ -443,7 +447,7 @@ class ConfigurationLoader(object):
                     ConfigurationLoader.update_param_info(param_info, config_section, is_user_config=False)
                     # Joing configuration from this single file.
                     ConfigurationLoader.update(config, ConfigurationLoader.remove_info(config_section))
-                except ValueError:
+                except ValueError as ve:
                     logging.error("Configuration load error. Invalid JSON configuration in file %s", config_file)
                     raise
         return (config_files, config, param_info)

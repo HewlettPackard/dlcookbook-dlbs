@@ -13,7 +13,7 @@
 # limitations under the License.
 """ The launcher runs experiments one at a time.
 
-It determines the framework launcher, builds its command line arguments,
+It determines the backend launcher, builds its command line arguments,
 dumps all variables to log file and runs experiment.
 """
 from __future__ import print_function
@@ -191,18 +191,21 @@ class Launcher(object):
                     continue
             # Track current progress
             progress_reporter.report_active(experiment['exp.log_file'])
-            # Get script that runs experiment for this framework. If no 'framework_family' is
-            # found, we can try to use exp.framework.
-            framework_key = 'exp.framework_family'
-            if framework_key not in experiment:
-                framework_key = 'exp.framework'
-            command = [experiment['%s.launcher' % (experiment[framework_key])]]
+            # Get script that runs experiment for this backend.
+            backend_key = 'exp.backend'
+            if backend_key not in experiment:
+                logging.info("Skipping experiment, exp.backend must be specified.")
+                stats['launcher.skipped_experiments'] += 1
+                progress_reporter.report(experiment['exp.log_file'], 'skipped', counts=True)
+                continue
+            command = [experiment['{}.launcher'.format(experiment[backend_key])]]
+
             # Do we need to manipulate arguments for launching process?
-            launcher_args_key = '%s.launcher_args' % experiment[framework_key]
+            launcher_args_key = '%s.launcher_args'.format(experiment[backend_key])
             if launcher_args_key in experiment:
                 launcher_args = set(experiment[launcher_args_key].split(' '))
                 logging.debug(
-                    'Only these arguments will be passed to laucnhing process (%s): %s',
+                    'Only these arguments will be passed to launching process (%s): %s',
                     command[0],
                     str(launcher_args)
                 )

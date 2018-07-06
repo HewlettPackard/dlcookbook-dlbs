@@ -16,6 +16,7 @@
 Sort of reference implementation.
 """
 from __future__ import print_function
+import sys
 import re
 import os
 import logging
@@ -30,11 +31,15 @@ from dlbs.utils import DictUtils
 from dlbs.launcher import Launcher
 from dlbs.utils import param2str
 
+#Python 2,3 interop.
+if sys.version_info[0] == 3:
+    basestring=str
+    long=int
 
 class Processor(object):
     """Class that computes variables in all experiments.
 
-    Another terms for this is variable expansion or template substitution or
+    Other terms for this are variable expansion or template substitution or
     template engine.
     """
     # Pattern that matches ${variable_name} and returns as group(1) variable_name
@@ -220,13 +225,22 @@ class Processor(object):
                     elif ref_var in os.environ:
                         replace_value = param2str(os.environ[ref_var])
                     else:
-                        msg = [
-                            "Variable '%s' not found. This may happen if variable's name depend",
-                            "on other variable that's empty or set to an incorrect value. For instance,",
-                            "the ${${exp.framework}.docker.image} variable depends on ${exp.framework}",
-                            "value. If it's empty, the variable name becomes '.docker.image' what's wrong."
-                        ]
-                        raise LogicError(' '.join(msg) % (ref_var))
+                        # We'll assume that if the first character of the variable name is not a letter, this is due to the error
+                        # discussed below.
+                        if 'DBLS_MISSING_IS_EMPTY' in os.environ and \
+                            os.environ['MISSING_IS_EMPTY'].lower() not in ['0','false'] and ref_var[0].isalpha():
+                            replace_value=''
+                            logging.debug(["The variable \"%s\" is missing.",
+                                           "Since the environment variable DLBS_MISSING_IS_EMPTY is set,",
+                                           "it will be treated as existing but empty."], ref_var)
+                        else:
+                            msg = [
+                                "Variable '{}' not found. This may happen if variable's name depend".format(ref_var),
+                                "on other variable that's empty or set to an incorrect value. For instance,",
+                                "the ${${exp.framework}.docker_image} variable depends on ${exp.framework}",
+                                "value. If it's empty, the variable name becomes '.docker_image' which would be wrong."
+                            ]
+                            raise LogicError(' '.join(msg))
                     experiment[var] = experiment[var].replace(replace_pattern, replace_value)
 
             # Search for computable components
@@ -242,6 +256,9 @@ class Processor(object):
                 except NameError as err:
                     logging.error("Cannot evaluate python expression: %s", experiment[var][idx+2:end_idx])
                     raise err
+                except SyntaxError as err:
+                    logging.error("Cannot evaluate python expression due to syntax error: {}".format(experiment[var][idx+2:end_idx]))
+                    raise err
                 logging.debug("\"%s\" -> \"%s\"", experiment[var][idx+2:end_idx], str(eval_res))
                 experiment[var] = experiment[var][:idx] + str(eval_res) + experiment[var][end_idx+2:]
 
@@ -255,7 +272,7 @@ class Processor(object):
         return (computed, partially_computed)
 
     def cast_variable(self, experiment, var):
-        """Cast varaible **var** defined in **experiment** to its true type.
+        """Cast variable **var** defined in **experiment** to its true type.
 
         The cast operation is only defined for variables that are 'string' variables
         by default. The reason why we want to have this op is because in JSON configs

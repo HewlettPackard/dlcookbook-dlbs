@@ -23,8 +23,8 @@
         "exp.docker_args" : "--rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864",
 
         "exp.log_file" : "${BENCH_ROOT}/${exp.backend}/p100_pcie_XL270d_gen9/${exp.gpufreq}/orig/${exp.data}/${exp.dtype}/${exp.model}_${exp.replica_batch}_$(\"${exp.gpus}\".replace(\",\",\".\"))$_${exp.trial}.log",
-        "exp.docker" : false,
-        "exp.singularity" : true,
+        "exp.docker" : true,
+        "exp.singularity" : false,
         "exp.phase" : "training",
         "monitor.frequency" : 5 ,
         "exp.sys_info" : "",
@@ -46,14 +46,14 @@
         },
         {
           "condition":  { "exp.model":["googlenet", "inception3", "resnet50", "vgg16"], "exp.replica_batch":[64, 128]},
-             "parameters": {"exp.status": ""}
+            "parameters": {"exp.status": ""}
         },
         {
            "condition":  { "exp.model":["alexnet"], "exp.replica_batch":[256,512]},
              "parameters": {"exp.status": ""}
         },
         {
-           "condition":{"exp.data"  : "real"}, 
+           "condition":{"exp.data"  : "real"},
              "parameters":{"tensorflow.data_dir" : "/lvol/shruti/imagenet-dataset"}
         }
     ]

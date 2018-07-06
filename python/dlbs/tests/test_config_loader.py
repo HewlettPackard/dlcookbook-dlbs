@@ -22,7 +22,7 @@ class TestConfigurationLoader(unittest.TestCase):
 
     params = {
         'exp': [
-            "status", "status_msg", "proj", "framework", "framework_title", 
+            "status", "status_msg", "proj", "backend", "framework", "framework_title", 
             "framework_family", "framework_ver", "framework_commit", "model", 
             "model_title", "num_warmup_batches", "num_batches", "phase", "data", 
             "data_store", "dtype", "use_tensor_core", "effective_batch", 
@@ -38,11 +38,23 @@ class TestConfigurationLoader(unittest.TestCase):
         'monitor': [
             "frequency", "pid_folder", "launcher"
         ],
-        'tensorflow': [
+        'tf_cnn_benchmarks': [
             "launcher", "python_path", "env", "var_update", "use_nccl",
             "local_parameter_device", "data_dir", "data_name", "distortions",
             "num_intra_threads", "resize_method", "args", "docker_image",
             "docker_args", "host_libpath"
+        ],
+        'nvcnn': [
+            "launcher", "python_path", "env", "use_nccl",
+            "use_xla", "data_dir", "data_name", "use_distort_color",
+            "args", "docker_image", "docker_args", "host_libpath",
+            "singularity_image", "singularity_args",
+        ],
+        'nvcnn_hvd': [
+            "launcher", "python_path", "env", "use_nccl",
+            "use_xla", "data_dir", "data_name", "use_distort_color",
+            "args", "host_libpath",
+            "singularity_image", "singularity_args"
         ],
         'mxnet': [
             "launcher", "bench_path", "cudnn_autotune", "kv_store", "data_dir",
@@ -56,18 +68,8 @@ class TestConfigurationLoader(unittest.TestCase):
             "launcher", "env", "fork", "action", "model_file", "solver_file",
             "model_dir", "solver", "args", "data_dir", "mirror", "data_mean_file",
             "data_backend", "host_path", "docker_image", "docker_args",
-        ],
-        'bvlc_caffe': [
-            "host_path", "host_libpath", "docker_image",
-        ],
-        'intel_caffe': [
-            "host_path", "host_libpath", "docker_image",
-        ],
-        'nvidia_caffe': [
-            "host_path", "host_libpath", "docker_image", "solver_precision",
-            "forward_precision", "forward_math_precision",
-            "backward_precision", "backward_math_precision",
-            "precision"
+            "host_libpath", "solver_precision", "forward_precision", "forward_math_precision",
+            "backward_precision", "backward_math_precision", "precision"
         ],
         'tensorrt': [
             "launcher", "args", "model_file", "model_dir", "docker_image", 
@@ -145,10 +147,10 @@ class TestConfigurationLoader(unittest.TestCase):
         for param in config['parameters']:
             self.assertFalse(
                 isinstance(config['parameters'][param], dict),
-                "In configuration dictionary parameter value cannot be a ditionary"
+                "In configuration dictionary parameter value cannot be a dictionary"
             )
             self.assertIn(param, param_info, "Missing parameter in parameter info dictionary.")
-        # Check values in paramter info object are always dictionaries containing
+        # Check values in parameter info object are always dictionaries containing
         # three mandatory fields.
         for param in param_info:
             self.assertTrue(

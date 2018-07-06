@@ -11,32 +11,45 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Unit tests to verify all json configs can be parsed."""
+"""Unit tests to verify all json configs can be parsed.
+   Added optional extra configurations command line arguments.
+   This is a list of user configuration files (absolute paths required).
+"""
 from __future__ import print_function
+import sys
 import unittest
 import os
 import json
 # append parent directory to import path
 import env  #pylint: disable=W0611
 import dlbs
+import argparse
 
 class TestConfigs(unittest.TestCase):
     def setUp(self):
+        try:
+            self.extra_configs=sys.argv[1:]
+        except Exception:
+            self.extra_configs=None
         pass
-
     def test_json_ok(self):
         """dlbs  ->  TestConfigs::test_json_ok                           [Configuration JSONs are ok.]"""
         configs_dir = os.path.join(os.path.dirname(dlbs.__file__), 'configs')
         config_files = [os.path.join(configs_dir, f) for f in os.listdir(configs_dir) if f.endswith('.json')]
+        if self.extra_configs is not None: config_files+=self.extra_configs
         for config_file in config_files:
             with open(config_file) as f:
                 try:
                     json.load(f)
-                    #print("OK: " + config_file)
+                    print("OK: " + config_file)
                 except ValueError as error:
-                    print("JSON Configuration file is invalid: %s" % (config_file))
+                    print("JSON Configuration file is invalid: {}".format(config_file))
                     raise error
 
 
 if __name__ == '__main__':
-    unittest.main()
+    suite = unittest.TestSuite()
+    result = unittest.TestResult()
+    suite.addTest(unittest.makeSuite(TestConfigs))
+    runner = unittest.TextTestRunner()
+    print(runner.run(suite))

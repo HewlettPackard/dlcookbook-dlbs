@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 # Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +16,22 @@
 # ==============================================================================
 
 """
+Differences from original nvcnn_hvd.py:
+  - The AlexNet implementation was renamed to 'alexnet_owt'
+  - Classical AlexNet model with LRN layers was added with 'alexnet' name.
+  - Added method that implements LRN.
+  - Additional logging lines were added specific to DLBS.
+  - Added functionality to print a model title (human readeable name).
+  - Added ResNet200 and ResNet269 models.
+  - Added fully connected models - AcousticModel and DeepMNIST neural nets. They
+    do not support real data, only dummy. The original acoustic model uses 540 input
+    features (MFCC coefficients). To make compatible with CNN inputs, it emulates those
+    inputs with 23x23 image that gets flatten right away.
+  - Brought up to nvcnn 1.6 level.
+  - Added same optional XLA compilation as in nvcnn.py 1.6.
+"""
+
+"""
 Changelog:
 1.1
   - Center crop evaluation images
@@ -26,8 +43,8 @@ Changelog:
 1.0
   - Initial version based on nvcnn.py 1.4
 """
+__version__= "1.1"
 
-from __future__ import print_function
 from builtins import range
 
 import numpy as np
@@ -52,12 +69,44 @@ except:
           "docker-examples/Dockerfile.horovod." % __file__)
     raise
 
-__version__ = "1.1"
+model_titles = {
+    'deep_mnist': 'DeepMNIST',
+    'acoustic_model': 'AcousticModel',
+    'vgg11': 'VGG11',
+    'vgg13': 'VGG13',
+    'vgg16': 'VGG16',
+    'vgg19': 'VGG19',
+    'lenet': 'LeNet',
+    'googlenet': 'GoogleNet',
+    'overfeat': 'Overfeat',
+    'alexnet': 'AlexNet',
+    'alexnet_owt': 'AlexNetOWT',
+    'trivial': 'Trivial',
+    'inception3': 'InceptionV3',
+    'inception4': 'InceptionV4',
+    'resnet18': 'ResNet18',
+    'resnet34': 'ResNet34',
+    'resnet50': 'ResNet50',
+    'resnet101': 'ResNet101',
+    'resnet152': 'ResNet152',
+    'resnet200': 'ResNet200',
+    'resnet269': 'ResNet269'
+}
 
 def tensorflow_version_tuple():
     v = tf.__version__
     major, minor, patch = v.split('.')
     return (int(major), int(minor), patch)
+
+def tensorflow_version():
+    vt = tensorflow_version_tuple()
+    return vt[0]*100 + vt[1]
+
+class DummyScope(object):
+    def __enter__(self):
+        pass
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
 
 hvd.init()
 
@@ -90,13 +139,18 @@ class GPUNetworkBuilder(object):
                  batch_norm_config = {'decay':   0.9,
                                       'epsilon': 1e-4,
                                       'scale':   True,
-                                      'zero_debias_moving_mean': False}):
+                                      'zero_debias_moving_mean': False},
+                 use_xla=False):
         self.dtype             = dtype
         self.activation_func   = activation
         self.is_training       = is_training
         self.use_batch_norm    = use_batch_norm
         self.batch_norm_config = batch_norm_config
         self._layer_counts     = defaultdict(lambda: 0)
+        if use_xla:
+            self.jit_scope = tf.contrib.compiler.jit.experimental_jit_scope
+        else:
+            self.jit_scope = DummyScope
     def _count_layer(self, layer_type):
         idx  = self._layer_counts[layer_type]
         name = layer_type + str(idx)
@@ -141,10 +195,11 @@ class GPUNetworkBuilder(object):
             return self._bias(input_layer)
     def input_layer(self, input_layer):
         """Converts input data into the internal format"""
-        x = self._from_nhwc(input_layer)
-        x = tf.cast(x, self.dtype)
-        # Rescale and shift to [-1,1]
-        x = x * (1./127.5) - 1
+        with self.jit_scope():
+            x = self._from_nhwc(input_layer)
+            x = tf.cast(x, self.dtype)
+            # Rescale and shift to [-1,1]
+            x = x * (1./127.5) - 1
         return x
     def conv(self, input_layer, num_filters, filter_size,
              filter_strides=(1,1), padding='SAME',
@@ -295,7 +350,8 @@ class GPUNetworkBuilder(object):
                 kernel_strides[1] != 1):
                 input_layer = self.conv(input_layer, num_outputs, [1, 1],
                                         kernel_strides, activation='LINEAR')
-            x = self.activate(input_layer + output_layer, activation)
+            with self.jit_scope():
+                x = self.activate(input_layer + output_layer, activation)
             return x
     def dropout(self, input_layer, keep_prob=0.5):
         """Applies a dropout layer if is_training"""
@@ -306,6 +362,13 @@ class GPUNetworkBuilder(object):
                 return tf.nn.dropout(input_layer, keep_prob_tensor)
         else:
             return input_layer
+
+    def lrn(self, input_layer, radius=5, alpha=0.0001, beta=0.75, bias=1.0):
+        with tf.variable_scope(self._count_layer('lrn')):
+            lrn_func = tf.nn.local_response_normalization
+            x = lrn_func(input_layer, depth_radius=radius, alpha=alpha,
+                         beta=beta, bias=bias)
+        return x
 
 def deserialize_image_record(record):
     feature_map = {
@@ -435,6 +498,9 @@ class ImagePreprocessor(object):
             for i, record in enumerate(records):
                 imgdata, label, bbox, text = deserialize_image_record(record)
                 image = self.preprocess(imgdata, bbox, thread_id=i)
+                #Moved from outside the loop.
+                image = tf.clip_by_value(image, 0., 255.)
+                image = tf.cast(image, self.dtype)
                 label -= 1 # Change to 0-based (don't use background class)
                 images.append(image)
                 labels.append(label)
@@ -442,8 +508,6 @@ class ImagePreprocessor(object):
             images = tf.parallel_stack(images)
             labels = tf.concat(labels, 0)
             images = tf.reshape(images, [-1, self.height, self.width, 3])
-            images = tf.clip_by_value(images, 0., 255.)
-            images = tf.cast(images, self.dtype)
         return images, labels
 
 def stage(tensors):
@@ -627,9 +691,26 @@ class FeedForwardEvaluator(object):
 def inference_trivial(net, input_layer):
     """A trivial model for benchmarking input pipeline performance"""
     net.use_batch_norm = False
+
     x = net.input_layer(input_layer)
     x = net.flatten(x)
     x = net.fully_connected(x, 1)
+    return x
+
+def inference_acoustic_model(net, input_layer):
+    net.use_batch_norm = False
+    x = net.input_layer(input_layer)
+    x = net.flatten(x)
+    for i in range(5):
+        x = net.fully_connected(x, 2048)
+    return x
+
+def inference_deep_mnist(net, input_layer):
+    net.use_batch_norm = False
+    x = net.input_layer(input_layer)
+    x = net.flatten(x)
+    for sz in (2500, 2000, 1500, 1500, 1000, 500):
+        x = net.fully_connected(x, sz)
     return x
 
 def inference_lenet5(net, input_layer):
@@ -658,6 +739,31 @@ def inference_overfeat(net, input_layer):
     x = net.flatten(x)
     x = net.fully_connected(x, 3072)
     x = net.fully_connected(x, 4096)
+    return x
+
+def inference_alexnet(net, input_layer):
+    """Sergey:
+        http://ethereon.github.io/netscope/#/gist/5c94a074f4e4ac4b81ee28a796e04b5d
+        Reference AlexNet with grouped convolutions removed.
+    """
+    net.use_batch_norm = False
+    x = net.input_layer(input_layer)
+    # Note: VALID requires padding the images by 3 in width and height
+    x = net.conv(x, 96, (11,11), (4,4), 'VALID')
+    x = net.lrn(x)
+    x = net.pool(x, 'MAX', (3,3))
+    x = net.conv(x, 256,   (5,5))
+    x = net.lrn(x)
+    x = net.pool(x, 'MAX', (3,3))
+    x = net.conv(x, 384,   (3,3))
+    x = net.conv(x, 384,   (3,3))
+    x = net.conv(x, 256,   (3,3))
+    x = net.pool(x, 'MAX', (3,3))
+    x = net.flatten(x)
+    x = net.fully_connected(x, 4096)
+    x = net.dropout(x)
+    x = net.fully_connected(x, 4096)
+    x = net.dropout(x)
     return x
 
 def inference_alexnet_owt(net, input_layer):
@@ -822,7 +928,8 @@ def resnet_bottleneck_v1(net, input_layer, depth, depth_bottleneck, stride,
             x = net.conv(x, depth_bottleneck, (1,1), (s,s))
             x = net.conv(x, depth_bottleneck, (3,3), padding='SAME')
             x = net.conv(x, depth,            (1,1), activation='LINEAR')
-        x = net.activate(x + shortcut)
+        with net.jit_scope():
+            x = net.activate(x + shortcut)
         return x
     
 def resnext_split_branch(net, input_layer, stride):
@@ -897,6 +1004,8 @@ def inference_resnet_v1(net, input_layer, nlayer):
     elif nlayer ==  50: return inference_resnet_v1_impl(net, input_layer, [3,4, 6,3])
     elif nlayer == 101: return inference_resnet_v1_impl(net, input_layer, [3,4,23,3])
     elif nlayer == 152: return inference_resnet_v1_impl(net, input_layer, [3,8,36,3])
+    elif nlayer == 200: return inference_resnet_v1_impl(net, input_layer, [3,24,36,3])
+    elif nlayer == 269: return inference_resnet_v1_impl(net, input_layer, [3,40,48,3])
     else: raise ValueError("Invalid nlayer (%i); must be one of: 18,34,50,101,152" %
                            nlayer)
         
@@ -1101,6 +1210,7 @@ def add_bool_argument(cmdline, shortname, longname=None, default=False, help=Non
     return cmdline
 
 def main():
+    block_start_time = time.time()
     tf.set_random_seed(1234+hvd.rank())
     np.random.seed(4321+hvd.rank())
     cmdline = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -1142,6 +1252,9 @@ def main():
                          disabled.""")
     cmdline.add_argument('--larc_mode', default='clip',
                          help="""LARC mode can be 'clip' or 'scale'.""")
+    add_bool_argument(cmdline, '--xla', default=False,
+                      help="""Use XLA compilation.
+                      Default False.""")
     add_bool_argument(cmdline, '--distort_color', default=False,
                       help="""Image augmention by distorting colors.
                       Default: False.""")
@@ -1186,7 +1299,8 @@ def main():
     FLAGS.input_buffer_size     = min(10000, nrecord)
     #FLAGS.distort_color         = False
     #FLAGS.nstep_burnin          = 20
-    FLAGS.larc_epsilon          = 1.
+    #FLAGS.xla            = False
+    FLAGS.larc_epsilon          = 1.  # Scaling to avoid fp16 underflow
 
     if FLAGS.eval:
         if FLAGS.data_dir is None:
@@ -1206,6 +1320,7 @@ def main():
     print_r0("            ", batch_size * hvd.size(), 'total')
     print_r0("Data format:", 'NCHW')
     print_r0("Data type:  ", 'fp16' if model_dtype == tf.float16 else 'fp32')
+    print_r0("Using XLA:  ", FLAGS.xla)
     print_r0("Distort color:  ", FLAGS.distort_color)
 
 
@@ -1218,15 +1333,22 @@ def main():
         FLAGS.num_epochs = max(nstep * batch_size * hvd.size() // nrecord, 1)
 
     model_name = FLAGS.model
+    model_name = FLAGS.model
+    if model_name in model_titles:
+        print("__exp.model_title__=\"%s\"" % (model_titles[model_name]))
     if   model_name == 'trivial':
         height, width = 224, 224
         model_func = inference_trivial
     elif model_name == 'lenet':
         height, width = 28, 28
         model_func = inference_lenet5
-    elif model_name == 'alexnet':
+    elif model_name == 'alexnet_owt':
         height, width = 227, 227
         model_func = inference_alexnet_owt
+        FLAGS.learning_rate = 0.03
+    elif model_name == 'alexnet':
+        height, width = 227, 227
+        model_func = inference_alexnet
         FLAGS.learning_rate = 0.03
     elif model_name == 'overfeat':
         height, width = 231, 231
@@ -1262,6 +1384,16 @@ def main():
         height, width = 299, 299
         model_func = inference_inception_resnet_v2
         FLAGS.learning_rate = 0.045
+    elif model_name == 'acoustic_model':
+        # 23 * 23 = 529 input features what is pretty close to actual 540 coefficients.
+        height, width = 23, 23
+        # Clustered tri-phones classes for English Fully Connected Acoustic Model
+        nclass = 8192
+        model_func = inference_acoustic_model
+    elif model_name == 'deep_mnist':
+        height, width = 28, 28
+        nclass = 10
+        model_func = inference_deep_mnist
     else:
         raise ValueError("Invalid model type: %s" % model_name)
 
@@ -1272,7 +1404,8 @@ def main():
 
     def loss_func(images, labels, var_scope):
         # Build the forward model
-        net = GPUNetworkBuilder(True, dtype=model_dtype)
+        net = GPUNetworkBuilder(
+            True, dtype=model_dtype, use_xla=FLAGS.xla)
         output = model_func(net, images)
         # Add final FC layer to produce nclass outputs
         logits = net.fully_connected(output, nclass, activation='LINEAR')
@@ -1284,13 +1417,15 @@ def main():
         if FLAGS.weight_decay is not None and FLAGS.weight_decay != 0.:
             params = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                                        scope=var_scope.name)
-            l2_loss = tf.add_n([tf.nn.l2_loss(w) for w in params])
-            if l2_loss.dtype != tf.float32:
-                l2_loss = tf.cast(l2_loss, tf.float32)
-            loss += FLAGS.weight_decay * l2_loss
+            with net.jit_scope():
+                l2_loss = tf.add_n([tf.nn.l2_loss(w) for w in params])
+                if l2_loss.dtype != tf.float32:
+                    l2_loss = tf.cast(l2_loss, tf.float32)
+                loss += FLAGS.weight_decay * l2_loss
         return loss, logits
     def eval_func(images, labels, var_scope):
-        net = GPUNetworkBuilder(False, dtype=model_dtype)
+        net = GPUNetworkBuilder(
+            False, dtype=model_dtype, use_xla=FLAGS.xla)
         output = model_func(net, images)
         logits = net.fully_connected(output, nclass, activation='LINEAR')
         if logits.dtype != tf.float32:
@@ -1374,7 +1509,11 @@ def main():
     batch_times = []
     oom = False
     step0 = int(sess.run(trainer.global_step))
+    print_r0("__profiler.init_time__=%s" % json.dumps(time.time() - block_start_time))
+    block_start_time = time.time()
     for step in range(step0, nstep):
+        if step == FLAGS.nstep_burnin:
+            print_r0("__profiler.warmup_time__=%s" % json.dumps(time.time() - block_start_time))
         ops_to_run = [total_loss, learning_rate] + train_ops
         try:
             start_time = time.time()
@@ -1383,7 +1522,7 @@ def main():
                  time.time() - last_summary_time > FLAGS.summary_interval)):
                 if step != 0:
                     last_summary_time += FLAGS.summary_interval
-                print("Writing summaries to ", log_dir)
+                print_r0("Writing summaries to ", log_dir)
                 summary, loss, lr = sess.run([summary_ops] + ops_to_run)[:3]
                 train_writer.add_summary(summary, step)
             else:

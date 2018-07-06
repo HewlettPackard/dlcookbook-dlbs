@@ -20,7 +20,7 @@ It uses several huristics for that. This is what is checked:
    run certain experiments, it checks they are available.
 3. `Docker images availability check`: for every docker image, validator checks that
    image exists.
-4. `Host framework check`: for a number of frameworks, if they are to run in a host OS,
+4. `Host backend check`: for a number of backends, if they are to run in a host OS,
    validator checks it can do that with provided environmental variables.
 
 Usage:
@@ -45,21 +45,23 @@ class Validator(object):
     """
 
     def __init__(self, plan):
-        self.plan = copy.deepcopy(plan)    # Plan - we will compute variables here - so it's a machine dependent validation.
-        self.plan_ok = True                # Global summary: is plan OK.
-        self.log_files_collisions = set()  # Files that are produced by 2 or more experiments (collisions)
-        self.num_disabled = 0              # Number of disabled experiments
-        self.frameworks = {}               # Frameworks stats excluding disabled experiments
-        self.need_docker = False           # Does the plan need docker (CPU experiments)?
-        self.need_nvidia_docker = False    # Does the plan need nvidia docker (GPU experiments)?
-        self.cpu_docker_imgs = {}          # The mapping "framework -> set of docker images" for CPU experiments
-        self.gpu_docker_imgs = {}          # The mapping "framework -> set of docker images" for GPU experiments
-        self.errors = []                   # All the errors found in this plan.
-        self.messages = []                 # Any informational message that we want to print in a summary report.
-                                           # Like docker images IDs or framework versions.
-
-        self.framework_host_checks = {}    # Temporary storage for the mapping "framework -> env". Env is the env
-                                           # variables that we have already checked.
+        self.plan = copy.deepcopy(plan)       # Plan - we will compute variables here - so it's a machine dependent validation.
+        self.plan_ok = True                   # Global summary: is plan OK.
+        self.log_files_collisions = set()     # Files that are produced by 2 or more experiments (collisions)
+        self.num_disabled = 0                 # Number of disabled experiments
+        self.backends = {}                    # Frameworks stats excluding disabled experiments
+        self.need_docker = False              # Does the plan need docker (CPU experiments)?
+        self.need_nvidia_docker = False       # Does the plan need nvidia-docker (GPU experiments)?
+        self.need_singularity = False         # Does the plan need singularity (CPU experiments)?
+        self.cpu_docker_imgs = {}             # The mapping "backend -> set of docker images" for CPU experiments
+        self.gpu_docker_imgs = {}             # The mapping "backend -> set of docker images" for GPU experiments
+        self.cpu_singularity_imgs = {}        # The mapping "backend -> set of singularity images" for CPU experiments
+        self.gpu_singularity_imgs = {}        # The mapping "backend -> set of singularity images" for GPU experiments
+        self.errors = []                      # All the errors found in this plan.
+        self.messages = []                    # Any informational message that we want to print in a summary report.
+                                              # Like docker images IDs or framework versions.
+        self.backend_host_checks = {}         # Temporary storage for the mapping "backend -> env". Env is the env
+                                              # variables that we have already checked.
 
     def validate(self):
         """Performs all checks for provided plan."""
@@ -84,32 +86,31 @@ class Validator(object):
                     log_file = experiment['exp.log_file']
                     if log_file is None or not isinstance(log_file, basestring) or log_file.strip() == '':
                         self.errors.append(
-                            "Log file parameter has invalid value ('%s'). It must not be None, must be of type string and must not be empty."
-                            "To disable log file check, define 'DLBS_LOG_FILE_CHECK=false' environemntal variable." % log_file
+                            "Log file parameter has invalid value ('{}'). It must not be None, must be of type string and must not be empty.".format(log_file),
+                            "To disable log file check, define 'DLBS_LOG_FILE_CHECK=false' environemntal variable."
                         )
                     elif log_file in log_files:
                         self.log_files_collisions.add(log_file)
                     log_files.add(log_file)
-            # Update framework statistics
-            self.update_framework_stats(experiment)
+            # Update backend statistics
+            self.update_backend_stats(experiment)
 
-        # Check docker and nvidia docker installed
-        if self.need_docker:
-            self.check_can_run_docker(nvidia_docker=False)
-        if self.need_nvidia_docker:
-            self.check_can_run_docker(nvidia_docker=True)
+        # Check docker, nvidia docker and singularity are installed if needed.
+        if self.need_docker or self.need_nvidia_docker: self.check_can_run_docker(self.need_nvidia_docker)
+        if self.need_singularity: self.check_can_run_singularity()
 
         # Check images exist
-        if self.need_docker or self.need_nvidia_docker:
-            for framework in self.frameworks:
-                for docker_img in self.frameworks[framework]['docker_images']:
+        if self.need_docker:
+            for backend in self.backends:
+                for docker_img in self.backends[backend]['docker_images']:
                     self.check_docker_image_exists(docker_img)
-
+        if self.need_singularity:
+            for backend in self.backends:
+                for singularity_img in self.backends[backend]['singularity_images']:
+                    self.check_singularity_image_exists(singularity_img)
         # Set plan OK flag
         if len(self.log_files_collisions) > 0 or len(self.errors) > 0:
             self.plan_ok = False
-
-
 
     def report(self):
         """Prints validation summary."""
@@ -118,7 +119,7 @@ class Validator(object):
             print("=========================== MESSAGES ===========================")
             print(json.dumps(list(self.messages), sort_keys=False, indent=4))
         print("======================== FRAMEWORK STATS =======================")
-        print(json.dumps(self.frameworks, sort_keys=False, indent=4))
+        print(json.dumps(self.backends, sort_keys=False, indent=4))
         if not self.plan_ok:
             print("============================ ERRORS ============================")
             if self.log_files_collisions:
@@ -128,98 +129,117 @@ class Validator(object):
                 print("Other errors:")
                 print(json.dumps(self.errors, sort_keys=False, indent=4))
         print("========================= PLAN SUMMARY =========================")
-        print("Is plan OK ................................ %s" % (str(self.plan_ok)))
-        print("Total number of experiments (plan size).....%d" % (len(self.plan)))
-        print("Number of disabled experiments ............ %d" % (self.num_disabled))
-        print("Number of active experiments .............. %d" % (len(self.plan) - self.num_disabled))
-        print("Log files collisions ...................... %s" % ('YES' if self.log_files_collisions else 'NO'))
+        print("Is plan OK ................................ {}".format (str(self.plan_ok)))
+        print("Total number of experiments (plan size).....{}".format (len(self.plan)))
+        print("Number of disabled experiments ............ {}".format (self.num_disabled))
+        print("Number of active experiments .............. {}".format (len(self.plan) - self.num_disabled))
+        print("Log files collisions ...................... {}".format ('YES' if self.log_files_collisions else 'NO'))
         print("================================================================")
 
-    def update_framework_stats(self, exp):
-        """Updates statistics for a framework in this experiment `exp`.
+    def update_backend_stats(self, experiment):
+        """Updates statistics for a backend in this experiment `exp`.
 
         Will not update stats if this experiment is disabled.
 
-        :param dict exp: An experiment item from :py:meth:`~dlbs.Validator.plan` list.
+        :param dict experiment: An experiment item from :py:meth:`~dlbs.Validator.plan` list.
         """
-        if 'exp.framework' not in exp:
-            framework_id = 'UNK'
+        if 'exp.backend' not in experiment:
+            backend_id = 'UNK'
         else:
-            framework_id = exp['exp.framework']
-        if framework_id not in self.frameworks:
-            self.frameworks[framework_id] = {
+            backend_id = experiment['exp.backend']
+        if backend_id not in self.backends:
+            self.backends[backend_id] = {
                 'num_exps': 0,
                 'num_docker_exps': 0,
+                'num_singularity_exps': 0,
                 'num_host_exps': 0,
                 'num_disabled': 0,
                 'num_gpu_exps': 0,
                 'num_cpu_exps': 0,
-                'docker_images': []
+                'docker_images': [],
+                'singularity_images': []
             }
-        stats = self.frameworks[framework_id]
+        stats = self.backends[backend_id]
         # Update number of disabled exps
-        if 'exp.status' in exp and exp['exp.status'] == 'disabled':
+        if 'exp.status' in experiment and experiment['exp.status'] == 'disabled':
             stats['num_disabled'] += 1
             self.num_disabled += 1
             return
         stats['num_exps'] += 1
         # Update docker/host stats
-        docker_img_key = ""
-        if 'exp.docker' in exp:
-            if exp['exp.docker'] is True:
-                stats['num_docker_exps'] += 1
-                docker_img_key = '%s.docker_image' % (exp['exp.framework'])
-                if exp[docker_img_key] not in stats['docker_images']:
-                    stats['docker_images'].append(exp[docker_img_key])
-            else:
-                stats['num_host_exps'] += 1
-                self.check_host_framework(exp['exp.framework'], exp['%s.env' % (exp['exp.framework_family'])], exp['runtime.python'])
+        container_img_key = ""
+        if 'exp.docker' not in experiment: experiment['exp.docker']=False
+        if 'exp.singularity' not in experiment: experiment['exp.singularity']=False
+        for container in ['docker','singularity']:
+            if experiment['exp.{}'.format(container)] is True:
+                stats['num_{}_exps'.format(container)] += 1
+                container_img_key = 'exp.{}_image'.format(container)
+                if experiment[container_img_key] not in stats['{}_images'.format(container)]:
+                    stats['{}_images'.format(container)].append(experiment[container_img_key])
+                break
+        else:
+            stats['num_host_exps'] += 1
+            self.check_host_backend(experiment['exp.backend'], experiment['{}.env'.format(experiment['exp.backend_family'])], experiment['runtime.python'])
         # Update CPU/GPU stats
-        if 'exp.device_type' in exp:
-            if exp['exp.device_type'] == 'gpu':
-                stats['num_gpu_exps'] += 1
-                if exp['exp.docker'] is True:
-                    self.need_nvidia_docker = True
-                    self.add_docker_image(exp['exp.framework'], 'gpu', exp[docker_img_key])
-            elif exp['exp.device_type'] == 'cpu':
-                stats['num_cpu_exps'] += 1
-                if exp['exp.docker'] is True:
-                    self.need_docker = True
-                    self.add_docker_image(exp['exp.framework'], 'cpu', exp[docker_img_key])
-            else:
-                stats['errors'].append("Unknown device: '%s'. Expecting 'gpu' or 'cpu'" % (exp['exp.device']))
+        if 'exp.device_type' not in experiment: experiment['exp.device_type']= 'cpu'
+        if experiment['exp.device_type'] == 'gpu':
+            stats['num_gpu_exps'] += 1
+            if experiment['exp.docker'] is True:
+                self.need_nvidia_docker = True
+                self.add_docker_image(experiment['exp.backend'], 'gpu', experiment[container_img_key])
+            elif experiment['exp.singularity'] is True:
+                self.need_singularity = True
+                self.add_singularity_image(experiment['exp.backend'], 'gpu', experiment[container_img_key])
+        elif experiment['exp.device_type'] == 'cpu':
+            stats['num_cpu_exps'] += 1
+            if experiment['exp.docker'] is True:
+                self.need_docker = True
+                self.add_docker_image(exp['exp.backend'], 'cpu', exp[container_img_key])
+            elif experiment['exp.singularity'] is True:
+                self.need_singularity = True
+                self.add_singularity_image(experiment['exp.backend'], 'cpu', experiment[container_img_key])
+        else:
+            stats['errors'].append("Unknown device: '{}'. Expecting 'gpu' or 'cpu'".format(exp['exp.device']))
 
-    def add_docker_image(self, framework, device, docker_img):
+    def add_docker_image(self, backend, device, docker_img):
         """Adds CPU or GPU docker image to list of images.
 
-        :param str framework:  Framework name (caffe, tensorflow, caffe2 ...). This\
-                               is not a framework ID, so, you should not pass here something like\
-                               bvlc_caffe - use caffe for all caffe forks.
+        :param str backend:   Actual backend not framework.
         :param str device:     Main computational device: 'cpu' or 'gpu'. Based on this\
                                value we select docker/nvidia-docker.
         :param str docker_img: Name of a docker image.
         """
         imgs = self.gpu_docker_imgs if device == 'gpu' else self.cpu_docker_imgs
-        if framework not in imgs:
-            imgs[framework] = set()
-        imgs[framework].add(docker_img)
+        if backend not in imgs:
+            imgs[backend] = set()
+        imgs[backend].add(docker_img)
 
-    def check_host_framework(self, framework, env, python_exec):
-        """Checks it can run framework in host environment.
+    def add_singularity_image(self, backend, device, singularity_img):
+        """Adds CPU or GPU singularity image to list of images.
 
-        :param str framework: Framework name (caffe, tensorflow, caffe2 ...). This\
-                              is not a framework ID, so, you should not pass here something like\
-                              bvlc_caffe - use caffe for all caffe forks.
+        :param str backend:   Actual backend not framework.
+        :param str device:     Main computational device: 'cpu' or 'gpu'. Based on this\
+                               value we select singularity/nvidia-singularity.
+        :param str singularity_img: Name of a singularity image.
+        """
+        imgs = self.gpu_singularity_imgs if device == 'gpu' else self.cpu_singularity_imgs
+        if backend not in imgs:
+            imgs[backend] = set()
+        imgs[backend].add(singularity_img)
+
+    def check_host_backend(self, backend, env, python_exec):
+        """Checks it can run backend in host environment.
+
+        :param str backend: Backend name (nvidia_caffe, tf_cnn_benchmark, caffe2 ...).
         :param str env: Environmental variables from experiment. We will parse them\
-                        into a dictionary to pass to a`subprocess.Popen` call.
+                        into a dictionary to pass to a`subprocess.Popen call.
         """
         # Check if we have already performed this test
-        if framework not in self.framework_host_checks:
-            self.framework_host_checks[framework] = set()
-        elif env in self.framework_host_checks[framework]:
-            return
+        if backend not in self.backend_host_checks:
+            self.backend_host_checks[backend] = set()
+        elif env in self.backend_host_checks[backend]: return
 
-        self.framework_host_checks[framework].add(env)
+        self.backend_host_checks[backend].add(env)
 
         # Convert `env` to valid dictionary of variables. Here, the 'env' is a
         # computed parameter. It still may have dependencies on standard system
@@ -233,19 +253,17 @@ class Validator(object):
         # Run simple tests
         # The 'PATH' issue is described here: https://stackoverflow.com/questions/48168482/keyerror-path-on-numpy-import
         cmd = None
-        if framework == 'tensorflow':
+        if backend in ['tf_cnn_benchmark','nvcnn','nvcnn_hvd']:
             cmd = [python_exec, '-c', 'import os; os.environ.setdefault("PATH", ""); import tensorflow as tf; print tf.__version__;']
-        elif framework == 'mxnet':
+        elif backend == 'mxnet':
             cmd = [python_exec, '-c', 'import os; os.environ.setdefault("PATH", ""); import mxnet as mx; print mx.__version__;']
-        elif framework == 'caffe2':
+        elif backend == 'caffe2':
             # It seems that in the future releases it'll be possible to use something like:
             # from caffe2.python.build import build_options
-            #cmd = ['python', '-c', 'import caffe2;']
             cmd = [python_exec, '-c', 'import os; os.environ.setdefault("PATH", ""); from caffe2.python.build import build_options; print(build_options);']
-            #cmd = ['python', '-c', 'from caffe2.python.build import CAFFE2_NO_OPERATOR_SCHEMA; print(CAFFE2_NO_OPERATOR_SCHEMA);']
-        elif framework == 'caffe':
+        elif backend in ['bvlc_caffe','nvidia_caffe','intel_caffe']:
             cmd = ['caffe', '--version']
-        elif framework == 'tensorrt':
+        elif backend == 'tensorrt':
             cmd = ['tensorrt', '--version']
 
         if cmd is not None:
@@ -266,7 +284,6 @@ class Validator(object):
             self.add_check_result('CanRunDocker', cmd, retcode, output)
         except OSError as error:
             self.add_check_result('CanRunDocker', cmd, retcode, output, error=error)
-            #self.errors.append("CanRunDocker (nvidia_docker=%s) check failed with message: '%s'" % (nvidia_docker, str(error)))
 
     def check_docker_image_exists(self, docker_img):
         """Checks if this docker image exists.
@@ -285,7 +302,36 @@ class Validator(object):
                 output if retcode != 0 else ['docker image exists']
             )
         except OSError as error:
-            self.errors.append("DockerImageExists (image=%s) check failed with message: '%s'" % (docker_img, str(error)))
+            self.errors.append("DockerImageExists (image={}) check failed with message: '{}'".format(docker_img, str(error)))
+
+    def check_can_run_singularity(self):
+        """Checks if can run singularity
+        """
+        try:
+            cmd = ["singularity", "--version"]
+            retcode, output = Validator.run_process(cmd)
+            self.add_check_result('CanRunSingularity', cmd, retcode, output)
+        except OSError as error:
+            self.add_check_result('CanRunSingularity', cmd, retcode, output, error=error)
+
+    def check_singularity_image_exists(self, singularity_img):
+        """Checks if this singularity image exists.
+
+        :param str singularity_img: Name of a singularity image.
+        """
+        try:
+            cmd = ["singularity", "inspect", singularity_img]
+            retcode, output = Validator.run_process(cmd)
+            # The 'singularity inspect ...' will return 0 if image exists and 1 otherwise.
+            # We should also ignore output - it's a bunch of information on this image
+            self.add_check_result(
+                'SingularityImageExists',
+                cmd,
+                retcode,
+                output if retcode != 0 else ['singularity image exists']
+            )
+        except OSError as error:
+            self.errors.append("SingularityImageExists (image={}) check failed with message: '{}'".format(singularity_img, str(error)))
 
     @staticmethod
     def run_process(cmd, env=None):
@@ -304,7 +350,6 @@ class Validator(object):
                 break
             if line:
                 output.append(line)
-        #print("%d -> %s" % (process.returncode, str(output)))
         return (process.returncode, output)
 
     def add_check_result(self, check_name, cmd, retcode, output, **kwargs):

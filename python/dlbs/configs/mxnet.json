@@ -83,6 +83,11 @@
       "type": "str",
       "desc": "In case if containerized benchmarks, this are the docker parameters."
     },
+    "mxnet.singularity_image": {
+      "val": "",
+      "type": "str",
+      "desc": "The name of a singularity image for mxnet if containerized benchmark is requested."
+    },
     "mxnet.host_python_path": {
       "val": "${HOME}/projects/mxnet/python",
       "type": "str",

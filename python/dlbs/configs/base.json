@@ -36,27 +36,37 @@
         "To identify individial benchmarks within series of benchmarks in one project, use 'exp.id' parameter."
       ]
     },
+    "exp.backend": {
+      "val": "",
+      "type": "str",
+      "desc": [
+        "The backend or benchmark harness script to benchmark. ",
+        "Supported backends: 'tf_cnn_benchmarks', 'nvcnn', 'nvcnn_hvd', 'caffe2', 'mxnet', 'tensorrt', 'caffe",
+        "Currently required for TensorFlow backends."
+      ]
+    },
     "exp.framework": {
       "val":  "",
       "type": "str",
       "desc": [
-        "Framework to benchmark. Supported frameworks: 'tensorflow', 'caffe2', 'mxnet', 'tensorrt', 'nvidia_caffe', 'intel_caffe', 'bvlc_caffe'."
+        "Framework to benchmark. Such as: 'tensorflow', 'caffe2', 'mxnet', 'tensorrt', 'caffe'",
+        "This is a required parameter or variable."
       ]
     },
     "exp.framework_title": {
-      "val":  "",
+      "val":  "$('{}'.format('${exp.framework}') if '${exp.framework_fork}' =='' else '{} {}'.format('${exp.framework}','${exp.framework_fork}'))$",
       "type": "str",
       "desc": [
-        "Human readable framework title that goes into reports. Something like 'TensorFlow', 'Caffe2', 'MXNet', 'TensorRT', 'NVIDIA Caffe',",
+        "Human readable framework title that goes into reports. Something like 'TensorFlow', 'Caffe2', 'MXNet', 'TensorRT', 'NVidia Caffe',",
         "'Intel Caffe' and 'BVLC Caffe'"
       ]
     },
     "exp.framework_family": {
-      "val":  "${exp.framework}",
+      "val": "${exp.framework}",
       "type": "str",
       "desc": [
         "A framework family identifier. In most situations this is the same as a framework identifier ('exp.framework'). For Caffe's forks",
-        "(bvlc_caffe, nvidia_caffe and intel_caffe) it is 'caffe'. This parameter is used to identify what launcher is responsible for",
+        "(bvlc, nvidia and intel) it is 'caffe'. This parameter is used to identify what launcher is responsible for",
         "running benchmarks. All Caffe's forks share the same launcher."
       ]
     },
@@ -66,6 +76,14 @@
       "desc": [
         "Framework version. Usually, the value is automatically identified based on actual framework used in benchmarks",
         "(either bare metal, docker or singularity)."
+      ]
+    },
+    "exp.framework_fork": {
+      "val" :  "",
+      "type": "str",
+      "desc": [
+        "Framework github fork. Currently it is used to distinguish between the Nvidia, BVLC and Intel Caffe forks.",
+        "For Caffe it must be supplied."
       ]
     },
     "exp.framework_commit": {
@@ -120,7 +138,7 @@
       "desc": "Phase to benchmark. Possible values - 'inference' or 'training'."
     },
     "exp.data_dir": {
-      "val": "${${exp.framework_family}.data_dir}",
+      "val": "${${exp.framework}.data_dir}",
       "type": "str",
       "desc": [
         "A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline)."
@@ -133,7 +151,7 @@
       "desc": [
         "Indicator if real or synthetic data was used in experiment. Real data means the presence of input injection pipeline",
         "synthetic data means no injection pipeline. Input tensors are initialized with random numbers. The data specificatio is usually a",
-        "framework specific and typically specified by a 'data_dir' parameter in a respective framework namespace i.e. 'tensorflow.data_dir'."
+        "framework specific and typically specified by a 'data_dir' parameter in a respective framework namespace i.e. 'tf_cnn_benchmark.data_dir'."
       ]
     },
     "exp.data_store": {
@@ -233,7 +251,7 @@
       "desc": ["Unique identifier (UUID) of an experiment. Can be used to uniqely identify individual benchmarks."]
     },
     "exp.log_file": {
-      "val": "${exp.framework}_${exp.device_type}_${exp.model}_${exp.effective_batch}_${exp.id}.log",
+      "val": "${exp.framework}_${exp.backend}_${exp.device_type}_${exp.model}_${exp.effective_batch}_${exp.id}.log",
       "type": "str",
       "desc": ["The name of a log file for this experiment."]
     },
@@ -276,7 +294,7 @@
       ]
     },
     "exp.docker_image": {
-      "val": "${${exp.framework_family}.docker_image}",
+      "val": "$('${${exp.framework}_${exp.framework_fork}.docker_image}' if '${exp.framework_fork}' != '' else '${${exp.framework}.docker_image}')$",
       "type": "str",
       "desc": ["Docker image to use for current benchmark. Must exist in the system."]
     },
@@ -403,6 +421,30 @@
         "By default, it equals to python version that was used to launch the experimenter script for bare metal runs. In docker containers,",
         "by default, we use standard python."
       ]
+    },
+    "exp.mpirun": {
+      "val": "mpirun",
+      "type": "str",
+      "desc": "The mpirun executable on the host machine."
+    },
+    "exp.mpirun_args": {
+      "val": "-bind-to none -map-by slot -x NCCL_DEBUG=INFO -mca pml ob1 -mca btl openib",
+      "type": "str",
+      "desc": [
+        "Arguments to the mpirun command.",
+        " You can specify hosts and slots here by",
+        "overriding the default or use exp.mpirun_hosts"
+      ]
+    },
+    "exp.mpirun_hosts": {
+      "val": "",
+      "type": "str",
+      "desc": "list of hosts:slots"
+    },
+    "exp.mpirun_num_tasks": {
+      "val": "$(${exp.num_gpus})$",
+      "type": "str",
+      "desc": "list of hosts:slots"
     },
     "exp.sys_info": {
       "val": "",

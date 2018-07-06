@@ -28,14 +28,14 @@ cp ${model_file} ${host_model_dir}/${caffe_model_file} || {
 # Or we can have two configurations for synthetic/real data.
 # Or we can specify input layers in JSON config, so that we can basically set this dynamically
 if [ "${exp_phase}" == "training" ]; then
-    if [ "${caffe_data_dir}" == "" ]; then
+    if [ "${exp_data_dir}" == "" ]; then
         sed -i "s/^#synthetic//g" ${host_model_dir}/${caffe_model_file}
     else
         if [ "${exp_docker}" == "true" ]; then
             real_data_dir="/workspace/data"
             real_data_mean_file="/workspace/image_mean/${caffe_data_mean_file_name}"
         else
-            real_data_dir="${caffe_data_dir}"
+            real_data_dir="${exp_data_dir}"
             real_data_mean_file="${caffe_data_mean_file}"
         fi
         sed -i "s/^#data//g" ${host_model_dir}/${caffe_model_file}
@@ -44,7 +44,7 @@ if [ "${exp_phase}" == "training" ]; then
         sed -i "s#__CAFFE_DATA_DIR__#${real_data_dir}#g" ${host_model_dir}/${caffe_model_file}
         sed -i "s#__CAFFE_DATA_BACKEND__#${caffe_data_backend}#g" ${host_model_dir}/${caffe_model_file}
     fi
-    if [ "${exp_framework}" == "nvidia_caffe" ]; then
+    if [ "${exp_framework_fork}" == "nvidia" ]; then
         sed -i "s/^#precision//g" ${host_model_dir}/${caffe_model_file}
         sed -i "s/__FORWARD_TYPE___/${nvidia_caffe_forward_precision}/g" ${host_model_dir}/${caffe_model_file}
         sed -i "s/__BACKWARD_TYPE___/${nvidia_caffe_backward_precision}/g" ${host_model_dir}/${caffe_model_file}
@@ -60,9 +60,9 @@ fi
 # in some cases NVIDIA Caffe can treat batch size as per-GPU batch size switching to weak scaling mode.
 # This is exactly our case with synthetic data where layer of type Input is not processed in that function
 # resulting in batch size not being modified.
-if [ "${caffe_fork}" == "nvidia" ]; then
+if [ "${exp_framework_fork}" == "nvidia" ]; then
     # NVIDIA Caffe - strong scaling for real data and weak scaling for synthetic one
-    if [ "${caffe_data_dir}" == "" ]; then
+    if [ "${exp_data_dir}" == "" ]; then
         # Synthetic data with 'Input' layer - Caffe is in weak scaling model
         sed -i "s/__EXP_DEVICE_BATCH__/${exp_replica_batch}/g" ${host_model_dir}/${caffe_model_file}
     else

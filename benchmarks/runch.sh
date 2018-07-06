@@ -1,5 +1,6 @@
 #!/bin/bash
 
+export DLBS_MISSING_IS_EMPTY=1
 do_run=false
 do_parse=false
 projID=""

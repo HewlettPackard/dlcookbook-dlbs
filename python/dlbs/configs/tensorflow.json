@@ -1,14 +1,47 @@
 {
   "parameters": {
-    "tensorflow.launcher": {
-      "val": "${DLBS_ROOT}/scripts/launchers/tensorflow_hpm.sh",
+    "tensorflow.data_dir": {
+      "val": "",
       "type": "str",
-      "desc": "Path to a script that launches TensorFlow benchmarks."
+      "desc": [
+        "A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline).",
+        "See tf_cnn_benchmarks.py for more details."
+      ]
+    },
+    "tensorflow.docker_args": {
+      "val": [
+        "-i",
+        "--security-opt seccomp=unconfined",
+        "--pid=host",
+        "--volume=${DLBS_ROOT}/python/${exp.backend}_benchmarks:/workspace/${exp.backend}_benchmarks",
+        "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
+        "$('--volume=${tensorflow.data_dir}:/workspace/data' if '${tensorflow.data_dir}' else '')$",
+        "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
+        "${exp.docker_args}",
+        "${exp.docker_image}"
+      ],
+      "type": "str",
+      "desc": "For Docker containerized benchmarks, these are the docker parameters."
+    },
+    "tensorflow.singularity_image" : {
+      "val": "",
+      "type": "str",
+      "desc": "Path to the TensorFlow Singularity image."
+    },
+    "tensorflow.singularity_args": {
+      "val": [
+        "-B ${DLBS_ROOT}/python/${exp.backend}_benchmarks:/workspace/${exp.backend}_benchmarks",
+        "$('-B ${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
+        "${exp.singularity_args}",
+        "${tensorflow.singularity_image}"
+      ],
+      "type": "str",
+      "desc": "For Singularity containerized benchmarks, these are the docker parameters."
     },
     "tensorflow.python_path": {
-      "val": "$('${DLBS_ROOT}/python/tf_cnn_benchmarks' if ${exp.docker} is False else '/workspace/tf_cnn_benchmarks')$",
+      "val": "$('${DLBS_ROOT}/python/${exp.backend}_benchmarks' if ${exp.docker} is False and ${exp.singularity} is False else '/workspace/${exp.backend}_benchmarks')$",
       "type": "str",
-      "desc": "Path to a TensorFlow benchmarks python folder. Depends on if bare metal/docker based benchmark is requested."
+      "desc": "Path to a backend benchmarks python folder. Depends on if bare metal/docker based benchmark is requested."
     },
     "tensorflow.env": {
       "val": [
@@ -20,58 +53,65 @@
       "type": "str",
       "desc": "Environmental variables to set for TensorFlow benchmarks."
     },
-    "tensorflow.var_update": {
-      "val": "replicated",
+    "tensorflow.host_libpath": {
+      "val": "",
       "type": "str",
-      "desc": "This is a 'variable_update' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
+      "desc": "Basically, it's a LD_LIBRARY_PATH for TensorFlow in case of a bare metal run."
     },
-    "tensorflow.use_nccl": {
+    "tensorflow.log_dir": {
+      "val": "",
+      "type": "str",
+      "desc": "Directory in which to write training summaries and checkpoints."
+    },
+    "tf_cnn_benchmarks.use_nccl": {
       "val": true,
       "type": "bool",
       "desc": "This is a 'use_nccl' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
     },
-    "tensorflow.local_parameter_device": {
+    "tf_cnn_benchmarks.var_update": {
+      "val": "replicated",
+      "type": "str",
+      "desc": "This is a 'variable_update' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
+    },
+    "tf_cnn_benchmarks.local_parameter_device": {
       "val": "cpu",
       "type": "str",
       "desc": "This is a 'local_parameter_device' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
     },
-    "tensorflow.data_dir": {
-      "val": "",
-      "type": "str",
-      "desc": [
-        "A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline).",
-        "See tf_cnn_benchmarks.py for more details."
-      ]
-    },
-    "tensorflow.data_name": {
+    "tf_cnn_benchmarks.data_name": {
       "val": "",
       "type": "str",
       "desc": "This is a 'data_name' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
     },
-    "tensorflow.distortions": {
+    "tf_cnn_benchmarks.distortions": {
       "val": false,
       "type": "bool",
       "desc": "This is a 'distortions' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
     },
-    "tensorflow.num_intra_threads": {
+    "tf_cnn_benchmarks.num_intra_threads": {
       "val": 0,
       "type": "str",
       "desc": "This is a 'num_intra_threads' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
     },
-    "tensorflow.resize_method": {
+    "tf_cnn_benchmarks.resize_method": {
       "val": "bilinear",
       "type": "str",
       "desc": "This is a 'resize_method' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
     },
-    "tensorflow.use_xla": {
+    "tf_cnn_benchmarks.launcher": {
+      "val": "${DLBS_ROOT}/scripts/launchers/${exp.backend}.sh",
+      "type": "str",
+      "desc": "Path to a script that launches a TensorFlow backend script."
+    },
+    "tf_cnn_benchmarks.use_xla": {
       "val": false,
       "type": "bool",
       "desc": "Enable/disable XLA."
     },
-    "tensorflow.args": {
+    "tf_cnn_benchmarks.args": {
       "val": [
         "--per_gpu_thread_count=1",
-        "--xla=$('${tensorflow.use_xla}'.lower())$",
+        "--xla=$('${tf_cnn_benchmarks.use_xla}'.lower())$",
         "--use_fp16=$('true' if '${exp.dtype}' == 'float16' else 'false')$",
         "--use_tf_layers=true",
         "--staged_vars=false",
@@ -85,56 +125,129 @@
         "--display_every=1000",
         "--device=${exp.device_type}",
         "--data_format=$('NCHW' if '${exp.device_type}' == 'gpu' else 'NHWC')$",
-        "--variable_update=${tensorflow.var_update}",
-        "$('--all_reduce_spec=nccl' if '${exp.device_type}' == 'gpu' and ${tensorflow.use_nccl} else 'false')$",
-        "--local_parameter_device=${tensorflow.local_parameter_device}",
-        "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
-        "$('--data_name=${tensorflow.data_name}' if '${tensorflow.data_name}' else '')$",
-        "--distortions=$('true' if ${tensorflow.distortions} else 'false')$",
-        "--num_intra_threads=${tensorflow.num_intra_threads}",
-        "--resize_method=${tensorflow.resize_method}"
+        "--variable_update=${tf_cnn_benchmarks.var_update}",
+        "$('--all_reduce_spec=nccl' if '${exp.device_type}' == 'gpu' and ${tf_cnn_benchmarks.use_nccl} else 'false')$",
+        "--local_parameter_device=${tf_cnn_benchmarks.local_parameter_device}",
+        "$('' if not '${tensorflow.data_dir}' else '--data_dir=${tensorflow.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
+        "$('--data_name=${tf_cnn_benchmarks.data_name}' if '${tf_cnn_benchmarks.data_name}' else '')$",
+        "--distortions=$('true' if ${tf_cnn_benchmarks.distortions} else 'false')$",
+        "--num_intra_threads=${tf_cnn_benchmarks.num_intra_threads}",
+        "--resize_method=${tf_cnn_benchmarks.resize_method}",
+        "--train_dir=${tensorflow.log_dir}"
       ],
       "type": "str",
       "desc": "These are a command line arguments passed to tf_cnn_benchmarks script."
     },
-    "tensorflow.docker_image": {
-      "val": "hpe/tensorflow:cuda9-cudnn7",
-      "type": "str",
-      "desc": "The name of a docker image to use for TensorFlow if containerized benchmark is requested."
+    "nvcnn.use_nccl": {
+      "val": true,
+      "type": "bool",
+      "desc": "This is a 'use_nccl' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
     },
-    "tensorflow.docker_args": {
+    "nvcnn.launcher": {
+      "val": "${DLBS_ROOT}/scripts/launchers/nvcnn.sh",
+      "type": "str",
+      "desc": "Path to a script that launches a nvcnn backend script."
+    },
+    "nvcnn.display_every": {
+      "val": 1000,
+      "type": "int",
+      "desc": "How often (in iterations) to print out running information."
+    },
+    "nvcnn.use_distort_color": {
+      "val": false,
+      "type": "bool",
+      "desc": "Enable/disable distort colors."
+    },
+    "nvcnn.use_xla": {
+      "val": false,
+      "type": "bool",
+      "desc": "Enable/disable XLA."
+    },
+    "nvcnn.args": {
       "val": [
-        "-i",
-        "--security-opt seccomp=unconfined",
-        "--pid=host",
-        "--volume=${DLBS_ROOT}/python/tf_cnn_benchmarks:/workspace/tf_cnn_benchmarks",
-        "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
-        "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
-        "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
-        "${exp.docker_args}",
-        "${exp.docker_image}"
+        "--model=${exp.model}",
+        "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.docker} is False and ${exp.singularity} is False else '--data_dir=/workspace/data')$",
+        "--batch_size=${exp.replica_batch}",
+        "--nstep_burnin=${exp.num_warmup_batches}",
+        "--num_batches=$(${exp.num_batches} + ${exp.num_warmup_batches})$",
+        "$('--nccl' if ${nvcnn.use_nccl} else '--nonccl')$",
+        "$('--xla' if ${nvcnn.use_xla} else '--noxla')$",
+        "$('--distort_color' if ${nvcnn.use_distort_color} else '--nodistort_color')$",
+        "--num_gpus=$(${exp.num_local_gpus} if '${exp.device_type}' == 'gpu' else 1)$",
+        "--display_every=${nvcnn.display_every}",
+        "--log_dir=${tensorflow.log_dir}",
+        "$('--fp16' if '${exp.dtype}' == 'float16' else '')$"
       ],
       "type": "str",
-      "desc": "In case if containerized benchmarks, this are the docker parameters."
+      "desc": "These are a command line arguments passed to nvcnn_benchmarks script."
     },
-    "tensorflow.host_libpath": {
-      "val": "",
+    "nvcnn_hvd.launcher": {
+      "val": "${DLBS_ROOT}/scripts/launchers/nvcnn_hvd.sh",
       "type": "str",
-      "desc": "Basically, it's a LD_LIBRARY_PATH for TensorFlow in case of a bare metal run."
+      "desc": "Path to a script that launches a nvcnn_hvd backend script."
+    },
+    "nvcnn_hvd.display_every": {
+      "val": 1000,
+      "type": "int",
+      "desc": "How often (in iterations) to print out running information."
+    },
+    "nvcnn_hvd.use_distort_color": {
+      "val": false,
+      "type": "bool",
+      "desc": "Enable/disable distort colors."
+    },
+    "nvcnn_hvd.use_xla": {
+      "val": false,
+      "type": "bool",
+      "desc": "Enable/disable XLA."
+    },
+    "nvcnn_hvd.args": {
+      "val": [
+        "-m ${exp.model}",
+        "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.singularity} is False else '--data_dir=/workspace/data')$",
+        "--batch_size=${exp.replica_batch}",
+        "--nstep_burnin=${exp.num_warmup_batches}",
+        "--num_batches=$(${exp.num_batches} + ${exp.num_warmup_batches})$",
+        "$('--xla' if ${nvcnn_hvd.use_xla} else '--noxla')$",
+        "$('--distort_color' if ${nvcnn_hvd.use_distort_color} else '--nodistort_color')$",
+        "--display_every=${nvcnn_hvd.display_every}",
+        "--log_dir=${tensorflow.log_dir}",
+        "$('--fp16' if '${exp.dtype}' == 'float16' else '')$"
+      ],
+      "type": "str",
+      "desc": "These are a command line arguments passed to nvcnn_hvd_benchmarks script."
     }
   },
   "extensions": [
     {
-      "condition":{ "exp.framework": "tensorflow", "exp.docker": false },
-      "parameters": { "tensorflow.env": [
-        "PYTHONPATH=${tensorflow.python_path}:\\$PYTHONPATH",
-        "${runtime.EXPORT_CUDA_CACHE_PATH}",
-        "$('CUDA_CACHE_DISABLE=0' if '${runtime.cuda_cache}' else '')$",
-        "$('CUDA_CACHE_MAXSIZE=2147483648' if '${runtime.cuda_cache}' else '')$",
-        "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}",
-        "LD_LIBRARY_PATH=$('${tensorflow.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
-        "TF_DISABLE_CUDNN_TENSOR_OP_MATH=$('false' if ${exp.use_tensor_core} else 'true')$"
-      ]}
+      "condition": {"exp.backend": "tf_cnn_benchmarks"},
+      "parameters": {
+        "tensorflow.docker_image" : "hpe/tensorflow:cuda9-cudnn7",
+        "tensorflow.singularity_image" : "/var/lib/SingularityImages/tensorflow-1.8-cuda9.0-cudnn7.0-avx2.img"
+      }
+    },
+    {
+      "condition": {"exp.backend": ["nvcnn","nvcnn_hvd"]},
+      "parameters": {
+         "tensorflow.docker_image" : "nvcr.io/nvidia/tensorflow:18.05-py3",
+         "tensorflow.singularity_image" : "/var/lib/SingularityImages/tensorflow-1.8-cuda9.0-cudnn7.0-avx2.img"
+      }
+    },
+    {
+      "condition": {
+        "exp.docker": false,
+        "exp.singularity": false
+      },
+      "parameters": {
+        "tensorflow.env": [
+          "PYTHONPATH=${nvcnn_hvd.python_path}:\\$PYTHONPATH",
+          "${runtime.EXPORT_CUDA_CACHE_PATH}",
+          "$('CUDA_CACHE_DISABLE=0' if '${runtime.cuda_cache}' else '')$",
+          "$('CUDA_CACHE_MAXSIZE=2147483648' if '${runtime.cuda_cache}' else '')$",
+          "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}",
+          "LD_LIBRARY_PATH=$('${nvcnn_hvd.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$"
+        ]
+      }
     }
   ]
 }

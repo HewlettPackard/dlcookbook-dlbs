@@ -27,10 +27,10 @@ class TestConfigCaffe2(ConfigTester):
         self.setUpBase(files=['base.json', 'caffe2.json'])
 
     def check_parameters(self, docker_image):
-        self.build_plan({"exp.framework": "caffe2", "DLBS_ROOT": ""})
+        self.build_plan({"exp.backend": "caffe2", "DLBS_ROOT": ""})
         self.compute_vars(
             [],
-            [("exp.framework_title", "Caffe2"), ("exp.framework_family", "caffe2"),
+            [("exp.framework_title", "Caffe2"), ("exp.framework_family", "pytorch"),
              ('exp.docker_image', docker_image), ('caffe2.docker_image', docker_image),
              ('runtime.EXPORT_CUDA_CACHE_PATH', 'CUDA_CACHE_PATH=/workspace/cuda_cache')]
         )

@@ -9,7 +9,7 @@ if [ "${exp_phase}" == "inference" ]; then
 fi
 echo "__exp.framework_title__=\"TensorFlow-nvcnn-hvd\"" >> ${exp_log_file}
 if [ "$exp_status" = "simulate" ]; then
-    echo "${nvcnn_hvd_env} ${runtime_launcher} python ${nvcnn_hvd_python_path}/nvcnn.py ${nvcnn_hvd_args}"
+    echo "${tensorflow_env} ${runtime_launcher} python ${tensorflow_python_path}/nvcnn_hvd.py ${nvcnn_hvd_args}"
     exit 0
 fi
 # Check batch is small enough for this experiment
@@ -30,10 +30,10 @@ if [ "${exp_singularity}" = "true" ];then
     echo "rm -f $f" >> $f
     echo "}" >> $f
     echo "trap finish EXIT" >> $f
-    echo "export ${nvcnn_hvd_env}" >> $f
+    echo "export ${tensorflow_env}" >> $f
     echo "echo -e \x22__exp.framework_ver__= \x24\x28python -c \x27import tensorflow as tf; print \x28tf.__version__\x29;\x27\x29\x22" >> $f
     echo "echo -e \x22__results.start_time__= \x24\x28date +%Y-%m-%d:%H:%M:%S:%3N\\x29\x22" >> $f
-    echo "${runtime_launcher} ${runtime_python} -u ${nvcnn_hvd_python_path}/nvcnn_hvd.py ${nvcnn_hvd_args} & proc_pid=\x24!; \\" >> $f
+    echo "${runtime_launcher} ${runtime_python} -u ${tensorflow_python_path}/nvcnn_hvd.py ${nvcnn_hvd_args} & proc_pid=\x24!; \\" >> $f
     echo "[ \x22${monitor_frequency}\x22 != \x220\x22 ] && echo -e \x22\x24{proc_pid}\x22 > ${monitor_pid_folder}/proc.pid" >> $f
     echo "wait \x24{proc_pid}" >> $f
     echo "echo -e \x22__results.end_time__= \x24\x28date +%Y-%m-%d:%H:%M:%S:%3N\x29\x22" >> $f
@@ -41,9 +41,9 @@ if [ "${exp_singularity}" = "true" ];then
     sed -i -e 's:\\x27:'"'"':g' -e 's:\\x22:":g' -e 's:\\x28:(:g' -e 's:\\x29:):g' -e 's:\\x24:$:g' $f
     #assert_singularity_img_exists ${exp_singularity_image}
   
-    nvcnn_hvd_singularity_args_temp="-B ${d}:/workspace/temp ${nvcnn_hvd_singularity_args}"
-	echo "${nvcnn_hvd_mpirun} -H ${nvcnn_hvd_mpirun_hosts} -np ${nvcnn_hvd_mpirun_num_tasks} ${nvcnn_hvd_mpirun_args} ${exp_singularity_launcher} exec ${nvcnn_hvd_singularity_args_temp}"
-	${nvcnn_hvd_mpirun} -H ${nvcnn_hvd_mpirun_hosts} -np ${nvcnn_hvd_mpirun_num_tasks} ${nvcnn_hvd_mpirun_args} ${exp_singularity_launcher} exec ${nvcnn_hvd_singularity_args_temp} /bin/bash /workspace/temp/${s} >> ${exp_log_file} 2>&1
+    tensorflow_singularity_args_temp="-B ${d}:/workspace/temp ${tensorflow_singularity_args}"
+	echo "${exp_mpirun} -H ${exp_mpirun_hosts} -np ${exp_mpirun_num_tasks} ${exp_mpirun_args} ${exp_singularity_launcher} exec ${tensorflow_singularity_args_temp}"
+	${exp_mpirun} -H ${exp_mpirun_hosts} -np ${exp_mpirun_num_tasks} ${exp_mpirun_args} ${exp_singularity_launcher} exec ${tensorflow_singularity_args_temp} /bin/bash /workspace/temp/${s} >> ${exp_log_file} 2>&1
     rm -f $f
 else
     echo "bare metal hostname $(hostname)"
@@ -52,7 +52,7 @@ else
         echo -e \"__exp.framework_ver__= \x22\$(python -c 'import tensorflow as tf; print (tf.__version__);')\x22\";\
         echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
         echo "bare metal hostname $(hostname)";\
-        ${runtime_launcher} ${runtime_python} ${nvcnn_hvd_python_path}/nvcnn.py ${nvcnn_hvd_args} &\
+        ${runtime_launcher} ${runtime_python} ${nvcnn_hvd_python_path}/nvcnn_hvd.py ${nvcnn_hvd_args} &\
         proc_pid=\$!;\
         [ \"${monitor_frequency}\" != \"0\" ] && echo -e \"\${proc_pid}\" > ${monitor_backend_pid_folder}/proc.pid;\
         wait \${proc_pid};\

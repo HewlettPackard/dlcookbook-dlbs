@@ -15,6 +15,7 @@
 from __future__ import print_function
 import unittest
 import os
+import sys
 import copy
 # append parent directory to import path
 import env  #pylint: disable=W0611
@@ -43,18 +44,16 @@ class ConfigTester(unittest.TestCase):
 
     def compute_vars(self, inputs, expected_outputs):
         plan = copy.deepcopy(self.plan)
-        exp = plan[0]
+        experiment = plan[0]
         for input_param in inputs:
-            exp[input_param[0]] = input_param[1]
+            experiment[input_param[0]] = input_param[1]
         Processor(self.param_info).compute_variables(plan)
         for expected_output in expected_outputs:
             self.assertEqual(
-                exp[expected_output[0]],
+                experiment[expected_output[0]],
                 expected_output[1],
-                "Actual output %s = %s differs from expected %s." % (expected_output[0], str(exp[expected_output[0]]), expected_output[1])
+                "Actual output %s = %s differs from expected %s." % (expected_output[0], str(experiment[expected_output[0]]), expected_output[1])
             )
-
-
 class TestConfigBase(ConfigTester):
     def __init__(self, *args, **kwargs):
         ConfigTester.__init__(self, *args, **kwargs)
@@ -62,31 +61,27 @@ class TestConfigBase(ConfigTester):
     def setUp(self):
         self.setUpBase()
         # The 'exp.docker_image' variable's value depend on variable which name
-        # depends on 'exp.framework' value. So, we need to disable it by setting
-        # 'exp.docker_image' to an empty string.
+        # depends on 'exp.backend' value. So, we need to disable it by setting
+        # 'exp.docker_image' and "exp.singularity_image" to an empty string.
         self.build_plan({
-            "exp.framework": "tensorflow", "exp.framework_title": "TensorFlow",
-            "exp.framework_ver": "1.4.0", "exp.docker_image": "", "DLBS_ROOT": "",
-            "exp.proj": "TestConfigBase", "exp.model": "resnet50",
-            "exp.model_title": "ResNet50"
+             "exp.status": "ok", "exp.status_msg": "", "exp.proj": "TestConfigBase","exp.backend":"caffe",
+             "exp.framework": "caffe", "exp.framework_title": "BVLC Caffe",
+             "exp.framework_family": "caffe", "exp.framework_fork": "bvlc",
+             "exp.framework_commit": "", "exp.model": "resnet50"
         })
-
-
 
     def test_base(self):
         self.assertEqual(len(self.plan), 1)
         self.compute_vars(
             [('exp.num_warmup_batches', 111), ('exp.num_batches', 777),
-             ('exp.phase', 'inference'), ('exp.data', 'real'), ('exp.data_store', 'local-ssd'),
-             ('exp.dtype', 'float16'), ('exp.use_tensor_core', True)],
-            [('exp.status', 'ok'), ('exp.status_msg', ''), ('exp.proj', 'TestConfigBase'),
-             ('exp.framework', 'tensorflow'), ('exp.framework_title', 'TensorFlow'),
-             ('exp.framework_family', 'tensorflow'), ('exp.framework_ver', '1.4.0'),
+             ('exp.phase', 'inference'), ('exp.data', 'real'), ('exp.data_store', 'local-ssd')],
+            [('exp.status', 'ok'), ('exp.status_msg', ''), ('exp.proj', 'TestConfigBase'),('exp.backend','caffe'),
+             ('exp.framework', 'caffe'), ('exp.framework_title', 'BVLC Caffe'),
+             ('exp.framework_family', 'caffe'), ('exp.framework_fork', 'bvlc'),
              ('exp.framework_commit', ''), ('exp.model', 'resnet50'),
              ('exp.model_title', 'ResNet50'), ('exp.num_warmup_batches', 111),
              ('exp.num_batches', 777), ('exp.phase', 'inference'),
-             ('exp.data', 'real'), ('exp.data_store', 'local-ssd'),
-             ('exp.dtype', 'float16'), ('exp.use_tensor_core', True)
+             ('exp.data', 'real'), ('exp.data_store', 'local-ssd')
             ]
         )
 

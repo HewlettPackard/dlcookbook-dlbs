@@ -20,11 +20,17 @@ experiments as possible.
 
 Variables in experiments are not computed.
 """
+import sys
 import itertools
 import copy
 import uuid
 from dlbs.utils import DictUtils
 from dlbs.processor import Processor
+
+#Python 2,3 interop.
+if sys.version_info[0] == 3:
+    basestring=str
+    long=int
 
 class Builder(object):
     """Builds experiments' plans but does not compute their variables."""

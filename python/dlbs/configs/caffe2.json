@@ -67,6 +67,11 @@
       "type": "str",
       "desc": "In case if containerized benchmarks, this are the docker parameters for Caffe2."
     },
+    "caffe2.singularity_image": {
+      "val": "",
+      "type": "str",
+      "desc": "The name of a singularity image for Caffe2 if containerized benchmark is requested."
+    },
     "caffe2.bench_path": {
       "val": "$('${DLBS_ROOT}/python' if not ${exp.docker} else '/workspace')$",
       "type": "str",
@@ -84,10 +89,6 @@
     }
   },
   "extensions": [
-    {
-      "condition":{ "exp.framework": "caffe2"},
-      "parameters": { "exp.framework_title": "Caffe2" }
-    },
     {
       "condition":{ "exp.framework": "caffe2", "exp.docker": true },
       "parameters": { "caffe2.env": [
