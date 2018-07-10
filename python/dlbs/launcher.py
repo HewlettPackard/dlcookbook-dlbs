@@ -191,8 +191,8 @@ class Launcher(object):
                     continue
             # Track current progress
             progress_reporter.report_active(experiment['exp.log_file'])
-            # Get script that runs experiment for this backend.
-            backend_key = 'exp.backend'
+            # Get script that runs experiment for this framework.
+            backend_key = 'exp.framework'
             if backend_key not in experiment:
                 logging.info("Skipping experiment, exp.backend must be specified.")
                 stats['launcher.skipped_experiments'] += 1

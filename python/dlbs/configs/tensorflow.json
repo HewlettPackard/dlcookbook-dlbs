@@ -98,7 +98,7 @@
       "type": "str",
       "desc": "This is a 'resize_method' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
     },
-    "tf_cnn_benchmarks.launcher": {
+    "tensorflow.launcher": {
       "val": "${DLBS_ROOT}/scripts/launchers/${exp.backend}.sh",
       "type": "str",
       "desc": "Path to a script that launches a TensorFlow backend script."

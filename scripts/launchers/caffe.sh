@@ -14,7 +14,7 @@ is_batch_good "${__batch_file__}" "${exp_replica_batch}" || {
   report_and_exit "skipped" "The replica batch size (${exp_replica_batch}) is too large for given SW/HW configuration." "${exp_log_file}";
 }
 # Make sure model exists
-host_model_dir=$DLBS_ROOT/models/${exp_model}
+host_model_dir=$DLBS_ROOT/python/caffe_benchmarks/models/${exp_model}
 model_file=$(find ${host_model_dir}/ -name "*.${exp_phase}.prototxt")
 file_exists "$model_file" || report_and_exit "failure" "A model file ($model_file) does not exist." "${exp_log_file}"
 # Copy model file and replace batch size there.
@@ -46,10 +46,10 @@ if [ "${exp_phase}" == "training" ]; then
     fi
     if [ "${exp_framework_fork}" == "nvidia" ]; then
         sed -i "s/^#precision//g" ${host_model_dir}/${caffe_model_file}
-        sed -i "s/__FORWARD_TYPE___/${nvidia_caffe_forward_precision}/g" ${host_model_dir}/${caffe_model_file}
-        sed -i "s/__BACKWARD_TYPE___/${nvidia_caffe_backward_precision}/g" ${host_model_dir}/${caffe_model_file}
-        sed -i "s/__FORWARD_MATH___/${nvidia_caffe_forward_math_precision}/g" ${host_model_dir}/${caffe_model_file}
-        sed -i "s/__BACKWARD_MATH___/${nvidia_caffe_backward_math_precision}/g" ${host_model_dir}/${caffe_model_file}
+        sed -i "s/__FORWARD_TYPE___/${caffe_nvidia_forward_precision}/g" ${host_model_dir}/${caffe_model_file}
+        sed -i "s/__BACKWARD_TYPE___/${caffe_nvidia_backward_precision}/g" ${host_model_dir}/${caffe_model_file}
+        sed -i "s/__FORWARD_MATH___/${caffe_nvidia_forward_math_precision}/g" ${host_model_dir}/${caffe_model_file}
+        sed -i "s/__BACKWARD_MATH___/${caffe_nvidia_backward_math_precision}/g" ${host_model_dir}/${caffe_model_file}
     fi
 fi
 # BVLC/Intel Caffe and NVIDIA Caffe treat batch sizes in protobuf files differently.

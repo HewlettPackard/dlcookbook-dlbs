@@ -3,7 +3,7 @@
         "exp.framework" : "caffe",
 		"exp.framework_family" : "caffe",
         "exp.framework_title" : "NVidia Caffe",
-        "exp.framework_fork" : "bvlc",
+        "exp.framework_fork" : "nvidia",
         "exp.cudnn" : "7.0",
         "exp.cuda" : "9.0",
         "exp.status" : "disabled",

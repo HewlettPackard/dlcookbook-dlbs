@@ -1,0 +1,9 @@
+net: '/workspace/model/532e106248bc4784be294132d30af41a.model.prototxt'
+ max_iter: 400
+ test_interval: 0
+ snapshot: 0
+ snapshot_after_train: false
+ base_lr: 0.01
+ lr_policy: 'fixed'
+ solver_mode: GPU
+ 

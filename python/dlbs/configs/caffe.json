@@ -35,7 +35,7 @@
             "desc": "Caffe's prototxt solver file."
         },
         "caffe.model_dir": {
-            "val": "$('${DLBS_ROOT}/models/${exp.model}' if not ${exp.docker} else '/workspace/model')$",
+            "val": "$('${DLBS_ROOT}/python/caffe_benchmarks/models/${exp.model}' if not ${exp.docker} else '/workspace/model')$",
             "type": "str",
             "desc": "Directory where Caffe's model file is located. Different for host/docker benchmarks."
         },
@@ -103,7 +103,7 @@
                 "-i",
                 "--security-opt seccomp=unconfined",
                 "--pid=host",
-                "--volume=${DLBS_ROOT}/models/${exp.model}:/workspace/model",
+                "--volume=${DLBS_ROOT}/python/caffe_benchmarks/models/${exp.model}:/workspace/model",
                 "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
                 "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
                 "$('--volume=${caffe.data_mean_file_path}:/workspace/image_mean' if '${exp.data_dir}' else '')$",
