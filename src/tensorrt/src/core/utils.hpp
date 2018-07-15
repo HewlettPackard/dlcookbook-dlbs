@@ -367,6 +367,7 @@ private:
     bool advise_no_cache_ = false;         //!< If true, advise OS not to cache file.
     const std::string dtype_;              //!< Matrix data type in a binary file ('float', 'uchar').
     std::vector<unsigned char> buffer_;    //!< If images are stored as unsigned chars, use this buffer.
+    bool debug_disable_array_cast_ = false;//!< For debugging purposes, disable casting array of unsigned chars to float.
 public:
     binary_file(const std::string& dtype="float",
                 const bool advise_no_cache=false);

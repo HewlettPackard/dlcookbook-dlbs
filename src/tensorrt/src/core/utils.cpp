@@ -254,6 +254,7 @@ template void PictureTool::opencv2tensor<unsigned char>(unsigned char* opencv_da
 
 binary_file::binary_file(const std::string& dtype,
                          const bool advise_no_cache) : advise_no_cache_(advise_no_cache), dtype_(dtype) {
+    debug_disable_array_cast_ = (get_env_var("DLBS_TENSORRT_DEBUG_DO_NOT_CAST_ARRAYS") == "1");
 }
 
 bool binary_file::is_opened() {
@@ -284,7 +285,7 @@ ssize_t binary_file::read(float* dest, const size_t count) {
         read_count = num_bytes_read / sizeof(float);
     } else {
         const ssize_t num_bytes_read = ::read(fd_, (void*)buffer_.data(),  sizeof(unsigned char)*count);
-        if (num_bytes_read > 0) {
+        if (!debug_disable_array_cast_ && num_bytes_read > 0) {
             std::copy(buffer_.data(), buffer_.data() + num_bytes_read, dest);
         }
         read_count = num_bytes_read;

@@ -197,7 +197,7 @@ void tensorrt_inference_engine::do_inference(abstract_queue<inference_msg*> &req
     const bool overlap_copy_compute = (get_env_var("DLBS_TENSORRT_DO_NOT_OVERLAP_COPY_COMPUTE") != "1");
     logger_.log_info(me + ": overlap copy and compute " + S(overlap_copy_compute));
     cuda_helper helper({"input_consumed","infer_start","infer_stop"}, {"copy","compute"});
-    running_average fetch, process, submit;
+    running_average copy2device_synch, fetch, process, process_fetch, copy2host, submit;
     try {
         inference_msg *current_msg(nullptr), *next_msg(nullptr);
         timer clock, curr_batch_clock, next_batch_clock, infer_clock;
@@ -217,7 +217,7 @@ void tensorrt_inference_engine::do_inference(abstract_queue<inference_msg*> &req
                 curr_batch_clock.restart();
                 copy_input_to_gpu_asynch(current_msg, helper.stream("copy"));
             }
-            helper.synch_stream("copy");
+            clock.restart();  helper.synch_stream("copy");  copy2device_synch.update(clock.ms_elapsed());
             // Run asynchronously GPU kernel and wait for input data consumed
             infer_clock.restart();
             helper.record_event("infer_start", "compute");
@@ -234,9 +234,12 @@ void tensorrt_inference_engine::do_inference(abstract_queue<inference_msg*> &req
             }
             // Wait for comptue to complete and copy result back to CPU memory
             helper.synch_event("infer_stop");
-            process.update(infer_clock.ms_elapsed());                               // Actual time it took to process.
-            tm_tracker_.infer_done(helper.duration("infer_start", "infer_stop"));   // Inference GPU time.
-            current_msg->set_infer_time(tm_tracker_.last_infer_time());
+            const auto process_tm = helper.duration("infer_start", "infer_stop");   // Inference GPU time.
+            process.update(process_tm);
+            tm_tracker_.infer_done(process_tm);   
+            current_msg->set_infer_time(process_tm);
+            process_fetch.update(infer_clock.ms_elapsed());
+            clock.restart();
             cudaCheck(cudaMemcpyAsync(
                 current_msg->output(),
                 bindings_[output_idx_],
@@ -245,6 +248,7 @@ void tensorrt_inference_engine::do_inference(abstract_queue<inference_msg*> &req
                 helper.stream("compute")
             ));
             helper.synch_stream("compute");
+            copy2host.update(clock.ms_elapsed());
             tm_tracker_.batch_done(curr_batch_clock.ms_elapsed());                  // Actual batch time (remember, batches overlap)
             current_msg->set_batch_time(tm_tracker_.last_batch_time());
             // Send response and update current message (if not overlap_copy_compute, next_msg is nullptr here).
@@ -257,7 +261,13 @@ void tensorrt_inference_engine::do_inference(abstract_queue<inference_msg*> &req
     }catch (queue_closed) {
     }
     helper.destroy();
-    logger_.log_info(fmt("%s: {fetch:%.5f}-->--[process:%.5f]-->--{submit:%.5f}", me.c_str(), fetch.value(), process.value(), submit.value()));
+    if (!overlap_copy_compute) {
+        logger_.log_info(fmt("%s: {fetch:%.5f}-->--[process:%.5f]-->--{submit:%.5f}", me.c_str(), fetch.value(), process.value(), submit.value()));
+    } else {
+        logger_.log_info(fmt("%s: {({process:%.5f}|{fetch:%.5f}):%.5f}-->--{copy2host:%.5f}-->--{submit:%.5f}-->--{copy2device_synch:%.5f}",
+                             me.c_str(), process.value(), fetch.value(), process_fetch.value(),
+                             copy2host.value(), submit.value(), copy2device_synch.value()));
+    }
 }
 
 void tensorrt_inference_engine::do_inference1(abstract_queue<inference_msg*> &request_queue,
