@@ -181,10 +181,11 @@
       ]
     },
     "tensorrt.data_name": {
-      "val": "images",
+      "val": "synthetic",
       "type": "str",
+      "val_domain": ["synthetic", "images", "tensors1", "tensors4"],
       "desc": [
-        "Name of an input dataset - 'images' or 'tensors'"
+        "Name of an input dataset - 'images', 'tensors1' or 'tensors4'"
       ]
     }
   },

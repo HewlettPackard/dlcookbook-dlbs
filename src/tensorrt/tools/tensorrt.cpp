@@ -112,18 +112,23 @@ int main(int argc, char **argv) {
     }
     if (data_opts.data_name_ == "synthetic" || data_opts.data_dir_ == "") {
         data = new synthetic_dataset(&infer_msg_pool, engine.request_queue());
-        logger.log_info("[main                  ]: Will use synthetic data set");
+        logger.log_info("[main                  ]: Will use 'synthetic' data set");
     } else {
         logger.log_info("[main                  ]: Will use real data set (" + data_opts.data_dir_ + ")");
         logger.log_warning("[main                  ]: Computing resize dimensions assuming input data has shape [BatchSize, 3, H, W] where H == W.");
         data_opts.height_ = data_opts.width_ = std::sqrt(engine.input_size() / 3);
         if (data_opts.data_name_ == "images") {
+            logger.log_info("[main                  ]: Will use 'images' data set");
             data = new image_dataset(data_opts, &infer_msg_pool, engine.request_queue(), logger);
         } else {
             if (data_opts.data_name_ == "tensors1") {
+                logger.log_info("[main                  ]: Will use 'tensors1' data set");
                 data_opts.dtype_ = "uchar";
-            } else {
+            } else if (data_opts.data_name_ == "tensors4") {
+                logger.log_info("[main                  ]: Will use 'tensors4' data set");
                 data_opts.dtype_ = "float";
+            } else {
+                logger.log_error("[main                  ]: Invalid input dataset (" + data_opts.data_name_ + ")");
             }
             data = new tensor_dataset(data_opts, &infer_msg_pool, engine.request_queue(), logger);
         }
