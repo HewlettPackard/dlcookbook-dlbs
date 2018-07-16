@@ -191,13 +191,6 @@
   },
   "extensions": [
     {
-      "condition":{ "exp.framework": "tensorrt" },
-      "parameters": {
-        "exp.framework_title": "TensorRT",
-        "exp.status": "$('disabled' if ('${exp.phase}'=='training') or ('${exp.device_type}'=='cpu') else 'ok')$"
-      }
-    },
-    {
       "condition":{ "exp.framework": "tensorrt", "exp.env": "host" },
       "parameters": { "tensorrt.env": [
         "PATH=$('${tensorrt.host_path}:\\$PATH'.strip(' \t:'))$",
