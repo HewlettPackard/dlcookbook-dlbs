@@ -68,6 +68,11 @@
       "type": "bool",
       "desc": "Enable/disable XLA."
     },
+    "tensorflow.report_interval": {
+      "val": "${exp.num_batches}",
+      "type": "int",
+      "desc": "Reporting interval - number of batches (same as '--display_every' parameter). Prints mean throughput and jitter."
+    },
     "tensorflow.args": {
       "val": [
         "--per_gpu_thread_count=1",
@@ -81,12 +86,12 @@
         "--batch_size=${exp.replica_batch}",
         "--num_batches=${exp.num_batches}",
         "--num_warmup_batches=${exp.num_warmup_batches}",
-        "--num_gpus=$(${exp.num_local_gpus} if '${exp.device_type}' == 'gpu' else 1)$",
-        "--display_every=1000",
+        "$('--num_gpus=${exp.num_local_gpus}' if '${exp.device_type}' == 'gpu' else '')$",
+        "--display_every=${tensorflow.report_interval}",
         "--device=${exp.device_type}",
         "--data_format=$('NCHW' if '${exp.device_type}' == 'gpu' else 'NHWC')$",
         "--variable_update=${tensorflow.var_update}",
-        "$('--all_reduce_spec=nccl' if '${exp.device_type}' == 'gpu' and ${tensorflow.use_nccl} else 'false')$",
+        "$('--all_reduce_spec=nccl' if '${exp.device_type}' == 'gpu' and ${tensorflow.use_nccl} else '')$",
         "--local_parameter_device=${tensorflow.local_parameter_device}",
         "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
         "$('--data_name=${tensorflow.data_name}' if '${tensorflow.data_name}' else '')$",

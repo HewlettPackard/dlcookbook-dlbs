@@ -181,21 +181,15 @@
       ]
     },
     "tensorrt.data_name": {
-      "val": "images",
+      "val": "synthetic",
       "type": "str",
+      "val_domain": ["synthetic", "images", "tensors1", "tensors4"],
       "desc": [
-        "Name of an input dataset - 'images' or 'tensors'"
+        "Name of an input dataset - 'images', 'tensors1' or 'tensors4'"
       ]
     }
   },
   "extensions": [
-    {
-      "condition":{ "exp.framework": "tensorrt" },
-      "parameters": {
-        "exp.framework_title": "TensorRT",
-        "exp.status": "$('disabled' if ('${exp.phase}'=='training') or ('${exp.device_type}'=='cpu') else 'ok')$"
-      }
-    },
     {
       "condition":{ "exp.framework": "tensorrt", "exp.env": "host" },
       "parameters": { "tensorrt.env": [

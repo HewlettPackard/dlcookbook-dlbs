@@ -15,6 +15,7 @@
 */
 
 #include "core/logger.hpp"
+#include "core/utils.hpp"
 
 
 void logger_impl::log_key_value(const std::string& key, const float value) {
@@ -25,26 +26,20 @@ void logger_impl::log_key_value(const std::string& key, const float value) {
 void logger_impl::log_progress(const std::vector<float>& times, const int iter_index,
                                const int data_size, const std::string& key_prefix) {
     if (times.empty()) return;
-    const float sum = std::accumulate(times.begin(), times.end(), 0.0f);
-    const float mean = sum / times.size();
-    const float sq_sum = std::inner_product(times.begin(), times.end(), times.begin(), 0.0f);
-    const float stdev = std::sqrt(sq_sum / times.size() - mean * mean);
-    const float throughput = 1000.0 * data_size / mean;
+    stats statistics(times);
+    const float throughput = 1000.0 * data_size / statistics.mean();
     std::lock_guard<std::mutex> lock(m_);
-    ostream_ << "__results." << key_prefix << "progress__=[" << mean << ", " << stdev << ", " << throughput << "]" << std::endl;
+    ostream_ << "__results." << key_prefix << "progress__=[" << statistics.mean() << ", " << statistics.stdev()<< ", " << throughput << "]" << std::endl;
 }
 
 void logger_impl::log_final_results(const std::vector<float>& times, const size_t data_size,
                                     const std::string& key_prefix, const bool report_times) {
     if (times.empty()) return;
-    const float sum = std::accumulate(times.begin(), times.end(), 0.0f);
-    const float mean = sum / times.size();
-    const float sq_sum = std::inner_product(times.begin(), times.end(), times.begin(), 0.0f);
-    const float stdev = std::sqrt(sq_sum / times.size() - mean * mean);
-    const float throughput = 1000.0 * data_size / mean;
+    stats statistics(times);
+    const float throughput = 1000.0 * data_size / statistics.mean();
 
     std::lock_guard<std::mutex> lock(m_);
-    ostream_ << "__results." << key_prefix << "time__= " << mean  << "\n";
+    ostream_ << "__results." << key_prefix << "time__= " << statistics.mean()  << "\n";
     ostream_ << "__results." << key_prefix << "throughput__= " << throughput  << "\n";
     if (report_times) {
         ostream_ << "__results." << key_prefix << "time_data__=[";
@@ -54,9 +49,9 @@ void logger_impl::log_final_results(const std::vector<float>& times, const size_
         }
         ostream_ << "]" << "\n";
     }
-    ostream_ << "__results." << key_prefix << "time_stdev__= " << stdev  << "\n";
-    //ostream_ << "__results." << key_prefix << "time_min__= " << times.front()  << "\n";
-    //ostream_ << "__results." << key_prefix << "time_max__= " << times.back()  << "\n";
+    ostream_ << "__results." << key_prefix << "time_stdev__= " << statistics.stdev() << "\n";
+    ostream_ << "__results." << key_prefix << "time_min__= " << statistics.min() << "\n";
+    ostream_ << "__results." << key_prefix << "time_max__= " << statistics.max()  << "\n";
     ostream_ << std::flush;
 }
 

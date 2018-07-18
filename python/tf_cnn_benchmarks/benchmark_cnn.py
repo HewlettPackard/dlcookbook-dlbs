@@ -1142,8 +1142,8 @@ class BenchmarkCNN(object):
       log_fn('Staged vars: %s' % self.params.staged_vars)
     if self.params.variable_update == 'horovod' and self.params.horovod_device:
       log_fn('Horovod on:  %s' % self.params.horovod_device)
-    if self.model in model_config.model_titles:
-      print("__exp.model_title__=\"%s\"" % (model_config.model_titles[self.model]))
+    if self.model.get_model() in model_config.model_titles:
+      print("__exp.model_title__=\"%s\"" % (model_config.model_titles[self.model.get_model()]))
     log_fn('==========')
 
   def run(self):

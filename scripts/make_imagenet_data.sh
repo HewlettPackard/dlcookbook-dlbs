@@ -6,7 +6,7 @@ print_help() {
   frameworks=$3
   usage_example=$4
 
-  echo "Usage: $0 $format OPTION..."
+  echo "Usage: $0 --dataset $format OPTION..."
   echo "Generate dataset in $human_readeable_format format for $frameworks frameworks"
   echo ""
   echo "--input DIR                        Full path to a folder containing ImageNet dataset. The structure of the folder"
@@ -152,7 +152,7 @@ elif [ "$dataset" == "tfrecord" ]; then
   # Build the file with bounding boxes. You need to have original ImageNet, or just
   # folder with XML files.
   if [ ! -f "${input}/tensorflow_bboxes.csv" ]; then
-    [ ! -f "${bboxes_dir}" ] && logfatal "Please, provide path to directory with bounding boxes in XML format with --bboxes_dir parameter."
+    [ ! -d "${bboxes_dir}" ] && logfatal "Please, provide path to directory with bounding boxes in XML format with --bboxes_dir parameter."
     python $DLBS_ROOT/python/dlbs/data/imagenet/tensorflow_process_bboxes.py ${bboxes_dir} > ${input}/tensorflow_bboxes.csv
   fi
   # Build files with sybsets and human readeable labels

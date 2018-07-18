@@ -2,6 +2,12 @@
 
 
 int main(int argc, char **argv) {
+    // Test computing standard deviation
+    {
+        std::vector<float> nums = {1234.234, 1234.2, 1235.111, 1233.555};
+        stats s(nums);
+        std::cout << s << std::endl;
+    }
     // Test Split Vector Algorithm
     {
         const size_t len = 13;

@@ -107,20 +107,28 @@ int main(int argc, char **argv) {
     // from pool of task objects, will populate them with data and will submit tasks to data queue. All
     // preprocessing logic needs to be implemented in data provider.
     dataset* data(nullptr);
+    if (get_env_var("DLBS_TENSORRT_DEBUG_DO_NOT_CAST_ARRAYS") == "1") {
+        logger.log_warning("[main                  ]: Will not cast images float arrays (this is for debug purposes only). Normally you should not see this message.");
+    }
     if (data_opts.data_name_ == "synthetic" || data_opts.data_dir_ == "") {
         data = new synthetic_dataset(&infer_msg_pool, engine.request_queue());
-        logger.log_info("[main                  ]: Will use synthetic data set");
+        logger.log_info("[main                  ]: Will use 'synthetic' data set");
     } else {
         logger.log_info("[main                  ]: Will use real data set (" + data_opts.data_dir_ + ")");
         logger.log_warning("[main                  ]: Computing resize dimensions assuming input data has shape [BatchSize, 3, H, W] where H == W.");
         data_opts.height_ = data_opts.width_ = std::sqrt(engine.input_size() / 3);
         if (data_opts.data_name_ == "images") {
+            logger.log_info("[main                  ]: Will use 'images' data set");
             data = new image_dataset(data_opts, &infer_msg_pool, engine.request_queue(), logger);
         } else {
             if (data_opts.data_name_ == "tensors1") {
+                logger.log_info("[main                  ]: Will use 'tensors1' data set");
                 data_opts.dtype_ = "uchar";
-            } else {
+            } else if (data_opts.data_name_ == "tensors4") {
+                logger.log_info("[main                  ]: Will use 'tensors4' data set");
                 data_opts.dtype_ = "float";
+            } else {
+                logger.log_error("[main                  ]: Invalid input dataset (" + data_opts.data_name_ + ")");
             }
             data = new tensor_dataset(data_opts, &infer_msg_pool, engine.request_queue(), logger);
         }
@@ -204,13 +212,19 @@ int main(int argc, char **argv) {
     delete  data;  data = nullptr;
     delete alloc;  alloc = nullptr;
     // Log final results.
-    logger.log_info("[main                  ]: Reporting results");
+    logger.log_info("[main                  ]: Reporting results for each inference engine ...");
+    logger.log_info("[main                  ]:   |-> inference time (*_infer_*) is a compute time without host<->device transfers");
+    logger.log_info("[main                  ]:   |-> batch time (*_batch_*) is a real inference time including host<->device transfers");
+    logger.log_info("[main                  ]:         |-> if engines overlap copy/compute, observable (*_total*_) throughput can be better");
     for (size_t i=0; i<num_engines; ++i) {
         time_tracker *tracker = engine.engine(i)->get_time_tracker();
         const std::string gpu_id = std::to_string(engine.engine(i)->engine_id());
         logger.log_final_results(tracker->get_infer_times(), engine_opts.batch_size_, "gpu_" + gpu_id + "_infer_", !engine_opts.do_not_report_batch_times_);
         logger.log_final_results(tracker->get_batch_times(), engine_opts.batch_size_, "gpu_" + gpu_id + "_batch_", !engine_opts.do_not_report_batch_times_);
     }
+    logger.log_info("[main                  ]: Reporting results for all inference engines ...");
+    logger.log_info("[main                  ]:   |-> times and throughput reported below are 'weak-scaling' times i.e.");
+    logger.log_info("[main                  ]:       batch time is the time to process BATCH_SIZE*NUM_ENGINES images");
     logger.log_final_results(tm_tracker.get_batch_times(), engine_opts.batch_size_*num_engines, "total_", false);
     logger.log_final_results(tm_tracker.get_batch_times(), engine_opts.batch_size_*num_engines, "", !engine_opts.do_not_report_batch_times_);
     return 0;

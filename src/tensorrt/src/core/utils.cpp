@@ -205,6 +205,31 @@ std::ostream& operator<<(std::ostream &out, const running_average &ra) {
     return out;
 }
 
+
+stats::stats(const std::vector<float>& nums) {
+    if (nums.empty()) return;
+    double prev_mean(0), prev_s(0), cur_s(0);
+    prev_mean = mean_ = min_ = max_ = static_cast<double>(nums[0]);
+    for (size_t i=1; i<nums.size(); ++i) {
+        const auto v = static_cast<double>(nums[i]);
+        //
+        mean_ = prev_mean + (v - prev_mean) / (i+1);
+        cur_s = prev_s + (v - prev_mean) * (v - mean_);
+        //
+        min_ = std::min(min_, v);
+        max_ = std::max(max_, v);
+        //
+        prev_mean = mean_;
+        prev_s = cur_s;
+    }
+    variance_ = nums.size() > 1 ? cur_s / (nums.size() - 1) : 0.0;
+}
+
+std::ostream& operator<<(std::ostream &out, const stats &s) {
+    std::cout << "stats{min=" << s.min() << ", max=" << s.max() << ", mean=" << s.mean() << ", variance=" << s.variance() << ", stdev=" << s.stdev() << "}";
+    return out;
+}
+
 template<typename T>
 void PictureTool::opencv2tensor(unsigned char* opencv_data, const int nchannels, const int height,
                                 const int width, T* tensor) {
@@ -229,6 +254,7 @@ template void PictureTool::opencv2tensor<unsigned char>(unsigned char* opencv_da
 
 binary_file::binary_file(const std::string& dtype,
                          const bool advise_no_cache) : advise_no_cache_(advise_no_cache), dtype_(dtype) {
+    debug_disable_array_cast_ = (get_env_var("DLBS_TENSORRT_DEBUG_DO_NOT_CAST_ARRAYS") == "1");
 }
 
 bool binary_file::is_opened() {
@@ -259,7 +285,7 @@ ssize_t binary_file::read(float* dest, const size_t count) {
         read_count = num_bytes_read / sizeof(float);
     } else {
         const ssize_t num_bytes_read = ::read(fd_, (void*)buffer_.data(),  sizeof(unsigned char)*count);
-        if (num_bytes_read > 0) {
+        if (!debug_disable_array_cast_ && num_bytes_read > 0) {
             std::copy(buffer_.data(), buffer_.data() + num_bytes_read, dest);
         }
         read_count = num_bytes_read;
