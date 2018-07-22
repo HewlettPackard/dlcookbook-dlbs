@@ -40,6 +40,14 @@
       "type": "str",
       "desc": "Directory where Caffe's model file is located. Different for host/docker benchmarks."
     },
+    "caffe.layer_wise_reduce": {
+      "val":  true,
+      "type": "bool",
+      "desc": [
+        "Overlap compute and communication for data parallel training. This can be useful to benchmark",
+        "hardware components that are responsible/involved in gradient reduction."
+      ]
+    },
     "caffe.solver": {
       "val": [
         "net: '${caffe.model_dir}/${caffe.model_file}'\\n",
@@ -50,7 +58,8 @@
         "base_lr: 0.01\\n",
         "lr_policy: 'fixed'\\n",
         "solver_mode: $('${exp.device_type}'.upper())$\\n",
-        "$('solver_data_type: ${nvidia_caffe.solver_precision}' if '${exp.framework}' == 'nvidia_caffe' else '')$"
+        "$('solver_data_type: ${nvidia_caffe.solver_precision}' if '${exp.framework}' == 'nvidia_caffe' else '')$",
+        "layer_wise_reduce: $('true' if ${caffe.layer_wise_reduce} else 'false')$"
       ],
       "type": "str",
       "desc": "A content for a Caffe's solver file in case Caffe benchmarks train phase."
