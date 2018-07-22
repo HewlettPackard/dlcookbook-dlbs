@@ -45,7 +45,8 @@
       "type": "bool",
       "desc": [
         "Overlap compute and communication for data parallel training. This can be useful to benchmark",
-        "hardware components that are responsible/involved in gradient reduction."
+        "hardware components that are responsible/involved in gradient reduction. Only original BVLC Caffe",
+        "supports this. Intel/NVIDIA bechmarks with this variable set to false will be disabled."
       ]
     },
     "caffe.solver": {
@@ -286,6 +287,13 @@
           "LD_LIBRARY_PATH=$('${${caffe.fork}_caffe.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
           "${runtime.EXPORT_CUDA_CACHE_PATH}"
         ]
+      }
+    },
+    {
+      "condition": {"exp.framework": ["nvidia_caffe", "intel_caffe"], "caffe.layer_wise_reduce": false},
+      "parameters": {
+        "exp.status": "disabled",
+        "exp.status_message": "NVIDIA/Intel Caffe forks do not support 'caffe.layer_wise_reduce' option set to 'false'."
       }
     }
   ]
