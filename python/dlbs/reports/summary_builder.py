@@ -35,7 +35,7 @@ import json
 import argparse
 from sets import Set
 import dlbs.python_version   # pylint: disable=unused-import
-from dlbs.utils import DictUtils
+from dlbs.utils import DictUtils, OpenFile
 
 
 BATCH_TM_TITLE = "Batch time (milliseconds)"
@@ -53,7 +53,7 @@ class SummaryBuilder(object):
 
     def build_cache(self, summary_file, target_variable, query):
         """Loads data from json file."""
-        with open(summary_file) as file_obj:
+        with OpenFile(summary_file) as file_obj:
             summary = json.load(file_obj)
         self.cache = {}
         self.nets = Set()

@@ -128,7 +128,6 @@ def filter_benchmarks(args):
         keep = True
         for key in params:
             if key not in input_benchmark or not input_benchmark[key]:
-                print ("Missing key: %s" % key)
                 keep = False
                 break
         if keep:
