@@ -40,6 +40,15 @@
       "type": "str",
       "desc": "Directory where Caffe's model file is located. Different for host/docker benchmarks."
     },
+    "caffe.layer_wise_reduce": {
+      "val":  true,
+      "type": "bool",
+      "desc": [
+        "Overlap compute and communication for data parallel training. This can be useful to benchmark",
+        "hardware components that are responsible/involved in gradient reduction. Only original BVLC Caffe",
+        "supports this. Intel/NVIDIA bechmarks with this variable set to false will be disabled."
+      ]
+    },
     "caffe.solver": {
       "val": [
         "net: '${caffe.model_dir}/${caffe.model_file}'\\n",
@@ -50,7 +59,8 @@
         "base_lr: 0.01\\n",
         "lr_policy: 'fixed'\\n",
         "solver_mode: $('${exp.device_type}'.upper())$\\n",
-        "$('solver_data_type: ${nvidia_caffe.solver_precision}' if '${exp.framework}' == 'nvidia_caffe' else '')$"
+        "$('solver_data_type: ${nvidia_caffe.solver_precision}' if '${exp.framework}' == 'nvidia_caffe' else '')$",
+        "layer_wise_reduce: $('true' if ${caffe.layer_wise_reduce} else 'false')$"
       ],
       "type": "str",
       "desc": "A content for a Caffe's solver file in case Caffe benchmarks train phase."
@@ -277,6 +287,13 @@
           "LD_LIBRARY_PATH=$('${${caffe.fork}_caffe.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
           "${runtime.EXPORT_CUDA_CACHE_PATH}"
         ]
+      }
+    },
+    {
+      "condition": {"exp.framework": ["nvidia_caffe", "intel_caffe"], "caffe.layer_wise_reduce": false},
+      "parameters": {
+        "exp.status": "disabled",
+        "exp.status_message": "NVIDIA/Intel Caffe forks do not support 'caffe.layer_wise_reduce' option set to 'false'."
       }
     }
   ]
