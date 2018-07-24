@@ -168,7 +168,14 @@ class Validator(object):
         if 'exp.docker' in exp:
             if exp['exp.docker'] is True:
                 stats['num_docker_exps'] += 1
-                docker_img_key = '%s.docker_image' % (exp['exp.framework'])
+                # There's a sequence of parameters that defines how docker image is computed.
+                # Here, in this module list of benchmarks is processed with Processor, and this
+                # means all parameters have been computed. This means that the actual parameter
+                # that contains docker image to use is exp.docker_image. BTW other, framework
+                # specific parameters, such as nvcnn.docker_image may contain same or different
+                # values, but they are not used.
+                #docker_img_key = '%s.docker_image' % (exp['exp.framework'])
+                docker_img_key = 'exp.docker_image'
                 if exp[docker_img_key] not in stats['docker_images']:
                     stats['docker_images'].append(exp[docker_img_key])
             else:
