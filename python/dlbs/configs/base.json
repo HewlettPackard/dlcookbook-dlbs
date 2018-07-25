@@ -281,11 +281,11 @@
       "desc": ["Docker image to use for current benchmark. Must exist in the system."]
     },
     "exp.docker_args": {
-      "val": "--rm",
+      "val": "--rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864",
       "type": "str",
       "desc": [
-        "Additional arguments to pass to docker. For instance, you may want to pass these NVIDIA reccommended parameters:",
-        "  --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864"
+        "Additional arguments to pass to docker, for instance, '--ipc=host' or '--privileged'.",
+        "By default, DLBS uses parameters recomended by NVIDIA to run containers from NGC."
       ]
     },
     "monitor.timeseries": {
