@@ -22,7 +22,7 @@ References:
   We also have one channel only (search tf_cnn_benchmarks.py for 'input_nchan =')
 """
 
-import model
+from models import model
 
 
 class DeepMNISTModel(model.Model):

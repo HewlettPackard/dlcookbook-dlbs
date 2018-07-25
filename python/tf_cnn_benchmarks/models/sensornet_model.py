@@ -18,7 +18,7 @@
 References:
 """
 
-import model
+from models import model
 
 
 class SensorNetModel(model.Model):

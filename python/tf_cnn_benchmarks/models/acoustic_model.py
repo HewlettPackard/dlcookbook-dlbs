@@ -25,7 +25,7 @@ References:
   features.
 """
 
-import model
+from models import model
 
 
 class AcousticModel(model.Model):
