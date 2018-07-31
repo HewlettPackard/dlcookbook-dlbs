@@ -28,6 +28,7 @@ import os
 import importlib
 import inspect
 
+
 def import_models():
     """Scans **./models** folder and imports models.
 
@@ -42,7 +43,11 @@ def import_models():
         mname = os.path.splitext(os.path.basename(fname))[0]
         if mname.startswith('__'):
             continue
-        module = importlib.import_module("mxnet_benchmarks.models." + mname)
+        try:
+            module = importlib.import_module("mxnet_benchmarks.models." + mname)
+        except ImportError:
+            print("[WARNING] module '%s' cannot be imported (import error)" % mname)
+            continue
         for item in dir(module):
             model_cls = getattr(module, item)
             if not model_cls or not inspect.isclass(model_cls) or not hasattr(model_cls, 'implements'):
@@ -74,5 +79,13 @@ class ModelFactory(object):
         """
         assert 'model' in params, "No model name found in params"
         model = params['model']
-        assert model in ModelFactory.models, "Unsupported model: '%s'" % model
-        return ModelFactory.models[model](params)
+        if model.endswith('.onnx'):
+            if '_onnx_model' not in ModelFactory.models:
+                raise RuntimeError("ONNX model cannot be created. Please, install ONNX library and latest mxnet.")
+            if params['dtype'] != 'float32' or params['phase'] != 'inference':
+                raise RuntimeError("ONNX model can now be ran with single precision in inference mode.")
+            params['model_url'] = model
+            return ModelFactory.models['_onnx_model'](params)
+        else:
+            assert model in ModelFactory.models, "Unsupported model: '%s'" % model
+            return ModelFactory.models[model](params)

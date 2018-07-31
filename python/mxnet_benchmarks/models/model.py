@@ -40,6 +40,7 @@ class Model(object):
         self.__model_opts = copy.deepcopy(params['model_opts'])
         self.__have_float16_lrn = 'DLBS_MXNET_NO_FLOAT16_LRN' not in os.environ
         self._eval_metric = 'acc'
+        self._init_params = None        # Of not None, must be a tuple of (arg, aux) to be used with Module.set_params(arg_params, aux_params)
         # The following two parameters are used by data providers.
         self._labels_shape = (1,)                      # Shape of labels tensor excluding leading batch dimension
         self._labels_range = (0, self.num_classes-1)   # Possible labels' values inclusive
@@ -198,6 +199,11 @@ class Model(object):
     def eval_metric(self):
         """Return evaluation metric"""
         return self._eval_metric
+
+    @property
+    def init_params(self):
+        """Return parameters"""
+        return self._init_params
 
     @property
     def labels_shape(self):

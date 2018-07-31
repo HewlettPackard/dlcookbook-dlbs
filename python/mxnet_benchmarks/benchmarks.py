@@ -251,20 +251,21 @@ def run_n_times(module, batch, opts):
     """
     is_train = opts['phase'] == 'training'
     assert is_train == False, "This function must not be used in train phase."
-    for i in range(opts['num_warmup_batches']):
-        module.forward(batch, is_train=is_train)
-        if is_train:
-            module.backward()
-            module.update()
-    batch_times = np.zeros(opts['num_batches'])
-    for i in range(opts['num_batches']):
+    def _run_batch():
         start_time = timeit.default_timer()
         module.forward(batch, is_train=is_train)
         if is_train:
             module.backward()
             module.update()
         mx.nd.waitall()
-        batch_times[i] = timeit.default_timer() - start_time
+        return timeit.default_timer() - start_time
+
+    for i in range(opts['num_warmup_batches']):
+        _run_batch()
+    batch_times = np.zeros(opts['num_batches'])
+
+    for i in range(opts['num_batches']):
+        batch_times[i] = _run_batch()
     return batch_times
 
 
@@ -293,6 +294,18 @@ def benchmark(opts):
     opts['enable_tensor_core'] = opts.get('enable_tensor_core', False)
 
     model = ModelFactory.get_model(opts)
+    model_ops = model.model_opts
+    if 'batch_size' in model_ops and model_ops['batch_size'] != opts['batch_size']:
+        print(
+            "[WARNING] Batch size provided by a model (%d) is different from a batch size "\
+            "provided by a user on a command line (%d). In some cases a model can statically "\
+            "depend on certain shape of input data, for instance, when loaded from an ONNX "\
+            "file. DLBS will continue with user provided batch size but will likely die due "\
+            "to shape mismatch (unless all operators were exported with this issue in mind "\
+            "keeping some of the dimensions not being fixed."\
+            % (model_ops['batch_size'], opts['batch_size'])
+        )
+    #
     if opts['phase'] == 'inference':
         return benchmark_inference(model, opts)
     else:
@@ -315,7 +328,10 @@ def benchmark_inference(model, opts):
 
     mod = mx.mod.Module(symbol=model.output, context=device, label_names=None)
     mod.bind(for_training=False, inputs_need_grad=False, data_shapes=data_shape)
-    mod.init_params(initializer=mx.init.Xavier(magnitude=2.))
+    if model.init_params is not None:
+        mod.init_params(arg_params=model.init_params[0], aux_params=model.init_params[1])
+    else:
+        mod.init_params(initializer=mx.init.Xavier(magnitude=2.))
 
     data = [mx.random.uniform(-1.0, 1.0, shape=shape, ctx=device) for _, shape in mod.data_shapes]
     batch = mx.io.DataBatch(data, []) # empty label
@@ -393,6 +409,8 @@ if __name__ == '__main__':
         model_title = 'Unk'
         print ("Critical error while running benchmarks (%s). See stacktrace below." % (str(e)))
         traceback.print_exc(file=sys.stdout)
+        print("__results.status__=%s" % (json.dumps("failure")))
+        print("__results.status_message__=%s" % (json.dumps(e.args[0])))
 
     if len(times) > 0:
         mean_time = np.mean(times)                                   # seconds
@@ -401,5 +419,3 @@ if __name__ == '__main__':
         print("__results.throughput__=%s" % (json.dumps(int(mean_throughput))))
         print("__exp.model_title__=%s" % (json.dumps(model_title)))
         print("__results.time_data__=%s" % (json.dumps((1000.0*times).tolist())))
-    else:
-        print("__results.status__=%s" % (json.dumps("failure")))

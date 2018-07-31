@@ -46,7 +46,7 @@
     },
     "mxnet.args": {
       "val": [
-        "--model=${exp.model}",
+        "--model=$('${exp.model}' if 'exp.docker' is False or not '${exp.model}'.endswith('onnx') else '/workspace/model/'+os.path.basename('${exp.model}'))$",
         "--model_opts='${exp.model_opts}'",
         "--forward_only=$('true' if '${exp.phase}'=='inference' else 'false')$",
         "--batch_size=${exp.replica_batch}",
@@ -77,6 +77,7 @@
         "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
         "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
         "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
+        "$('' if not 'exp.docker' or not '${exp.model}'.endswith('onnx') else '--volume=%s:/workspace/model' % os.path.dirname('${exp.model}'))$",
         "${exp.docker_args}",
         "${exp.docker_image}"
       ],
