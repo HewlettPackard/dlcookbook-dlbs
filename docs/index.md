@@ -14,7 +14,7 @@ Mac OS due to slightly different command line API of some of the tools we use
 (like, for instance, sed) - we will fix this in one of the next releases.
 
 ## Installation
-1. Install Docker and NVIDIA Docker for containerized benchmarks. Read [here](/docker/docker.md?id=docker) why we prefer to use docker and [here](/docker/install_docker.md?id=installing-docker) for installing/troubleshooting tips. This is not required. DLBS can work with bare metal framework installations.
+1. Install Docker and NVIDIA Docker for containerized benchmarks. Read [here](https://hewlettpackard.github.io/dlcookbook-dlbs/#/docker/docker?id=docker) why we prefer to use docker and [here](https://hewlettpackard.github.io/dlcookbook-dlbs/#/docker/install_docker?id=installing-docker) for installing/troubleshooting tips. This is not required. DLBS can work with bare metal framework installations.
 2. Clone Deep Learning Benchmarking Suite from [GitHub](https://github.com/HewlettPackard/dlcookbook-dlbs)
    ```bash
    git clone https://github.com/HewlettPackard/dlcookbook-dlbs dlbs
@@ -30,7 +30,7 @@ Mac OS due to slightly different command line API of some of the tools we use
     7. [TensorRT](https://developer.nvidia.com/tensorrt)
     8. [PyTorch](http://pytorch.org/)
 
-   There are several ways to get Docker images. Read [here](/docker/pull_build_images.md?id=buildpull-docker-images) about various options including images from [NVIDIA GPU Cloud](https://www.nvidia.com/en-us/gpu-cloud/). We may not support the newest framework versions due to API change.
+   There are several ways to get Docker images. Read [here](https://hewlettpackard.github.io/dlcookbook-dlbs/#/docker/pull_build_images?id=buildpull-docker-images) about various options including images from [NVIDIA GPU Cloud](https://www.nvidia.com/en-us/gpu-cloud/). We may not support the newest framework versions due to API change.
 
 ## Quick start
 Assuming CUDA enabled GPU is present, execute the following commands to run simple experiment with ResNet50 model  (if you do not have GPUs, see below):
@@ -80,10 +80,11 @@ The `results.time` - is an average time in milliseconds to process one batch of 
 study ./benchmarks/my_experiment/tf.log for error messages. The `results.throughput` parameter is the number
 of instances per second, in this case, number of images/seconds.
 
-The [advanced introduction](./intro/advanced_intro.md?id=advanced-introduction-to-benchmarking-suite) contains more examples of what DLBS can do.
+The [introduction](https://hewlettpackard.github.io/dlcookbook-dlbs/#/intro/intro?id=introduction-to-benchmarking-suite) contains more examples of what DLBS can do.
 
+## Documentation
+We host documentation [here](https://hewlettpackard.github.io/dlcookbook-dlbs/#/).
 
 ## Contact us
-
 * Natalia Vassilieva <nvassilieva@hpe.com>
 * Sergey Serebryakov <sergey.serebryakov@hpe.com>

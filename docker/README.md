@@ -8,7 +8,7 @@ We have choosen Docker containers as a primary mechanism to run benchmarks. Ther
 4. Ease of use. Clone repository, build/pull images, run script. Get results, upload them to github. Share, discuss, analyze. The setup stage is minimized and focus shifts to results analysis.
 5. Use various instances of the same framework (version/compilation flags ...) transparently. They all differ by a container identifier. Everything else remains the same.  
 6. Throw away SW installation routines that may take days. Git rid of dependency problems. Applications run in sandbox environments - they will never pick the wrong library at runtime - save hours of debugging for something usefull.
-7. Push new version of your container to your registry. It then immediately becomes available to all hosts in a cluster. 
+7. Push new version of your container to your registry. It then immediately becomes available to all hosts in a cluster.
 
 This document covers the following topics:
 * [Requirements to run experiments in containers](#requirements-to-run-experiments-in-containers)
@@ -39,13 +39,13 @@ The mandatory requirement to run CPU based benchmarks/experiments is docker. The
 
 Docker installation guide can be found [here](https://docs.docker.com/engine/getstarted/step_one/). This document contains step by step installation guides for some operating systems.
 
-For GPU-based experiments, `nvidia-docker` must be installed. 
+For GPU-based experiments, `nvidia-docker` must be installed.
 
 ### Installing Docker on RedHat OS
 Whenever you try to install latest version of Docker CE, you get the following message:
 
 ```
-WARNING: redhat is now officially only supported by Docker EE 
+WARNING: redhat is now officially only supported by Docker EE
          Check https://store.docker.com for information on Docker EE
 ```
 
@@ -172,8 +172,8 @@ I faced this error couple of times compiling NVIDIA Caffe. You may get errors so
 ../lib/libcaffe-nv.so.0.16.1: undefined reference to `nvmlDeviceGetHandleByIndex_v2'
 collect2: error: ld returned 1 exit status
 ```
-In theory, this should not be a problem since base images provided by NVIDIA define `LIBRARY_PATH` variable containing path to a 
-folder containing stub libraries (/usr/local/cuda/lib64/stubs). See, for instance, this [Dockerfile](https://gitlab.com/nvidia/cuda/blob/ubuntu16.04/8.0/devel/Dockerfile). GCC should be able to use `LIBRARY_PATH` variable. If this 
+In theory, this should not be a problem since base images provided by NVIDIA define `LIBRARY_PATH` variable containing path to a
+folder containing stub libraries (/usr/local/cuda/lib64/stubs). See, for instance, this [Dockerfile](https://gitlab.com/nvidia/cuda/blob/ubuntu16.04/8.0/devel/Dockerfile). GCC should be able to use `LIBRARY_PATH` variable. If this
 error occurs, edit the corresponding docker file. NVIDIA Caffe Dockerfile contains example command line that you can use to fix this
 error.
 
@@ -183,7 +183,7 @@ Every host can run docker containers and they can communicate with each other. W
 See `Docker performance` section for more details, in particular, in the referenced IBM's [report](http://domino.research.ibm.com/library/cyberdig.nsf/papers/0929052195DD819C85257D2300681E7B/$File/rc25482.pdf) they state that port mapping may introduce a minor latency Solution - use host network instead (`--net=host`).
 
 ### Docker performance
-In section docker networking, we demonstrate that certain implementations demonstrate same performance as non-containerized applications. 
+In section docker networking, we demonstrate that certain implementations demonstrate same performance as non-containerized applications.
 
 Ching-Hsiang Chu from Ohio state university did extensive testing of Docker workloads, slide deck is available [here](http://web.cse.ohio-state.edu/~panda.2/5194/slides/9e_9h_virtualization.pdf), slides 5-15. Their results show that containers impose almost no overhead on CPU and memory usage, they only impact I/O and OS interaction. I assume that the same should be true for GPUs.
 
@@ -192,7 +192,7 @@ Several usefull references from that page:
 
 * [Linux Containers - NextGen Virtualization for Cloud](https://www.youtube.com/watch?v=a4oOAVhNLjU)
 * [An Updated Performance Comparison of Virtual Machines and Linux Containers](http://domino.research.ibm.com/library/cyberdig.nsf/papers/0929052195DD819C85257D2300681E7B/$File/rc25482.pdf).
-Authors compare bare metal, KVM and Docker containers. `The general result is that Docker is nearly identical to Native performance and faster than KVM in every category.`. 
+Authors compare bare metal, KVM and Docker containers. `The general result is that Docker is nearly identical to Native performance and faster than KVM in every category.`.
 Also, see discussion on stackoverflow for critical review of this report.
 
 ### Docker performance metrics
@@ -216,24 +216,53 @@ We strongly reccommend building images on every machine for CPU benchmarks. In c
 
 
 ### Images that are run by standard benchmarking scripts
+```
+cat /usr/local/cuda/version.txt
+find /usr/lib -name *cudnn*
+find /usr/lib -name *nccl*
+
+#TensorFlow
+python -c "import tensorflow as tf; print(tf.__version__)"
+#Caffe2
+cat /opt/caffe2/VERSION_NUMBER
+#MXNET
+cat /opt/mxnet/NEWS.md
+#PyTorch
+cat /opt/pytorch/pytorch/setup.py | grep 'version ='
+Caffe
+cat /opt/caffe/CMakeLists.txt | grep CAFFE_TARGET_VERSION
+```
+
+#### Recommended images from NVIDIA GPU Cloud
+They may not be the latest images but they have been tested with DLBS backend.
 
 
+| Image ID                            | Accelerator Software                  | Framework    | Version |Target  Device  |
+|-------------------------------------|---------------------------------------|--------------|---------|----------------|
+| nvcr.io/nvidia/tensorflow:18.04-py3 | CUDA-9.0.333/cudnn-7.1.1/nccl-2.1.15  | TensorFlow   | 1.7.0   | GPU            |
+| nvcr.io/nvidia/caffe2:18.05-py2     | CUDA-9.0.333/cudnn-7.1.2/nccl-2.1.15  | Caffe2       | 0.8.1   | GPU            |
+| nvcr.io/nvidia/mxnet:18.05-py2      | CUDA-9.0.333/cudnn-7.1.2/nccl-2.1.15  | MXNET        | 1.1.0   | GPU            |
+| nvcr.io/nvidia/pytorch:18.05-py3    | CUDA-9.0.333/cudnn-7.1.2/nccl-2.1.15  | PyTorch      | 0.4.0a0 | GPU            |
+| nvcr.io/nvidia/caffe:18.05-py2      | CUDA-9.0.333/cudnn-7.1.2/nccl-2.1.15  | NVIDIA Caffe | 0.17.0  | GPU            |
 
-| Image ID                    | Base Image                                | Accelerator Software | Framework    | Version |Target  Device  | Interconnect |
-|-----------------------------|-------------------------------------------|----------------------|--------------|---------|----------------|--------------|
-| hpe/benchmarks:ethernet     | nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04  | CUDA 8 / cuDNN 5     | N/A          |         | CPU            | Ethernet     |
-| hpe/benchmarks:infiniband   | nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04  | CUDA 8 / cuDNN 5     | N/A          |         | CPU            | InfiniBand   |
-| hpe/bvlc_caffe:cpu          | ubuntu:16.04                              | N/A                  | BVLC Caffe   | rc4     | CPU            | Ethernet     |
-| hpe/bvlc_caffe:gpu          | nvidia/cuda:8.0-cudnn6-devel-ubuntu16.04  | CUDA 8 / cuDNN 6     | BVLC Caffe   | 1.0     | GPU            | Ethernet     |
-| hpe/bvlc_caffe:gpu-cudnn6   | nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04  | CUDA 8 / cuDNN 5     | BVLC Caffe   | 1.0     | GPU            | Ethernet     |
-| hpe/caffe2:gpu              | nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04  | CUDA 8 / cuDNN 5     | Caffe2       | v0.6.0  | GPU            | Ethernet     |
-| hpe/intel_caffe:cpu         | ubuntu:16.04                              | MKL2017              | Intel Caffe  | master  | CPU            | Ethernet     |
-| hpe/mxnet:gpu               | nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04  | CUDA 8 / cuDNN 5     | mxnet        | latest  | GPU            | Ethernet     |
-| hpe/nvidia_caffe:gpu        | nvidia/cuda:8.0-cudnn6-devel-ubuntu16.04  | CUDA 8 / cuDNN 6     | NVIDIA Caffe | 0.16.1  | GPU            | Ethernet     |
-| hpe/tensorflow:cpu          | ubuntu:16.04                              | N/A                  | TensorFlow   | r1.0    | CPU            | Ethernet     |
-| hpe/tensorflow:gpu-latest   | nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04  | CUDA 8 / cuDNN 5     | TensorFlow   | latest  | GPU            | Ethernet     |
-| hpe/tensorflow:gpu          | nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04  | CUDA 8 / cuDNN 5     | TensorFlow   | 1.1.0   | GPU            | Ethernet     |
-| hpe/tensorrt:gpu            | nvidia/cuda:8.0-cudnn6-devel-ubuntu16.04  | CUDA 8 / cuDNN 6     | TensorRT     | 2.1     | GPU            | Ethernet     |
+
+#### Reference (baseline) images built with DLBS
+
+| Image ID                            | Base Image                                | Accelerator Software                  | Framework    | Version |Target  Device  |
+|-------------------------------------|-------------------------------------------|---------------------------------------|--------------|---------|----------------|
+| hpe/benchmarks:ethernet             | nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04  | N/A                                   | N/A          |         | CPU            |
+| hpe/benchmarks:infiniband           | nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04  | N/A                                   | N/A          |         | CPU            |
+| hpe/bvlc_caffe:cuda9-cudnn7         | nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04  | CUDA-9.0.176/cudnn-7.1.3/nccl-2.1.15  | BVLC Caffe   | 1.0.0   | GPU            |
+| hpe/nvidia_caffe:cuda9-cudnn7       | nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04  | CUDA-9.0.176/cudnn-7.1.3/nccl-2.1.15  | NVIDIA Caffe | 0.16.1  | GPU            |
+| hpe/intel_caffe:cpu                 | ubuntu:16.04                              | MKL2017                               | Intel Caffe  | master  | CPU            |
+| hpe/caffe2:cuda9-cudnn7             | nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04  | CUDA-9.0.176/cudnn-7.1.3/nccl-2.1.15  | Caffe2       | 0.8.1   | GPU            |
+| hpe/mxnet:cuda9-cudnn7              | nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04  | CUDA-9.0.176/cudnn-7.1.3/nccl-2.1.15  | mxnet        | 1.0.0   | GPU            |
+| hpe/tensorflow:cuda9-cudnn7         | nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04  | CUDA-9.0.176/cudnn-7.1.3/nccl-2.1.15  | TensorFlow   | 1.6.0   | GPU            |
+| hpe/pytorch:cuda9-cudnn7            | nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04  | CUDA-9.0.176/cudnn-7.1.3/nccl-2.1.15  | PyTorch      | 0.4.0a0 | GPU            |
+
+We are planning to change naming convention for reference images that will follow the pattern: `dlbs/framework:YY.MM`.
+
+
 
 ### Quick cheatsheet
 * `docker pull <image>` - Get the latest version of the image. If previous version is installed, it will be upgraded.
