@@ -107,7 +107,7 @@ We host documentation [here](https://hewlettpackard.github.io/dlcookbook-dlbs/#/
 
 ## License
 
-Deep Learning Benchmarking Suite is licensed under [Apache 2.0](../LICENSE) license.
+Deep Learning Benchmarking Suite is licensed under [Apache 2.0](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/LICENSE) license.
 
 ## Contact us
 * Natalia Vassilieva <nvassilieva@hpe.com>
