@@ -1,17 +1,29 @@
 # __Deep Learning Benchmarking Suite__
-Deep Learning Benchmarking Suite (DLBS) is a collection of command line tools for running consistent and reproducible benchmark experiments on various hardware/software combinations. In particular, DLBS provides the following functionality:
-1. Implements internally various deep models. Our goal is to provide same model implementations for all supported frameworks. Deep models that are supported include various VGGs, ResNets, AlexNet and GoogleNet models.
-2. Benchmarks single node multi GPU configurations. Frameworks that are now supported: BVLC Caffe, NVIDIA Caffe, Intel Caffe, Caffe2, TensorFlow, MXNet, PyTorch and NVIDIA inference engine TensorRT.
+Deep Learning Benchmarking Suite (DLBS) is a collection of command line tools for
+running consistent and reproducible benchmark experiments on various hardware/software
+platforms. In particular, DLBS:
+1. Provides implementation of a number of neural networks in order to enforce apple-to-apple
+   comparison across all supported frameworks. Deep models that are supported include various
+   VGGs, ResNets, AlexNet and GoogleNet models. DLBS can support many more models via integration
+   with third party benchmark projects.
+2. Benchmarks single node multi-GPU or CPU  platforms. List of supported
+   frameworks include various forks of Caffe (BVLC/NVIDIA/Intel), Caffe2, TensorFlow,
+   MXNet, PyTorch. DLBS also supports NVIDIA's inference engine TensorRT.
 3. Supports inference and training phases.
-4. Can use real data if dataset is available. Else, falls back to synthetic data.
+4. Supports synthetic and real data.
 5. Supports bare metal and docker environments.
-6. Can run benchmarks with single, half and in some cases int8 precision.
+6. Supports single/half/int8 precision and uses tensor cores with Volta GPUs.
+7. Is based on modular architecture enabling easy integration with other projects
+   such TensorFlow CNN Benchmarks, Tensor2Tensor, NVCNN, NVCNN-HVD or similar.
+8. Target metric is raw performance (number of data samples per second).
 
 ## Supported platforms
 Deep Learning Benchmarking Suite was tested on various servers with Ubuntu /
-RedHat / CentOS operating systems with/without NVIDIA GPUs. It may not work with
-Mac OS due to slightly different command line API of some of the tools we use
-(like, for instance, sed) - we will fix this in one of the next releases.
+RedHat / CentOS operating systems with and without NVIDIA GPUs. We have a little
+success with running DLBS on top of AMD GPUs, but this is mostly untested. It may
+not work with Mac OS due to slightly different command line API of some of the
+tools we use (like, for instance, sed) - we will fix this in one of the next
+releases.
 
 ## Installation
 1. Install Docker and NVIDIA Docker for containerized benchmarks. Read [here](https://hewlettpackard.github.io/dlcookbook-dlbs/#/docker/docker?id=docker) why we prefer to use docker and [here](https://hewlettpackard.github.io/dlcookbook-dlbs/#/docker/install_docker?id=installing-docker) for installing/troubleshooting tips. This is not required. DLBS can work with bare metal framework installations.
@@ -83,7 +95,19 @@ of instances per second, in this case, number of images/seconds.
 The [introduction](https://hewlettpackard.github.io/dlcookbook-dlbs/#/intro/intro?id=introduction-to-benchmarking-suite) contains more examples of what DLBS can do.
 
 ## Documentation
+
 We host documentation [here](https://hewlettpackard.github.io/dlcookbook-dlbs/#/).
+
+## More information
+
+* [Why we created Benchmarking Suite](https://developer.hpe.com/blog/why-we-created-hpe-deep-learning-cookbook)
+* GTC 2018 [presentation](http://on-demand.gputechconf.com/gtc/2018/video/S8555) / [slides](http://on-demand.gputechconf.com/gtc/2018/presentation/s8555-hpe-deep-learning-cookbook-recipes-to-run-deep-learning-workloads.pdf)
+* [HPE Developer Portal](https://www.hpe.com/software/dl-cookbook)
+* [HPE Deep Learning Performance Guide](http://dlpg.labs.hpe.com/)
+
+## License
+
+Deep Learning Benchmarking Suite is licensed under [Apache 2.0](../LICENSE) license.
 
 ## Contact us
 * Natalia Vassilieva <nvassilieva@hpe.com>
