@@ -81,6 +81,7 @@ def get_params(params):
 def validate_benchmarks(args):
     """Validates benchmarks ensuring every benchmark contains mandatory parameters.
 
+    Also make sure `exp.id`s are unique.
     :param argparse args: Command line arguments.
 
     The following command line arguments are used:
@@ -93,19 +94,29 @@ def validate_benchmarks(args):
     params = get_params(args.params)
     # Figure out missing parameters.
     missing_params = defaultdict(lambda: 0)
+    exp_ids = set()            # All identifiers of experiments
+    duplicates = False         # If two or more experiments have the same ID
     for benchmark in benchmarks:
         keys = [key for key in params if key not in benchmark]
         for key in keys:
             missing_params[key] += 1
+        if 'exp.id' in benchmark:
+            if benchmark['exp.id'] not in exp_ids:
+                exp_ids.add(benchmark['exp.id'])
+            else:
+                duplicates = True
     # Report validation results.
     print("Number of benchmarks: %d" % len(benchmarks))
-    if not missing_params:
+    if not missing_params and not duplicates:
         print("Benchmark validation result: SUCCESS")
     else:
         print("Benchmark validation result: FAILURE")
-        print("missing parameters:")
-        for missing_param in missing_params:
-            print("\t%s: %d" % (missing_param, missing_params[missing_param]))
+        if len(missing_params) > 0:
+            print("missing parameters:")
+            for missing_param in missing_params:
+                print("\t%s: %d" % (missing_param, missing_params[missing_param]))
+        if duplicates:
+            print("Several benchmarks have same identifier (exp.id)")
 
 
 def filter_benchmarks(args):
@@ -152,7 +163,7 @@ def update_benchmarks(args):
     # Load benchmarks and parameters.
     benchmarks = load_json_file(args.input_file)['data']
     prefix = '__'
-    params = {prefix + k:v for k,v in get_params(args.params).items()}
+    params = {prefix + k:v for k, v in get_params(args.params).items()}
     # Add prefixed parameters to all benchmarks.
     for benchmark in benchmarks:
         benchmark.update(params)
