@@ -23,22 +23,39 @@
 #include <opencv2/opencv.hpp>
 
 /**
- * @brief A message containing images read from some storage. An image reader
- * batches images before sending them. Usually, there can be multiple image
- * readers working in parallel threads.
+ * @brief A message containing images that have been read from some storage. 
+ * 
+ * An image reader batches images before sending them. Usually, there
+ * can be multiple image readers working in parallel threads. This is internal
+ * implementation of this particular dataset.
  */
 struct prefetch_msg {
     std::vector<cv::Mat> images_;
     size_t num_images() const { return images_.size(); }
 };
 
+/**
+ * @brief An implementation of a dataset that reads raw images.
+ * 
+ * It is not really efficient and thus should not be used. The implementation
+ * works like this. It creates N prefetch threads. Each prefetch thread reads
+ * raw images and batches them together (prefetch_msg) until batch reaches
+ * specified size. Prefetcher then sends this message to decoders.
+ * 
+ * There are M decoders in the system (all part of this particular dataset
+ * implementation). Each decoder decodes OpenCV matrix into C-style 3D tensor
+ * and re-batches them into batches of, probably, new size. Then it sends this
+ * data (inference request) into an output queue. Inference request data will
+ * then be consumed by inference engines.
+ * 
+ */
 class image_dataset : public dataset {
 private:
-    std::vector<std::string> file_names_;
-    std::vector<std::thread*> prefetchers_;
-    std::vector<std::thread*> decoders_;
+    std::vector<std::string> file_names_;    //!< File names of all images. Each prefetcher will use its own shard.
+    std::vector<std::thread*> prefetchers_;  //!< Prefetchers reading raw images into OpenCV objects.
+    std::vector<std::thread*> decoders_;     //!< Decoders converting OpenCV objects into C-style 3D tensors.
     
-    thread_safe_queue<prefetch_msg*> prefetch_queue_;
+    thread_safe_queue<prefetch_msg*> prefetch_queue_; //!< An internal queue used by prefetchers to communicated with decoders.
     dataset_opts opts_;
     logger_impl& logger_;
 private:
@@ -56,6 +73,5 @@ public:
                            const size_t num_prefetches=4, const size_t num_infer_msgs=10,
                            const int num_warmup_batches=10, const int num_batches=100);
 };
-
 
 #endif

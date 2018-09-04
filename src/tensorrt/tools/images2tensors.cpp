@@ -14,6 +14,48 @@
   limitations under the License.
 */
 
+/**
+ * @file images2tensors.cpp
+ * @brief Convert ImageNet type dataset to custom binary representation for performance benchmarks.
+ * @details This tool converts images (JPEGs) to a binary representation that can directly be used
+ * by the inference engine. This is a 'benchmark' dataset and it cannot be used in any real use case.
+ * The goal is to have a collection of real images and completely eliminate preprocessing by storing
+ * images in a format that does not require such a preprocessing.
+ * 
+ * Images are stored as tensors of shape `[3, Width, Height]` where `Width` and `Height` are always
+ * the same (`Size`). Each tensor is an array of length `3*Size*Size`. The tool can create tensors of
+ * type `float` or `unsigned char` (`uchar`). For instance, in case of unsigned char data type and 
+ * images of shape [3,227,227], each image will be represented as an array of 157587 elements (bytes)
+ * or 151KB per image.
+ * 
+ * Each output file can contain one or more tensors. Such files do not contain any information on data
+ * types and exact shapes.
+ * 
+ * For example:
+ * @code{.sh}
+ * images2tensors --input_dir=/mnt/imagenet100k/jpegs --output_dir=/mnt/imagenet100k/tensors1 \
+ *                --size=227 --dtype=uchar --nthreads=5 --images_per_file=20000
+ * @endcode
+ * 
+ * The tool accepts the following parameters:
+ * 1. `--input_dir` Input directory. This directory must exist and must contain images (jpg, jpeg) in 
+ *    that directory or one of its sub-directories. ImageNet directory with raw images is one example
+ *    of a valid directory structure.
+ * 2. `--output_dir` Output directory. The tool will write output files in this directory.
+ * 3. `--size` Resize images to this size. Output images will have the following shape [3, size, size].
+ * 4. `--dtype` A data type to use. Two types are supported: 'float' and 'uchar'. The 'float' is a
+ *    single precision 4 byte numbers. Images take more space but are read directly into an inference
+ *    buffer. The 'uchar' (unsigned char) is a one byte numbers that takes less disk space but need to
+ *    be converted from unsigned char to float array.
+ * 5. `--shuffle` Shuffle list of images. Is used with combination `--nimages` to convert only a small
+ *    random subset.
+ * 6. `--nimages` If nimages > 0, only convert this number of images. Use `--shuffle` to randomly shuffle
+ *    list of images with this option.
+ * 7. `--nthreads` Use this number of threads to convert images. This will significantly increase overall
+ *    throughput.
+ * 8. `--images_per_file` Number of images per output file.
+ */
+
 #include "core/logger.hpp"
 #include "core/utils.hpp"
 
@@ -28,6 +70,7 @@ namespace po = boost::program_options;
 
 /**
  * @brief Convert a subset of images into a tensor representation. This function runs in its own thread.
+ * 
  * @param input_files List of all input files to convert. It's relative to \p input_dir.
  * @param input_dir Input directory containing input files.
  * @param output_dir Output directory. Directory structure will be the same as in \p input_dir.
@@ -36,6 +79,7 @@ namespace po = boost::program_options;
  * @param img_size Spatial dimensions of images (3 * img_size * img_size), i.e. a three channel image
  *                 of square shape.
  * @param logger A thread safe logger.
+ * @param images_per_file is the number of images to write into one file.
  * 
  * Output images are always three channel images with the following shape:
  * [Channel, Height, Width] where channel is always 3. Height and Width are always the same (img_size).
@@ -116,27 +160,10 @@ void convert(std::vector<std::string>& input_files, const std::string input_dir,
 #endif
 }
 
-void test() {
-    std::string input_dir = "/home/serebrya/data/train/";
-    std::string output_dir = "/home/serebrya/data/tensors_tmp/";
-    logger_impl logger;
-    const size_t img_size = 227;
-    
-    std::vector<std::string> input_files;
-    fs_utils::get_image_files(input_dir, input_files);
-    convert<float>(input_files, input_dir, output_dir, 1, 0, img_size, logger, 1);
-}
-
 /**
- * @brief Main entry point.
- * Usage:
- * images2tensors --input_dir=DIR --output_dir=DIR --size=227 --shuffle  --nimages=0 --nthreads=1 
+ * @brief Application entry point.
  */
 int main(int argc, char **argv) {
-    //
-    //test();
-    //return 0;
-    //
     logger_impl logger(std::cout);
     std::string input_dir,
                 output_dir,

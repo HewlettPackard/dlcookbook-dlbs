@@ -1,0 +1,31 @@
+# This file is designed in such a way that the doxygen tool must be invoked from docs/ folder. 
+# This resolves all paths and also makes it possible to use markdown files with doxygen and
+# github.
+# All output HTML files will go into build/html
+
+PROJECT_NAME           = "@CMAKE_PROJECT_NAME@"
+STRIP_FROM_PATH        = @PROJECT_SOURCE_DIR@ \
+                         @PROJECT_BINARY_DIR@
+                         
+GENERATE_TODOLIST      = YES
+GENERATE_BUGLIST       = YES
+GENERATE_HTML          = @GENERATE_HTML@
+GENERATE_LATEX         = NO
+GENERATE_MAN           = NO
+GENERATE_RTF           = NO
+
+INPUT                  = @PROJECT_SOURCE_DIR@ @PROJECT_BINARY_DIR@
+OUTPUT_DIRECTORY       = @PROJECT_BINARY_DIR@
+
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+
+FILE_PATTERNS          = *.h *.hpp *.hxx *.c *.cc *.cxx *.cpp *.ipp *.md
+RECURSIVE              = YES
+
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+SEARCH_INCLUDES        = YES
+
+USE_MDFILE_AS_MAINPAGE = index.md

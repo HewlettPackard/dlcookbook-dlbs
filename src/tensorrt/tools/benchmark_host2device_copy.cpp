@@ -14,17 +14,57 @@
   limitations under the License.
 */
 
+/**
+ * @file benchmark_host2device_copy.cpp
+ * @brief Benchmarks host-to-device data transfers. 
+ * @details Is used to determine achievable PCIe bandwidth in case when there's
+ * no overhead associated with ingestion and compute pipelines.
+ * @code{.sh}
+ * benchmark_host2device_copy --pinned \
+ *                            --gpu 0 \
+ *                            --num_warmup_batches 50 \
+ *                            --num_batches 100 \
+ *                            --size 128
+ * # where
+ * #     --pinned                 Allocate host pinned memory (else memory is pageable).
+ * #     --gpu ID                 GPU identifier to use.
+ * #     --num_warmup_batches N   Number of warm-up copy transfers.
+ * #     --num_batches M          Number of benchamrk copy transfers.
+ * #     --size SIZE              Size of a data in megabytes.
+ * @endcode
+ * 
+ * For instance:
+ * @code{.sh}
+ * ./benchmark_host2device_copy --gpu 0 --pinned --num_warmup_batches 10 --num_batches 100 --size 50
+ * {"gpu": 0, "warmup_iters": 10, "bench_iters": 100, "size_mb": 50, "memory": "pinned", "throughput_mb_s": 11285.326172}
+ * @endcode
+ * 
+ * @see https://devblogs.nvidia.com/how-optimize-data-transfers-cuda-cc/
+ */
+
 #include <boost/program_options.hpp>
 #include "core/logger.hpp"
 #include "core/utils.hpp"
 #include "engines/tensorrt/tensorrt_utils.hpp"
 
 namespace po = boost::program_options;
+
 /**
- * https://devblogs.nvidia.com/how-optimize-data-transfers-cuda-cc/
+ * @brief Run series of data copies.
+ * @param host_mem is the data pointer in host memory.
+ * @param device_mem is the data pointer in device memory.
+ * @param length Length of the data arrays.
+ * @param niters Number of data transfers to perform.
+ * @param helper is the helper to track transfer times using CUDA events.
+ * @return achieved copy speed in MB/s (megabyte/second)
  */
-void log_device_info(const int gpu=0);
-float benchmark(float *host_mem, float *device_mem, const size_t nbytes, const int niters, cuda_helper& helper);
+float benchmark(unsigned char *host_mem, unsigned char *device_mem,
+                const size_t length, const int niters,
+                cuda_helper& helper);
+
+/**
+ * @brief Application entry point.
+ */
 int main(int argc, char **argv) {
     //
     logger_impl logger(std::cout);
@@ -54,16 +94,9 @@ int main(int argc, char **argv) {
         logger.log_error("Cannot recover from previous errors");
     }
     //
-    std::cout << "GPU ID: " << gpu << std::endl;
-    std::cout << "Transfer size (MB) CPU --> GPU: " << size << std::endl;
-    std::cout << "Host memory: " << (pinned ? "pinned" : "pageable") << std::endl;
-    std::cout << "Number of warmup iterations: " << num_warmup_batches<< std::endl;
-    std::cout << "Number of benchmark iterations: " << num_batches<< std::endl;
-    //
     cudaCheck(cudaSetDevice(gpu));
-    log_device_info();
     const size_t nbytes = size * 1024 * 1024;
-    float *device_mem(nullptr), *host_mem(nullptr);
+    unsigned char *device_mem(nullptr), *host_mem(nullptr);
     std::unique_ptr<allocator> alloc(pinned ? (allocator*)new pinned_memory_allocator() : (allocator*)new standard_allocator());
     cuda_helper helper({"start", "stop"},{});
     //
@@ -72,38 +105,27 @@ int main(int argc, char **argv) {
     //
     benchmark(host_mem, device_mem, nbytes, num_warmup_batches, helper);
     const float throughput = benchmark(host_mem, device_mem, nbytes, num_batches, helper);
-    std::cout << "Throughput (MB/sec): " << throughput << std::endl;
+    std::string memory = (pinned ? "pinned" : "pageable");
+    std::cout << fmt("{\"gpu\": %d, \"warmup_iters\": %d, \"bench_iters\": %d, \"size_mb\": %d, \"memory\": \"%s\", \"throughput_mb_s\": %f}",
+                     gpu, num_warmup_batches, num_batches, size, memory.c_str(), throughput) << std::endl;
     //
     cudaCheck(cudaFree(device_mem));
     alloc->deallocate(host_mem);
     return 0;
 }
 
-void log_device_info(const int gpu) {
-    cudaDeviceProp prop;
-    cudaCheck(cudaGetDeviceProperties(&prop, gpu));
-    std::cout << "Device: " << prop.name << std::endl;
-}
-
-float benchmark(float *host_mem, float *device_mem, const size_t nbytes, const int niters, cuda_helper& helper) {
-    float time_ms(0), transfer_mb(nbytes/(1024*1024));
+float benchmark(unsigned char *host_mem, unsigned char *device_mem, const size_t length,
+                const int niters, cuda_helper& helper) {
+    float time_ms(0);
     for (int i=0; i<niters; ++i) {
         cudaCheck(cudaEventRecord(helper.event("start"), 0));
-        cudaCheck(cudaMemcpy(device_mem, host_mem, nbytes, cudaMemcpyHostToDevice));
+        cudaCheck(cudaMemcpy(device_mem, host_mem, length, cudaMemcpyHostToDevice));
         cudaCheck(cudaEventRecord(helper.event("stop"), 0));
         cudaCheck(cudaEventSynchronize(helper.event("stop")));
         float time;
         cudaCheck(cudaEventElapsedTime(&time, helper.event("start"), helper.event("stop")));
         time_ms += time;
     }
-    return 1000.0 * (float(nbytes)/(1024*1024)) * niters / time_ms;
+    // Return achieved MB/s
+    return 1000.0 * (float(length)/(1024*1024)) * niters / time_ms;
 }
-
-/**
- * transfer size
- * num warmup iterations
- * num iterations
- * pinned/non pinned memory
- * aligned/non aligned memory
- * 
- */

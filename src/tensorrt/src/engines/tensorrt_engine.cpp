@@ -45,6 +45,9 @@
  */
 
 #include "engines/tensorrt_engine.hpp"
+#ifdef HOST_DTYPE_INT8
+    #include "engines/tensorrt/gpu_cast.h"
+#endif
 
 DataType str2dtype(const std::string& dtype) {
     if (dtype == "float32" || dtype == "float")
@@ -162,6 +165,9 @@ tensorrt_inference_engine::~tensorrt_inference_engine() {
     engine_->destroy();
     if (bindings_[input_idx_]) cudaFree(bindings_[input_idx_]);
     if (bindings_[output_idx_]) cudaFree(bindings_[output_idx_]);
+#ifdef HOST_DTYPE_INT8
+    if (input_buffer_) cudaFree(input_buffer_);
+#endif
 }
     
 void tensorrt_inference_engine::init_device() {
@@ -169,33 +175,63 @@ void tensorrt_inference_engine::init_device() {
     cudaCheck(cudaSetDevice(engine_id_));
     cudaCheck(cudaMalloc(&(bindings_[input_idx_]),  sizeof(float) * batch_sz_ * input_sz_));
     cudaCheck(cudaMalloc(&(bindings_[output_idx_]), sizeof(float) * batch_sz_ * output_sz_));
+#ifdef HOST_DTYPE_INT8
+    cudaCheck(cudaMalloc(&input_buffer_,  sizeof(host_dtype) * batch_sz_ * input_sz_));
+#endif
 }
 
+
+
 void tensorrt_inference_engine::copy_input_to_gpu_asynch(inference_msg *msg ,cudaStream_t stream) {
+#ifdef HOST_DTYPE_SP32
+    // Just copy data into TensorRT buffer.
     cudaCheck(cudaMemcpyAsync(
         bindings_[input_idx_],
         msg->input(),
-        sizeof(float)*msg->input_size()*msg->batch_size(),
+        sizeof(host_dtype)*msg->input_size()*msg->batch_size(),
         cudaMemcpyHostToDevice,
         stream
     ));
+#elif defined HOST_DTYPE_INT8
+    // Copy data into intermidiate buffer and then cast to single precision.
+    cudaCheck(cudaMemcpyAsync(
+        input_buffer_,
+        msg->input(),
+        sizeof(host_dtype)*msg->input_size()*msg->batch_size(),
+        cudaMemcpyHostToDevice,
+        stream
+    ));
+    gpu_cast(msg->batch_size(), msg->input_size(), input_buffer_, static_cast<float*>(bindings_[input_idx_]), stream);
+    //
+#endif
 }
 
 void tensorrt_inference_engine::do_inference(abstract_queue<inference_msg*> &request_queue,
                                              abstract_queue<inference_msg*> &response_queue) {
     init_device();
-    if (get_env_var("DLBS_TENSORRT_INFERENCE_IMPL_VER") == "1") {
+    if (environment::inference_impl_ver() == "1") {
         do_inference1(request_queue, response_queue);
         return;
     }
     const std::string me = fmt("[inference engine %02d/%02d]", abs(engine_id_), num_engines_);
-    logger_.log_info(me + ": Version of inference engine is latest");
+    logger_.log_info(me + ": Implementation version is latest");
+#ifdef HOST_DTYPE_SP32
+    logger_.log_info(me + ": Will consume tensor<float> tensors.");
+#elif defined HOST_DTYPE_INT8
+    logger_.log_info(me + ": Will consume tensor<unsigned char> tensors. Casting to 'float' will be done on GPU.");
+#else
+    logger_.log_warning(me + ": Will consume tensor<?> tensors. This is BUG.");
+#endif
     // If it's true, the code below will be overlaping
     // copy/compute ops. This makes sense when time to fetch data fro, request queue
     // is very small. If it's large (greater than inference time), you may want to do
     // everything sequentially.
-    const bool overlap_copy_compute = (get_env_var("DLBS_TENSORRT_DO_NOT_OVERLAP_COPY_COMPUTE") != "1");
-    logger_.log_info(me + ": overlap copy and compute " + S(overlap_copy_compute));
+    const bool overlap_copy_compute = environment::overlap_copy_compute();
+    if (overlap_copy_compute) {
+        logger_.log_info(me + ": Will overlap compute (inference) and data transfers (host to device).");
+    } else {
+        logger_.log_info(me + ": Will NOT overlap compute (inference) and data transfers (host to device).");
+    }
     cuda_helper helper({"input_consumed","infer_start","infer_stop"}, {"copy","compute"});
     running_average copy2device_synch, fetch, process, process_fetch, copy2host, submit;
     try {
@@ -213,11 +249,16 @@ void tensorrt_inference_engine::do_inference(abstract_queue<inference_msg*> &req
             }
             //
             if (!current_msg) {
+                DLOG(me + ": getting first inference request");
                 clock.restart();  current_msg = request_queue.pop();  fetch.update(clock.ms_elapsed());
+                DLOG(me + ": request has been fetched, starting async transfer to device.");
                 curr_batch_clock.restart();
                 copy_input_to_gpu_asynch(current_msg, helper.stream("copy"));
+                DLOG(me + ": async device transfer started.");
             }
+            DLOG(me + ": waiting for previous device copy to complete.");
             clock.restart();  helper.synch_stream("copy");  copy2device_synch.update(clock.ms_elapsed());
+            DLOG(me + ": previous device copy completed.");
             // Run asynchronously GPU kernel and wait for input data consumed
             infer_clock.restart();
             helper.record_event("infer_start", "compute");

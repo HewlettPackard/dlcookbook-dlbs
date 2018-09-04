@@ -27,11 +27,13 @@
 using namespace nvinfer1;
 
 
-//A simple logger for TensorRT library.
+/**
+ * A simple logger implementation for TensorRT library.
+ */
 class logger_impl : public ILogger {
 private:
     std::mutex m_;           //!< Mutex that guards output stream.
-    std::ostream& ostream_; //!< Output logging stream.
+    std::ostream& ostream_;  //!< Output logging stream.
 public:
     explicit logger_impl(std::ostream& ostream=std::cout) : ostream_(ostream) {}
     
@@ -40,12 +42,11 @@ public:
      * @brief Log intermidiate performance results This is usefull to estimate jitter online or when
      * running long lasting benchmarks.
      * 
-     * @param times[in] A vector of individual batch times in milliseconds collected so far. We are interested
+     * @param times A vector of individual batch times in milliseconds collected so far. We are interested
      * in times starting from \p iter_index value.
      * @param iter_index An index of the last iteration start
-     * @param data_size[in] Data size as number of instances for which individial \p times are reported. In
+     * @param data_size Data size as number of instances for which individial \p times are reported. In
      * most cases this is the same as effective batch size.
-     * @param out[in] A stream to write statistics.
      */
     void log_progress(const std::vector<float>& times, const int iter_index,
                       const int data_size, const std::string& key_prefix);
@@ -53,15 +54,14 @@ public:
     /** 
      * @brief Log final benchmark results to a standard output.
      * 
-     * @param times[in,out] A vector of individual batch times in milliseconds. Each element is a time 
+     * @param times A vector of individual batch times in milliseconds. Each element is a time 
      * in seconds it took to process \p data_size input instances.
-     * @param data_size[in] Data size as number of instances for which individial \p times are reported. In
+     * @param data_size Data size as number of instances for which individial \p times are reported. In
      * most cases this is the same as effective batch size.
-     * @param key_prefix[in] A key prefix for a key. Identifies what is to be logged. It can be empty
+     * @param key_prefix A key prefix for a key. Identifies what is to be logged. It can be empty
      * to log inference times not taking into account CPU <--> GPU data transfers or 'total_' to log
      * total inference times including data transfers to and from GPU.
-     * @param report_times[in] If true, write the content of \p times as well.
-     * @param out[in] A stream to write statistics.
+     * @param report_times If true, write the content of \p times as well.
      * 
      * This method logs the following keys:
      *   results.${key_prefix}time           A mean value of \p times vector.

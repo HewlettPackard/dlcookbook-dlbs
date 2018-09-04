@@ -20,6 +20,13 @@
 #include "core/infer_engine.hpp"
 #include "engines/tensorrt_engine.hpp"
 
+/**
+ * @brief Multi-GPU inference engine that can work with multiple GPUs in a system.
+ * 
+ * It instantiates N inference engines each running asynchronously in background
+ * threads. Each engine fetches data from input request queue. It then runs inference
+ * using this data and sends results back to response queue.
+ */
 class mgpu_inference_engine {
     std::vector<inference_engine*> engines_;
     thread_safe_queue<inference_msg*> request_queue_;

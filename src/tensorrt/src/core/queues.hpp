@@ -34,7 +34,13 @@
 class queue_closed : public std::exception {
     const std::string msg = "Queue was closed while performing requested operation.";
 public:
+    /**
+     * @brief Constructor.
+     */
     queue_closed() {}
+    /**
+     * @brief Return exception description.
+     */
     const char* what() const noexcept override { return msg.c_str(); }
 };
 
@@ -47,21 +53,27 @@ protected:
     std::mutex m_;                         //!< Controls exclusive access to queue.
     std::condition_variable push_evnt_;    //!< Signals item was added to a queue.
     std::condition_variable pop_evnt_;     //!< Signals item was removed from a queue.
-    bool closed_;                          //!< If true, any operation throws queue_closde exception.
+    bool closed_;                          //!< If true, any operation throws @link queue_closed @endlink exception.
 public:
+    /**
+     * @brief Constructor
+     */
     abstract_queue() : closed_(false) {}
     
     NON_COPYABLE_NOR_MOVABLE(abstract_queue)
 
     void close();
-    //bool is_closed() const { return closed_; }
     /**
      * @brief Returns and removes top element from a queue.
+     * @return the element from the queue
+     * 
      * This call will block if a queue is empty.
      */
     virtual T pop() throw (queue_closed) = 0;
     /**
      * @brief Adds one item to a queue.
+     * @param item is the element to push inti the queue,
+     * 
      * This call will block if a queue has limited capacity.
      */
     virtual void push(const T& item) throw (queue_closed) = 0;
@@ -73,6 +85,7 @@ public:
 
 /**
  * @brief An infinite queue that always returns one element.
+ * 
  * This queue has 'infinite' capacity. The push call over writes
  * element stored in a queue and pop returns that element without
  * 'removing' it from a queue. 
@@ -85,6 +98,10 @@ private:
     T item_;
     bool emptied_ = false;
 public:
+    /**
+     * @brief Constructor.
+     * @param item is the item that will be returned by this queue.
+     */
     explicit infinite_queue(const T& item) : abstract_queue<T>() { item_ = item; }
     void push(const T& item) throw (queue_closed) override;
     T pop() throw (queue_closed) override;

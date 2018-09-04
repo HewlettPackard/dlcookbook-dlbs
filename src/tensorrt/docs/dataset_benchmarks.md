@@ -9,8 +9,7 @@ performed. In general, if an inference benchmark reports better throughput than
 achieved with this test, this can be a signal that OS has cached some files and
 cache is the place where benchmark was streaming data from.
 
-This tools works with datasets built with [images2tensors](./images2tensors.md)
-tool.
+This tools works with datasets built with [images2tensors](images2tensors.md) tool.
 
 ### Command line arguments
 The following command line arguments are supported:
@@ -26,7 +25,7 @@ The following command line arguments are supported:
 
 For instance:
 ```bash
-benchmark_tensor_dataset --data_dir=/mnt/imagenet/uchar227 --batch_size=512 \
+benchmark_tensor_dataset --data_dir=/mnt/data/imagenet100k/tensorrt --batch_size=512 \
                          --dtype=uchar --img_size=227 --num_prefetchers=3 \
                          --prefetch_pool_size=9 --num_warmup_batches=1000 \
                          --num_batches=5000
@@ -37,4 +36,17 @@ storage, you may want to use `numactl` to pin benchmark process to the closest
 CPU and also enforce local memory allocations, e.g.:
 ```bash
 numactl --localalloc --physcpubind 0-17 benchmark_tensor_dataset ...
+```
+
+### Running benchmarks with DLBS
+DLBS provides example script `tutorials/dlcookbook/tensorrt/benchmark_tensor_dataset.sh`
+that helps with running dataset benchmarks with containers:
+```bash
+source ./scripts/environment.sh
+script=./tutorials/dlcookbook/tensorrt/benchmark_tensor_dataset.sh
+$script --data_dir /mnt/data/imagenet100k/tensorrt \
+        --dtype uchar --img_size 227 \
+        --batch_size 512 --num_prefetchers 8 \
+        --num_preallocated_batches 32 \
+        --num_warmup_batches 2000 --num_batches 8000
 ```

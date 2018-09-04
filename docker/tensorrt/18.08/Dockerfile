@@ -23,22 +23,25 @@ RUN dpkg -i /${TENSORRT_PACKAGE} && \
         cmake \
         git \
         wget \
+        libprotobuf-dev \
+        protobuf-compiler \
         tensorrt \
         python-libnvinfer-doc \
         uff-converter-tf \
         libboost-program-options-dev \
         libopencv-dev \
+        doxygen \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
-
 
 COPY /tensorrt /tensorrt
 
 RUN cd /tensorrt && rm -rf -- ./build && \
     mkdir build && cd ./build/ && \
-    cmake -DCMAKE_INSTALL_PREFIX=/opt/tensorrt .. && \
+    cmake -DHOST_DTYPE=SP32 -DCMAKE_INSTALL_PREFIX=/opt/tensorrt .. && \
     make && make install && \
     cd / && rm -rf /tensorrt
 
-
+ENV DLBS_TENSORRT_FILE_READER default
+ENV DLBS_TENSORRT_REMOVE_FILES_FROM_OS_CACHE yes
 ENV PATH /opt/tensorrt/bin:$PATH

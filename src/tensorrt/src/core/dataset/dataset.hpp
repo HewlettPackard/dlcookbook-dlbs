@@ -26,6 +26,7 @@
 
 /**
  * @brief Resize method.
+ * 
  * If an image already has requried shape, no operation is performed. If 'crop'
  * is selected, and an image has smaller size, 'resize' is used instead.
  * Crop is basically a free operation (I think OpenCV just updates matrix header),
@@ -38,6 +39,9 @@ enum class resize_method : int {
     resize = 2   //!< Always resize.
 };
 
+/**
+ * @brief Options to instantiate a dataset.
+ */
 struct dataset_opts {
     std::string data_dir_;                 //!< Path to a dataset.
     std::string dtype_ = "float";          //!< Matrix data type in binary files.
@@ -66,7 +70,7 @@ std::ostream &operator<<(std::ostream &os, dataset_opts const &opts);
 
 
 /**
- * @brief Base abstract class for all data providers.
+ * @brief Base abstract class for all datasets.
  */
 class dataset {
 private:

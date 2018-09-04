@@ -22,15 +22,16 @@
 #include "queues.hpp"
 
 /**
- * @brief A structure that contains input/output data for an inference task. It's better
- * to create a pool of these objects and reuse them.
+ * @brief A structure that contains input/output data for an inference task. 
+ * 
+ * It's better to create a pool of these objects and reuse them.
  */
 class inference_msg {
 private:
     allocator* allocator_ = nullptr;
 
-    float *input_ = nullptr;   //!< Input data of shape [BatchSize, ...]
-    float *output_ = nullptr;  //!< Output data of shape [BatchSize, ...]
+    host_dtype *input_ = nullptr;   //!< Input data of shape [BatchSize, ...]
+    float *output_ = nullptr;       //!< Output data of shape [BatchSize, ...]
 
     size_t batch_size_ = 0;      //!< Number of instances in this infer message.
     size_t input_size_ = 0;
@@ -41,7 +42,7 @@ private:
     
     int gpu_ = -1;               //!< GPU that processed this task.
 public:
-    float* input() { return input_; }
+    host_dtype* input() { return input_; }
     float* output() { return output_; }
     
     size_t input_size() const { return input_size_; }
@@ -89,11 +90,12 @@ public:
 
 
 /**
- * @brief Pool of task objects initialized to have correct storage size. This is used to
- * not allocate/deallocate memory during benchmarks.
- * To submit new infer request, fetch free task from this pool, initialize with your input
- * data and submit to a data queue. Once results is obtained, release the task by making it
- * avaialble for subsequent requests.
+ * @brief Pool of task objects initialized to have correct storage size. 
+ * 
+ * This is used to not allocate/deallocate memory during benchmarks. To submit new infer
+ * request, fetch free task from this pool, initialize with your input data and submit to
+ * a data queue. Once results is obtained, release the task by making it avaialble for 
+ * subsequent requests.
  */
 class inference_msg_pool {
 private:

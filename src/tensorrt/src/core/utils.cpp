@@ -23,10 +23,7 @@
 #include <chrono>
 #include <thread>
 #include <sstream>
-
-
-template<>
-std::string S<bool>(const bool &t) { return (t ? "true" : "false"); }
+#include <algorithm>
 
 void fill_random(float *vec, const size_t sz) {
   std::random_device rnd_device;
@@ -36,9 +33,63 @@ void fill_random(float *vec, const size_t sz) {
   std::generate(vec, vec+sz, gen);
 }
 
-std::string get_env_var(std::string const &var, const std::string& default_val) {
-    char *val = getenv( var.c_str() );
-    return val == nullptr ? default_val : std::string(val);
+void fill_random(unsigned char *vec, const size_t sz) {
+  std::random_device rnd_device;
+  std::mt19937 mersenne_engine(rnd_device());
+  std::uniform_int_distribution<unsigned int> dist(0, 255);
+  auto gen = std::bind(dist, mersenne_engine);
+  std::generate(vec, vec+sz, gen);
+}
+
+template<>
+std::string S<bool>(const bool &t) { return (t ? "true" : "false"); }
+
+template<>
+std::string from_string<std::string>(const char* const val) { return std::string(val); }
+
+template<>
+int from_string<int>(const char* const val) { return std::stoi(val); }
+
+template<>
+bool from_string<bool>(const char* const val) { 
+    std::string str = std::string(val);
+    std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+    return (str == "1" || str == "on" || str == "yes" || str == "true");
+}
+
+std::string environment::file_reader() {
+    return environment::variable<std::string>("DLBS_TENSORRT_FILE_READER", "");
+}
+bool environment::remove_files_from_os_cache() {
+    return environment::variable<bool>("DLBS_TENSORRT_REMOVE_FILES_FROM_OS_CACHE", "yes");
+}
+
+bool environment::pinned_memory() {
+    return environment::variable<bool>("DLBS_TENSORRT_ALLOCATE_PINNED_MEMORY", "yes");
+}
+
+bool environment::allow_image_dataset() {
+    return environment::variable<bool>("DLBS_TENSORRT_ALLOW_IMAGE_DATASET", "no");
+}
+
+std::string environment::synch_benchmarks() {
+    return environment::variable<std::string>("DLBS_TENSORRT_SYNCH_BENCHMARKS", "");
+}
+
+int environment::storage_block_size() {
+    return environment::variable<int>("DLBS_TENSORRT_STORAGE_BLOCK_SIZE", 512);
+}
+
+std::string environment::dataset_split() {
+    return environment::variable<std::string>("DLBS_TENSORRT_DATASET_SPLIT", "uniform");
+}
+
+bool environment::overlap_copy_compute() {
+    return environment::variable<bool>("DLBS_TENSORRT_OVERLAP_COPY_COMPUTE", "yes");
+}
+
+std::string environment::inference_impl_ver() {
+    return variable<std::string>("DLBS_TENSORRT_INFERENCE_IMPL_VER", "");
 }
 
 
@@ -180,8 +231,8 @@ void fs_utils::get_image_files(std::string dir, std::vector<std::string>& files,
 void fs_utils::initialize_dataset(std::string& data_dir, std::vector<std::string>& files) {
     data_dir = fs_utils::normalize_path(data_dir);
     if (!fs_utils::read_cache(data_dir, files)) {
-        std::cout << "[image_provider        ]: found " + S(files.size()) +  " image files in file system." << std::endl;
         fs_utils::get_image_files(data_dir, files);
+        std::cout << "[image_provider        ]: found " + S(files.size()) +  " image files in file system." << std::endl;
         if (!files.empty()) {
             //if (!fs_utils::write_cache(data_dir, files)) {
             //    std::cout << "[image_provider        ]: failed to write file cache." << std::endl;
@@ -197,6 +248,10 @@ void fs_utils::initialize_dataset(std::string& data_dir, std::vector<std::string
         std::cout << "[image_provider        ]: no input data found, exiting." << std::endl;
     }
     fs_utils::to_absolute_paths(data_dir, files);
+}
+
+int fs_utils::get_direct_io_block_size() {
+    return environment::storage_block_size();
 }
 
 
@@ -252,23 +307,23 @@ template void PictureTool::opencv2tensor<float>(unsigned char* opencv_data, cons
 template void PictureTool::opencv2tensor<unsigned char>(unsigned char* opencv_data, const int nchannels, const int height, const int width, unsigned char* tensor);
 
 
-binary_file::binary_file(const std::string& dtype,
-                         const bool advise_no_cache) : advise_no_cache_(advise_no_cache), dtype_(dtype) {
-    debug_disable_array_cast_ = (get_env_var("DLBS_TENSORRT_DEBUG_DO_NOT_CAST_ARRAYS") == "1");
+reader::reader(const std::string& dtype,
+               const bool advise_no_cache) : advise_no_cache_(advise_no_cache), dtype_(dtype) {
 }
 
-bool binary_file::is_opened() {
+bool reader::is_opened() {
     return (fd_ > 0);
 }
 
-void binary_file::open(const std::string& fname) {
+bool reader::open(const std::string& fname) {
     fd_ = ::open(fname.c_str(), O_RDONLY);
     if (advise_no_cache_) {
         fdatasync(fd_);
     }
+    return is_opened();
 }
 
-void binary_file::close() {
+void reader::close() {
     if (fd_ > 0) {
         if (advise_no_cache_) {
             posix_fadvise(fd_, 0, 0, POSIX_FADV_DONTNEED);
@@ -278,14 +333,14 @@ void binary_file::close() {
     }
 }
 
-ssize_t binary_file::read(float* dest, const size_t count) {
+ssize_t reader::read(host_dtype* dest, const size_t count) {
     ssize_t read_count;
     if (buffer_.empty()) {
-        const ssize_t num_bytes_read = ::read(fd_, (void*)dest,  sizeof(float)*count);
-        read_count = num_bytes_read / sizeof(float);
+        const ssize_t num_bytes_read = ::read(fd_, (void*)dest,  sizeof(host_dtype)*count);
+        read_count = num_bytes_read / sizeof(host_dtype);
     } else {
         const ssize_t num_bytes_read = ::read(fd_, (void*)buffer_.data(),  sizeof(unsigned char)*count);
-        if (!debug_disable_array_cast_ && num_bytes_read > 0) {
+        if (num_bytes_read > 0) {
             std::copy(buffer_.data(), buffer_.data() + num_bytes_read, dest);
         }
         read_count = num_bytes_read;
@@ -293,12 +348,175 @@ ssize_t binary_file::read(float* dest, const size_t count) {
     return read_count;
 }
 
-void binary_file::allocate_if_needed(const size_t count) {
+void reader::allocate_if_needed(const size_t count) {
+#if defined HOST_DTYPE_SP32
+    // To convert from unsigned char in files to SP32 in host memory
     if (dtype_ == "uchar" && buffer_.size() != count) {
         buffer_.resize(count);
     }
+#else
+    if (dtype_ == "float") {
+        throw "With unsigned char host data type files with SP32 elements are not supported.";
+    }
+#endif
 }
 
+
+// ---------------------------------------------------------------------------
+direct_reader::direct_reader(const std::string& dtype) : 
+    dtype_(dtype == "float" ? data_type::dt_float : data_type::dt_unsigned_char) {
+
+    if (dtype != "float" && dtype != "uchar") {
+        throw std::invalid_argument(
+            "Invalid image data type (expecting 'float' or 'uchar') but given '" + dtype + "'."
+        );
+    }
+    if (dtype_ == data_type::dt_float) {
+        throw std::invalid_argument(
+            "Single precision format is not supported yet."
+        );
+    }
+    
+    block_sz_ = fs_utils::get_direct_io_block_size();
+    DLOG(fmt("[direct reader] direct_reader::direct_reader(dtype=%s, block size=%u).", dtype.c_str(), block_sz_));
+}
+
+bool direct_reader::is_opened() {
+    return (fd_ > 0);
+}
+
+bool direct_reader::open(const std::string& fname) {
+    DLOG(fmt("[direct reader] opening file (fname=%s).", fname.c_str()));
+    // Reser buffer offset each time new file is opened.
+    buffer_offset_ = 0;
+    // http://man7.org/linux/man-pages/man2/open.2.html
+    fd_ = ::open(fname.c_str(), O_RDONLY | O_DIRECT);
+    if (fd_ < 0) {
+        std::cerr << "Input file (" << fname << ") has not been opened. Errno is " << errno << "." << std::endl;
+        if (errno == EINVAL) {
+            std::cerr << "This is the EINVAL error (the filesystem does not support the O_DIRECT flag)." << std::endl;
+        }
+    }
+    return is_opened();
+}
+
+void direct_reader::close() {
+    DLOG("[direct reader] closing file.");
+    if (is_opened()) {
+        ::close(fd_);
+        fd_ = -1;
+    }
+}
+
+/** Implementation comments.
+ *    buffer_offset_: Number of bytes associated with previous read. If it's not 0,
+ *                    the `block_sz_ - buffer_offset_` value defines how many bytes we
+ *                    have for current batch.
+ *    In the comments below I use number of bytes/number of elements interchangeably 
+ *    because we always read elements of size 1 byte.
+ *    This method will fail if batch is less than 1 block.
+ */
+ssize_t direct_reader::read(host_dtype* dest, const size_t count) {
+    // Number of elements preloaded from last read for this batch.
+    const size_t nelements_preloaded = (buffer_offset_ == 0 ? 0 : block_sz_ - buffer_offset_);
+    // Number of elements to read. This number is 'aligned' on block_sz_ boundary. But it's length
+    // is not necesserily a multiple of block_sz_. Alignment here means that we either write into
+    // buffer starting from 1st block (offset is 0), or starting from 2nd block (offset is block_sz_).
+    const size_t nelements_to_read = count - nelements_preloaded;
+    // Number of elements in a last block. If it's zero, it means we need to read a whole number of
+    // blocks. If it's not 0, this number will later become buffer_offset_ for a next batch.
+    const size_t last_block_nelements = nelements_to_read % block_sz_;
+    // Number of blocks/bytes to read.
+    const int num_blocks_to_read = nelements_to_read / block_sz_ + (last_block_nelements == 0 ? 0 : 1);
+    const size_t nbytes_to_read = num_blocks_to_read * block_sz_;
+    
+    // Allocate aligned memory if it has not been allocated.
+    allocate(block_sz_ * (1 + count / block_sz_ + (count % block_sz_ == 0 ? 0 : 1)));
+    // Read from file.
+    const ssize_t num_bytes_read = ::read(
+        fd_,                                                            // File descriptor.
+        (void*)(buffer_ + (nelements_preloaded == 0 ? 0 : block_sz_)),  // Write offset is at most one block.
+        nbytes_to_read                                                  // Number of bytes to read, always a whole number of blocks.
+    );
+    if (num_bytes_read < 0) {
+        DLOG(fmt("Error reading file (errno=%d). Debug me.", int(errno)));
+        // Can it be the case that when I try to read something after I reached EOF, read when working
+        // on files opened with O_DIRECT fails with EINVAL error instead of returning 0 bytes?
+        // I am getting this error on a very last batch.
+        return 0;
+    }
+    if (num_bytes_read == 0) {
+        // This is fine. The higher level code will close this file and will open another one.
+        DLOG("Read 0 bytes, EOF?");
+        return 0;
+    }
+    
+    // Copy data from internal buffer to user provided dest buffer
+    const size_t ntotal_bytes = nelements_preloaded + std::min(nelements_to_read, size_t(num_bytes_read));
+    int read_idx(buffer_offset_);
+    for (size_t i=0; i<ntotal_bytes; ++i) {
+        dest[i] = static_cast<host_dtype>(buffer_[read_idx++]);
+    }
+#ifdef DEBUG_LOG
+    std::cerr << "[direct reader] reading data (buffer_offset_=" << buffer_offset_<< ", nelements_preloaded=" << nelements_preloaded
+              << ", nelements_to_read=" << nelements_to_read << ", last_block_nelements=" << last_block_nelements
+              << ", num_blocks_to_read=" << num_blocks_to_read << ", nbytes_to_read=" << nbytes_to_read
+              << ", num_bytes_read=" << num_bytes_read << ", ntotal_bytes=" << ntotal_bytes
+              << ", count=" << count
+              <<  ")." << std::endl;
+#endif
+    // Deal with offset for a next batch only if we have read entire batch
+    if (num_bytes_read == nbytes_to_read) {
+        if (last_block_nelements == 0) {
+            buffer_offset_ = 0;
+        } else {
+            // We have read a whole number of blocks and last 'nelements_next_batch' elements
+            // are from next batch.
+            const size_t nelements_next_batch = block_sz_ - last_block_nelements;
+            for (size_t i=0; i<nelements_next_batch; ++i) {
+                buffer_[last_block_nelements+i] = buffer_[ntotal_bytes-nelements_next_batch+i];
+            }
+            buffer_offset_ = last_block_nelements;
+        }
+    } else {
+        // Not all data have been read. It's either end of file or something else. This something else
+        // can be (I think) some iterrupt signal. I should probably wrap the above call to read in a 
+        // loop.
+        // If it's end of file, next call will return 0.
+        buffer_offset_ = 0;  // Better solution?
+    }
+
+    return ntotal_bytes;
+}
+
+void direct_reader::allocate(const size_t new_sz) {
+    if (new_sz % block_sz_ != 0) {
+        throw fmt("Invalid buffer size (%u). Must be a multiple of block size (%u).", new_sz, block_sz_);
+    }
+    if (buffer_size_ < new_sz) {
+        DLOG(fmt("[direct reader] allocating memory (buffer size=%u, new size=%u).", buffer_size_, new_sz));
+        deallocate();
+        const size_t alignment = block_sz_;
+        buffer_ = static_cast<unsigned char*>(aligned_alloc(alignment, new_sz));
+        if (buffer_ == nullptr) {
+            throw std::bad_alloc();
+        }
+        buffer_size_ = new_sz;
+    } else {
+        DLOG(fmt("[direct reader] skipping memory allocation (buffer size=%u, new size=%u).", buffer_size_, new_sz));
+    }
+}
+
+void direct_reader::deallocate() {
+    DLOG(fmt("[direct reader] deallocating memory (buffer size=%u).", buffer_size_));
+    if (buffer_ != nullptr) {
+        free(buffer_);
+        buffer_ = nullptr;
+        buffer_size_ = 0;
+    }
+}
+
+// ---------------------------------------------------------------------------
 
 process_barrier::process_barrier(std::string specs) : post_mode_(true) {
     std::replace(specs.begin(), specs.end(), ',', ' ');

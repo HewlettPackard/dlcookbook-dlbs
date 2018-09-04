@@ -55,6 +55,22 @@ increase overall throughput.
 
 For instance:
 ```bash
-images2tensors --input_dir=/mnt/imagenet/jpegs --output_dir=/mnt/imagenet/uchar227 \
+images2tensors --input_dir=/mnt/data/imagenet100k/jpegs \
+               --output_dir=/mnt/data/imagenet100k/tensorrt \
                --size=227 --dtype=uchar --nthreads=5 --images_per_file=20000
 ```
+
+### Build tensors dataset with DLBS
+DLBS provides `make_imagenet_data.sh` script that can build datasets for various frameworks
+including TensorRT:
+```bash
+source ./scripts/environment.sh
+./scripts/make_imagenet_data.sh --dataset tensors1 \
+                                --input /mnt/data/imagenet100k/jpegs \
+                                --output /mnt/data/imagenet100k/tensorrt  \
+                                --docker_image dlbs/tensorrt:18.10 \
+                                --docker docker \
+                                --images_per_file 20000 \
+                                --num_workers 5
+```
+This script also accepts other parameters: `--images_per_file`, `--nimages` and `--shuffle`.

@@ -1,9 +1,51 @@
-
+/*
+ (c) Copyright [2017] Hewlett Packard Enterprise Development LP
+ 
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+ 
+     http://www.apache.org/licenses/LICENSE-2.0
+ 
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+/**
+ * @file benchmark_tensor_dataset.cpp
+ * @brief Benchmarks tensor dataset. 
+ * @details Is used to determine achievable throughput assuming there's no overhead associated 
+ * with compute. This is not a true IO benchmark tool, rather, a tool to identify whether a 
+ * storage/network or this software benchmark backend is a bottleneck in each particular case.
+ * 
+ * For example:
+ * @code{.sh}
+ * benchmark_tensor_dataset --data_dir=/mnt/imagenet/uchar227 --batch_size=512 \
+ *                          --dtype=uchar --img_size=227 --num_prefetchers=3 \
+ *                          --prefetch_pool_size=9 --num_warmup_batches=1000 \
+ *                          --num_batches=5000
+ * @endcode
+ * 
+ * The tool accepts the following parameters:
+ * 1. `--data_dir` Path to a dataset to use.
+ * 2. `--batch_size` Create batches of this size.
+ * 3. `--img_size` Size of images in a dataset (width = height).
+ * 4. `--num_prefetchers` Number of prefetchers (data readers).
+ * 5. `--prefetch_pool_size` Number of pre-allocated batches. Memory for batches is
+ *    preallocated in advance and then reused by prefetchers.
+ * 6. `--num_warmup_batches` Number of warmup iterations.
+ * 7. `--num_batches` Number of benchmark iterations.
+ * 8. `--dtype` Tensor data type in the dataset- 'float' or 'uchar'.
+ */
 #include "core/dataset/tensor_dataset.hpp"
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
-
+/**
+ * @brief Application entry point.
+ */
 int main(int argc, char **argv) {
     //
     logger_impl logger;
@@ -54,6 +96,4 @@ int main(int argc, char **argv) {
     } else {
         logger.log_warning("[benchmarks            ]: Benchmark returned error code indicating there was an error.");
     }
-    
-    
 }

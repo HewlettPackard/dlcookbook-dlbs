@@ -21,7 +21,9 @@
 #include "core/utils.hpp"
 #include <cuda_runtime.h>
 
-// Check CUDA result.
+/**
+ * @brief Check CUDA result.
+ */
 #define cudaCheck(ans) { cudaCheckf((ans), __FILE__, __LINE__); }
 inline void cudaCheckf(const cudaError_t code, const char *file, const int line, const bool abort=true) {
   if (code != cudaSuccess) {
@@ -30,10 +32,18 @@ inline void cudaCheckf(const cudaError_t code, const char *file, const int line,
   }
 }
 
+/**
+ * @brief An implementation of an allocator that allocates pinned memory.
+ * 
+ * This speeds up host to device data transfers.
+ */
 class pinned_memory_allocator : public  allocator {
 public:
     void allocate(float *&buf, const size_t sz) override {
         cudaCheck(cudaHostAlloc(&buf, sz*sizeof(float), cudaHostAllocPortable|cudaHostAllocWriteCombined));
+    }
+    void allocate(unsigned char *&buf, const size_t sz) override {
+        cudaCheck(cudaHostAlloc(&buf, sz*sizeof(unsigned char), cudaHostAllocPortable|cudaHostAllocWriteCombined));
     }
     void deallocate(float *&buf) override {
         if (buf) {
@@ -41,12 +51,24 @@ public:
             buf = nullptr;
         }
     }
+    void deallocate(unsigned char *&buf) override {
+        if (buf) {
+            cudaCheck(cudaFreeHost(buf));
+            buf = nullptr;
+        }
+    }
 };
 
+/**
+ * @brief Helper class to work with CUDA streams and events.
+ * 
+ * User provides lists of names for events and streams and then can use these names
+ * to work with events/streams like syncing/recording.
+ */
 class cuda_helper {
 private:
-    std::map<std::string, cudaEvent_t> events_;
-    std::map<std::string, cudaStream_t> streams_;
+    std::map<std::string, cudaEvent_t> events_;    //!< Named events.
+    std::map<std::string, cudaStream_t> streams_;  //!< Named streams.
 public:
     cuda_helper(const std::initializer_list<std::string>& events, const std::initializer_list<std::string>& streams) {
         for (const auto event: events) {

@@ -22,7 +22,7 @@
 # Source common paths
 . ../scripts/environment.sh
 
-prefix=hpe                          # Name prefix for all containers i.e. hpe/tensorflow:cuda8-cudnn7
+prefix=                             # Name prefix for all containers i.e. hpe/tensorflow:cuda8-cudnn7
 version=                            # Version or SHA commit to fetch. Must be defined in ./versions
 help_message="Usage: $0 [OPTION]... [IMAGE]...\n\
 Build docker IMAGE that is located in one of the subfolders.\n\
@@ -35,14 +35,23 @@ framework's folder.
 \n\
 Optional arguments:\n\
   --help                   Print his help.\n\
-  --prefix PREFIX          Set image prefix 'prefix/..'. Default is '${prefix}'. By default,\n\
+  --prefix PREFIX          Set image prefix 'prefix/..'. Default is 'hpe' or 'dlbs'. By default,\n\
                            all images have the following name: 'prefix/framework:tag' where\n\
                            framework is a folder in this directory and tag is a subfolder in\n\
                            framework's folder. If prefix is empty, no prefix will be used and\n\
                            image name will be set to 'framework:tag'. Default values for docker\n\
-                           images in benchmarking suite assume the prefix exists (hpe/). If you\n\
+                           images in benchmarking suite assume the prefix exists (dlbs/). If you\n\
                            want to use different prefix, make sure to override image name when\n\
-                           running experimenter.
+                           running experimenter.\n\
+                           ----------------------------------------------------------------------\n\
+                           UPDATE:\n\
+                           We are moving from deprecated prefix 'hpe' to 'dlbs'.  We will be updating\n\
+                           standard configurations to use 'dlbs' prefix. Meanwhile, as we update that,
+                           we will also be updating this script, so default prefix may be different for
+                           different frameworks. As we update all frameworks, this update message will\n\
+                           be removed. Frameworks benchmark backends that support new prefix:\n\
+                               - TensorRT\n\
+                           ----------------------------------------------------------------------\n\
   --version COMMIT         If supported by a docker file, framework COMMIT to clone from github.\n\
                            Default value is taken from 'versions' file located in this directory.\n\
                            This is not a specific version like 1.4.0, rather it is a commit tag.\n\
@@ -117,7 +126,16 @@ for dockerfile_dir in "$@"; do
             fi
         fi
     fi
-
+    # Sergey: this code will be removed once all frameworks use new image prefix 'dlbs'
+    # If prefix was not provided by a user, set it here.
+    if [ "${prefix}XXX" == "XXX" ]; then
+        if [ "${name}" == "tensorrt" ]; then
+            prefix=dlbs
+        else
+            prefix=hpe
+        fi
+    fi
+    #
     img_name=$prefix/$name:$tag                     # something like hpe/caffe:gpu
     assert_files_exist $dockerfile_dir/Dockerfile
     dockerfile_dir=$DLBS_ROOT/docker/$name/$tag     # something like caffe/gpu (dir)
@@ -129,7 +147,7 @@ for dockerfile_dir in "$@"; do
     # project to docker context folder
     if [ "$name" == "tensorrt" ]; then
         # One special thing about building TensorRT images is that we need to have
-        # a TensorRT package in a docke file folder. The name of that file must be
+        # a TensorRT package in a docker file folder. The name of that file must be
         # specified in a 'versions' file - so we need verify user has copied this
         # file there.
         if [ "${version}XXX" == "XXX" ]; then

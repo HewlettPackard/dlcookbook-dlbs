@@ -13,14 +13,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-/**
- * We need the following:
- *    1. Data provider queues. Two types of queues are supported - with real
- *       data and with fake data (infinite  queue)
- *    2. A thread that will pop from the queue and will process that data on
- *       some particular GPU.
- *    3. How do we return a result?
- */
+
 #ifndef DLBS_TENSORRT_BACKEND_CORE_INFER_ENGINE
 #define DLBS_TENSORRT_BACKEND_CORE_INFER_ENGINE
 

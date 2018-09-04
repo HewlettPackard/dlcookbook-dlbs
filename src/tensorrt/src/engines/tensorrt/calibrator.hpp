@@ -23,9 +23,7 @@
 #include <sstream>
 
 /**
- * TODO: Is it true that we can run first all networks with small batch sizes to create fake calibration 
- *       caches and then just load that. The problem is that with large batch size calibration memory takes
- *       too much memory, for instance, an input image of 3x255x255x512 = 381 MB where 512 is a batch size.
+ * @brief TensorRT calibrator to calibrate engine with INT8 data type.
  */
 #if NV_TENSORRT_MAJOR >= 3
 class calibrator_impl : public IInt8LegacyCalibrator {
@@ -170,10 +168,10 @@ public:
     }
     /**
      * Initialize Calibrator. No memory allocations are done here.
-     * @param input_shape The shape of single input instance. Does not include batch dimension.
+     * @param input_size Size (number of elements) of a single input instance. Does not include batch dimension.
      * @param num_batches Numebr of calibration iterations.
      * @param model A neural network model identifier such as alexnet, resnet101, vgg13 etc.
-     * @param calibration_cache_path A path to folder that contains calibration cache data. With every model two 
+     * @param cache_path A path to folder that contains calibration cache data. With every model two 
      * files are associated - calibration and hostogram cache files.
      */
     void initialize(const size_t input_size, const size_t num_batches, const std::string& model, const std::string& cache_path) {

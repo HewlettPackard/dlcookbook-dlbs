@@ -21,8 +21,7 @@
 #include <algorithm>
 
 /**
- * @brief The profiler, if enabled by a user, profiles execution times of 
- * individual layers.
+ * @brief The profiler, if enabled by a user, profiles execution times of individual layers.
  */
 class profiler_impl : public IProfiler {
 private:

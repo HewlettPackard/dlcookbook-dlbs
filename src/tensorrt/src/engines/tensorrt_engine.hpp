@@ -23,6 +23,11 @@
 
 #include <NvCaffeParser.h>
 
+/**
+ * @brief Implementation of an inference engine that uses TensorRT library.
+ * 
+ * This engine works with one GPU.
+ */
 class tensorrt_inference_engine : public inference_engine {
 private:
     calibrator_impl calibrator_;
@@ -30,8 +35,14 @@ private:
     
     ICudaEngine* engine_ = nullptr;
     IExecutionContext* exec_ctx_ = nullptr;
-    
+#ifdef HOST_DTYPE_INT8
+    // If data is stored with unsigned char data type in host memory,
+    // we need intermidiate input buffer for data that will later
+    // be casted to float data type in bindings_ array.
+    host_dtype *input_buffer_ = nullptr;
+#endif
     std::vector<void*> bindings_;      // Input/output data in GPU memort.
+                                       // This is used directly by TensorRT API.
     size_t input_idx_ = 0;             // Index of input data in gpu_mem_.
     size_t output_idx_ = 0;            // Index of output data in gpu_mem_.
 private:

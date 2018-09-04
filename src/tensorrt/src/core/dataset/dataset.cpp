@@ -28,7 +28,7 @@ bool dataset::start() {
 
 
 std::ostream &operator<<(std::ostream &os, dataset_opts const &opts) {
-    os << "[dataset_opts         ]: "
+    os << "[dataset_opts          ]: "
        << "data_dir=" << opts.data_dir_ << ", resize_method=" << opts.resize_method_ << ", height=" << opts.height_
        << ", width=" << opts.width_ << ", num_prefetchers=" << opts.num_prefetchers_
        << ", num_decoders=" << opts.num_decoders_ << ", prefetch_batch_size=" << opts.prefetch_batch_size_

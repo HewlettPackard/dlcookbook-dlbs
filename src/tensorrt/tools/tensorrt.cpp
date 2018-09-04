@@ -36,6 +36,7 @@ void parse_command_line(int argc, char **argv,
                         po::options_description opt_desc, po::variables_map& var_map,
                         inference_engine_opts& engine_opts, dataset_opts& data_opts,
                         logger_impl& logger);
+void print_file_reader_warnings(logger_impl& logger, const std::string& me);
 
 void segfault_sigaction(int signal, siginfo_t *si, void *arg) {
     void *array[10];
@@ -81,59 +82,74 @@ int main(int argc, char **argv) {
         logger.log_error(e.what());
         return 1;
     }
+    const std::string me = "[main                  ]: ";
+    //
+#ifdef DEBUG_LOG
+    logger.log_warning(me + "DEBUG logging is enabled. For real performance tests this should be disabled (recompile without -DDEBUG_LOG)");
+#endif
+#if defined HOST_DTYPE_SP32
+    logger.log_info(me + "Input data will be stored in host memory as tensor<float> tensors (reason: compiled with -DHOST_DTYPE_SP32).");
+#elif defined HOST_DTYPE_INT8
+    logger.log_info(me + "Input data will be stored in host memory as tensor<unsigned char> tensors (reason: compiled with -DHOST_DTYPE_INT8).");
+#else
+    logger.log_error(me + "Input data will be stored in host memory as tensor<?> tensors. Recompile with -DHOST_DTYPE_SP32 or -DHOST_DTYPE_INT8.");
+#endif
+    //
     logger.log_info(engine_opts);
     logger.log_info(data_opts);
     //
     allocator *alloc(nullptr);
-    if (get_env_var("DLBS_TENSORRT_NO_PINNED_MEMORY") != "1") {
-        logger.log_info("[main                  ]: Creating pinned memory allocator.");
+    if (environment::pinned_memory()) {
+        logger.log_info(me + "Creating pinned memory allocator.");
         alloc = new pinned_memory_allocator();
     } else {
-        logger.log_info("[main                  ]: Creating standard memory allocator.");
+        logger.log_info(me + "Creating standard memory allocator.");
         alloc = new standard_allocator();
     }
     // Create pool of inference engines. All inference engines will be listening to data queue
     // for new inference requests. All engines will be exactly the same - model, batch size etc.
     // There will be a 1:1 mapping between GPU and inference engines.
-    logger.log_info("[main                  ]: Creating mGPU inference engine");
+    logger.log_info(me + "Creating multi-GPU inference engine");
     mgpu_inference_engine engine(engine_opts, logger);
     const size_t num_engines = engine.num_engines();
     // Create pool of available task request objects. These objects (infer_task) will be initialized
     // to store input/output tensors so there will be no need to do memory allocations during benchmark.
     const float est_mp_mem = static_cast<float>(engine_opts.inference_queue_size_*(8+4+4+4+engine.batch_size()*(engine.input_size()+engine.output_size()))) / (1024*1024);
-    logger.log_info("[main                  ]: Creating inference message pool with " + S(engine_opts.inference_queue_size_) + " messages, estimated memory is " + std::to_string(est_mp_mem) + " mb.");
+    logger.log_info(me + "Creating inference message pool with " + S(engine_opts.inference_queue_size_) + " messages, estimated memory is " + std::to_string(est_mp_mem) + " mb.");
     inference_msg_pool infer_msg_pool(engine_opts.inference_queue_size_, engine.batch_size(), engine.input_size(), engine.output_size(), *alloc, true);
     // Create data provider. The data provider will spawn at least one thread. It will fetch free task objects
     // from pool of task objects, will populate them with data and will submit tasks to data queue. All
     // preprocessing logic needs to be implemented in data provider.
     dataset* data(nullptr);
-    if (get_env_var("DLBS_TENSORRT_DEBUG_DO_NOT_CAST_ARRAYS") == "1") {
-        logger.log_warning("[main                  ]: Will not cast images float arrays (this is for debug purposes only). Normally you should not see this message.");
-    }
     if (data_opts.data_name_ == "synthetic" || data_opts.data_dir_ == "") {
         data = new synthetic_dataset(&infer_msg_pool, engine.request_queue());
-        logger.log_info("[main                  ]: Will use 'synthetic' data set");
+        logger.log_info(me + "Will use 'synthetic' data set");
     } else {
-        logger.log_info("[main                  ]: Will use real data set (" + data_opts.data_dir_ + ")");
-        logger.log_warning("[main                  ]: Computing resize dimensions assuming input data has shape [BatchSize, 3, H, W] where H == W.");
+        logger.log_info(me + "Will use real data set (" + data_opts.data_dir_ + ")");
+        logger.log_warning(me + "Computing resize dimensions assuming input data has shape [BatchSize, 3, H, W] where H == W.");
         data_opts.height_ = data_opts.width_ = std::sqrt(engine.input_size() / 3);
         if (data_opts.data_name_ == "images") {
-            logger.log_info("[main                  ]: Will use 'images' data set");
+            if (!environment::allow_image_dataset()) {
+                logger.log_warning(me + "Image dataset is disabled by default due to serious performance issues.");
+                logger.log_error(me + "If you really want to use it, provide the following env variable: DLBS_TENSORRT_ALLOW_IMAGE_DATASET=yes");
+            }
+            logger.log_warning(me + "Will use 'images' data set (found DLBS_TENSORRT_ALLOW_IMAGE_DATASET env variable). Expect bad performance due to unoptimized ingestion pipeline.");
             data = new image_dataset(data_opts, &infer_msg_pool, engine.request_queue(), logger);
         } else {
             if (data_opts.data_name_ == "tensors1") {
-                logger.log_info("[main                  ]: Will use 'tensors1' data set");
+                logger.log_info(me + "Will use 'tensors1' data set");
                 data_opts.dtype_ = "uchar";
             } else if (data_opts.data_name_ == "tensors4") {
-                logger.log_info("[main                  ]: Will use 'tensors4' data set");
+                logger.log_info(me + "Will use 'tensors4' data set");
                 data_opts.dtype_ = "float";
             } else {
-                logger.log_error("[main                  ]: Invalid input dataset (" + data_opts.data_name_ + ")");
+                logger.log_error(me + "Invalid input dataset (" + data_opts.data_name_ + ")");
             }
+            print_file_reader_warnings(logger, me);
             data = new tensor_dataset(data_opts, &infer_msg_pool, engine.request_queue(), logger);
         }
     }
-    logger.log_info("[main                  ]: Starting dataset threads");
+    logger.log_info(me + "Starting dataset threads");
     if (!data->start()) {
         data->stop(true);
         infer_msg_pool.destroy();
@@ -147,10 +163,10 @@ int main(int argc, char **argv) {
     // Start pool of inference engines. This will start one thread per engine. Individual inference engines
     // will be fetching data from data queue, will be doing inference and will be submitting same task request
     // objects with inference results and statistics to decision queue.
-    logger.log_info("[main                  ]: Starting engine threads");
+    logger.log_info(me + "Starting engine threads");
     engine.start();
 
-    logger.log_info("[main                  ]: Running warmup iterations");
+    logger.log_info(me + "Running warmup iterations");
     for (size_t i=0; i<engine_opts.num_warmup_batches_; ++i) {
         // Do warmup iterations. Just fetch inference results from decision queue
         // and put them back to pool of free task objects. All data preprocessing,
@@ -166,15 +182,15 @@ int main(int argc, char **argv) {
     // Sync with othet processes if need to do so
     process_barrier* barrier(nullptr);
     timer synch_timer;
-    if (get_env_var("DLBS_TENSORRT_SYNCH_BENCHMARKS") != "") {
+    if (!environment::synch_benchmarks().empty()) {
         engine.pause();
-        barrier = new process_barrier(get_env_var("DLBS_TENSORRT_SYNCH_BENCHMARKS"));
-        logger.log_info(fmt("[main                  ]: Synching with other processes (%d/%d)", barrier->rank(), barrier->count()));
+        barrier = new process_barrier(environment::synch_benchmarks());
+        logger.log_info(fmt("%sSynching with other processes (%d/%d)", me.c_str(), barrier->rank(), barrier->count()));
         barrier->wait();
         engine.resume();
     }
     // Run benchmarks
-    logger.log_info("[main                  ]: Running benchmarks");
+    logger.log_info(me + "Running benchmarks");
     time_tracker tm_tracker(engine_opts.num_batches_);
     long num_processed_instances(0);    
     for (size_t i=0; i<engine_opts.num_batches_; ++i) {
@@ -191,7 +207,7 @@ int main(int argc, char **argv) {
         }
     }
     if (barrier) {
-        logger.log_info(fmt("[main                  ]: Synching with other processes (%d/%d)", barrier->rank(), barrier->count()));
+        logger.log_info(fmt("%sSynching with other processes (%d/%d)", me.c_str(), barrier->rank(), barrier->count()));
         barrier->wait();
         logger.log_key_value(
             "results.mgpu_effective_throughput",
@@ -202,29 +218,29 @@ int main(int argc, char **argv) {
         barrier = nullptr;
     }
     // Shutdown everything and wait for all threads to exit.
-    logger.log_info("[main                  ]: Stopping and joining threads");
+    logger.log_info(me + "Stopping and joining threads");
     data->stop();  engine.stop();  infer_msg_pool.close();
-    logger.log_info("[main                  ]: Waiting for data provider ...");
+    logger.log_info(me + "Waiting for data provider ...");
     data->join();
-    logger.log_info("[main                  ]: Waiting for inference engine ...");
+    logger.log_info(me + "Waiting for inference engine ...");
     engine.join();
     infer_msg_pool.destroy();        // This is not very good. It must be destroyed before we delete allocator.
     delete  data;  data = nullptr;
     delete alloc;  alloc = nullptr;
     // Log final results.
-    logger.log_info("[main                  ]: Reporting results for each inference engine ...");
-    logger.log_info("[main                  ]:   |-> inference time (*_infer_*) is a compute time without host<->device transfers");
-    logger.log_info("[main                  ]:   |-> batch time (*_batch_*) is a real inference time including host<->device transfers");
-    logger.log_info("[main                  ]:         |-> if engines overlap copy/compute, observable (*_total*_) throughput can be better");
+    logger.log_info(me + "Reporting results for each inference engine ...");
+    logger.log_info(me + "  |-> inference time (*_infer_*) is a compute time without host<->device transfers");
+    logger.log_info(me + "  |-> batch time (*_batch_*) is a real inference time including host<->device transfers");
+    logger.log_info(me + "        |-> if engines overlap copy/compute, observable (*_total*_) throughput can be better");
     for (size_t i=0; i<num_engines; ++i) {
         time_tracker *tracker = engine.engine(i)->get_time_tracker();
         const std::string gpu_id = std::to_string(engine.engine(i)->engine_id());
         logger.log_final_results(tracker->get_infer_times(), engine_opts.batch_size_, "gpu_" + gpu_id + "_infer_", !engine_opts.do_not_report_batch_times_);
         logger.log_final_results(tracker->get_batch_times(), engine_opts.batch_size_, "gpu_" + gpu_id + "_batch_", !engine_opts.do_not_report_batch_times_);
     }
-    logger.log_info("[main                  ]: Reporting results for all inference engines ...");
-    logger.log_info("[main                  ]:   |-> times and throughput reported below are 'weak-scaling' times i.e.");
-    logger.log_info("[main                  ]:       batch time is the time to process BATCH_SIZE*NUM_ENGINES images");
+    logger.log_info(me + "Reporting results for all inference engines ...");
+    logger.log_info(me + "  |-> times and throughput reported below are 'weak-scaling' times i.e.");
+    logger.log_info(me + "      batch time is the time to process BATCH_SIZE*NUM_ENGINES images");
     logger.log_final_results(tm_tracker.get_batch_times(), engine_opts.batch_size_*num_engines, "total_", false);
     logger.log_final_results(tm_tracker.get_batch_times(), engine_opts.batch_size_*num_engines, "", !engine_opts.do_not_report_batch_times_);
     return 0;
@@ -324,4 +340,20 @@ void parse_command_line(int argc, char **argv,
     data_opts.prefetch_batch_size_ = static_cast<size_t>(std::max(prefetch_batch_size, 0));;
     if (data_opts.fake_decoder_ && data_opts.num_decoders_ > 1)
         logger.log_warning("Fake decoder will be used but number of decoders > 1. You may want to set it to 1.");
+}
+
+void print_file_reader_warnings(logger_impl& logger, const std::string& me) {
+    const auto& file_reader = environment::file_reader();
+    if (file_reader == "") {
+        logger.log_warning(me + "DLBS_TENSORRT_FILE_READER is not set. In this version default file reader changed from 'default' to 'directio'.");
+    }
+    if (file_reader == "directio") {
+        logger.log_info(me + "You are using file reader with DIRECT IO. This is not very well tested feature. If you will be experiencing issues with it, set DLBS_TENSORRT_FILE_READER=default");
+    } else if (file_reader == "default" || file_reader == "") {
+        if (!environment::remove_files_from_os_cache()) {
+            logger.log_warning(me + "Your dataset will be cached by OS (if not disabled). If you do not want this, set DLBS_TENSORRT_FILE_READER=directio");
+        } else {
+            logger.log_warning(me + "You will be using standard file reader with option to remove files from OS cache. Better use directio reader: DLBS_TENSORRT_FILE_READER=directio");
+        }
+    }
 }
