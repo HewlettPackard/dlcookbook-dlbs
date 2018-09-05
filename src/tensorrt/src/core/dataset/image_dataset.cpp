@@ -15,7 +15,7 @@
 */
 
 #include "core/dataset/image_dataset.hpp"
-
+#if defined HAVE_OPENCV
 void image_dataset::prefetcher_func(image_dataset* myself,
                                     const size_t prefetcher_id, const size_t num_prefetchers) {
     // Find out images I am responsible for.
@@ -198,3 +198,4 @@ float image_dataset::benchmark(const std::string dir, const size_t batch_size, c
     data.join();
     return throughput;
 }
+#endif

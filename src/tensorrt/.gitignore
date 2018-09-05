@@ -1,10 +1,5 @@
-# Ignore everything
-*
+# Ignore only these folders
+/*.kdev4
+/build
 
-# But not these files...
-!.gitignore
-!CMakeLists.txt
-!*.cpp
-!*.hpp
-!*.ipp
-!README.md
+# But not these files

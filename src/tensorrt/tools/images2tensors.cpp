@@ -62,7 +62,7 @@
 #include <boost/program_options.hpp>
 #include <thread>
 
-#ifdef HAS_OPENCV
+#ifdef HAVE_OPENCV
 #include <opencv2/opencv.hpp>
 #endif
 
@@ -89,7 +89,7 @@ template<typename T>
 void convert(std::vector<std::string>& input_files, const std::string input_dir, const std::string output_dir,
              const size_t num_shards, const size_t my_shard, const size_t img_size, logger_impl& logger,
              const int images_per_file) {
-#ifdef HAS_OPENCV
+#ifdef HAVE_OPENCV
     const size_t channel_size = img_size * img_size;
     std::vector<T> tensor(3 * channel_size);
     sharded_vector<std::string> my_files(input_files, num_shards, my_shard, true);
@@ -173,7 +173,7 @@ int main(int argc, char **argv) {
         nimages,
         images_per_file;
     bool shuffle;
-#ifndef HAS_OPENCV
+#ifndef HAVE_OPENCV
     std::cerr << "The images2tensors tool was compiled without OpenCV support and hence cannot load and resize images." << std::endl
               << "It does not support generating artificial datasets for benchmarking purposes. Open a new issue on" << std::endl
               << "GitHub and we will add this functionaity" << std::endl;

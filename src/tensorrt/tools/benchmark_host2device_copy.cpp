@@ -45,10 +45,13 @@
 #include <boost/program_options.hpp>
 #include "core/logger.hpp"
 #include "core/utils.hpp"
-#include "engines/tensorrt/tensorrt_utils.hpp"
+#if defined HAVE_CUDA
+    #include "engines/tensorrt/tensorrt_utils.hpp"
+#endif
 
 namespace po = boost::program_options;
 
+#if defined HAVE_CUDA
 /**
  * @brief Run series of data copies.
  * @param host_mem is the data pointer in host memory.
@@ -61,7 +64,7 @@ namespace po = boost::program_options;
 float benchmark(unsigned char *host_mem, unsigned char *device_mem,
                 const size_t length, const int niters,
                 cuda_helper& helper);
-
+#endif
 /**
  * @brief Application entry point.
  */
@@ -94,6 +97,11 @@ int main(int argc, char **argv) {
         logger.log_error("Cannot recover from previous errors");
     }
     //
+    
+#if not defined HAVE_CUDA
+    std::cerr << "The benchmark_host2device_copy was compiled without CUDA." << std::endl;
+    logger.log_error("Can not do anything without CUDA support.");
+#else
     cudaCheck(cudaSetDevice(gpu));
     const size_t nbytes = size * 1024 * 1024;
     unsigned char *device_mem(nullptr), *host_mem(nullptr);
@@ -111,9 +119,11 @@ int main(int argc, char **argv) {
     //
     cudaCheck(cudaFree(device_mem));
     alloc->deallocate(host_mem);
+#endif
     return 0;
 }
 
+#if defined HAVE_CUDA
 float benchmark(unsigned char *host_mem, unsigned char *device_mem, const size_t length,
                 const int niters, cuda_helper& helper) {
     float time_ms(0);
@@ -129,3 +139,4 @@ float benchmark(unsigned char *host_mem, unsigned char *device_mem, const size_t
     // Return achieved MB/s
     return 1000.0 * (float(length)/(1024*1024)) * niters / time_ms;
 }
+#endif

@@ -543,15 +543,15 @@ public:
  */
 class running_average {
 private:
-    size_t i_ = 1;
+    size_t i_ = 0;
     double average_ = 0;
 public:
     void update(const float val) {
-        average_ = average_ + (static_cast<double>(val) - average_) / i_;
         i_ ++;
+        average_ = average_ + (static_cast<double>(val) - average_) / i_;
     }
     double value() const { return average_; }
-    size_t num_steps() const { return i_-1; }
+    size_t num_steps() const { return i_; }
 };
 std::ostream& operator<<(std::ostream &out, const running_average &ra);
 
@@ -652,6 +652,7 @@ private:
     size_t buffer_offset_ = 0;             // Offset in buffer if we have some bytes from previous read. In this case next read must 
                                            // write to buffer_ starting from block_sz_ position. The value of buffer_offset_ is
                                            // always < block_sz_.
+    bool eof_reached_ = false;             // !< We have reached EOF with previous call. 
 public:
     /**
      * @brief Class constructor

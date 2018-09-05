@@ -19,12 +19,22 @@
 
 #include <signal.h>
 #include <execinfo.h>
+
+#if not defined HAVE_NVINFER
+#include <iostream>
+int main(int argc, char **argv) {
+    std::cerr << "TensorRT benchmark backend was compiled without NVINFER/CUDA support." << std::endl;
+    return 1;
+}
+#else
+
+#include <boost/program_options.hpp>
 #include "core/infer_engine.hpp"
 #include "core/dataset/dataset.hpp"
 #include "core/dataset/image_dataset.hpp"
 #include "core/dataset/tensor_dataset.hpp"
 #include "engines/mgpu_engine.hpp"
-#include <boost/program_options.hpp>
+
 
 /**
  *  @brief An inference benchmark based on NVIDIA's TensorRT library.
@@ -357,3 +367,4 @@ void print_file_reader_warnings(logger_impl& logger, const std::string& me) {
         }
     }
 }
+#endif

@@ -54,14 +54,14 @@ void logger_impl::log_final_results(const std::vector<float>& times, const size_
     ostream_ << "__results." << key_prefix << "time_max__= " << statistics.max()  << "\n";
     ostream_ << std::flush;
 }
-
+#if defined HAVE_NVINFER  
 void logger_impl::log_bindings(ICudaEngine* engine, const std::string& log_prefix) {
     std::lock_guard<std::mutex> lock(m_);
     const auto num_bindings = engine->getNbBindings();
-    ostream_ << time_stamp() << " "  << log_levels_[ILogger::Severity::kINFO] 
+    ostream_ << time_stamp() << " "  << log_levels_[severity::info] 
              << " "  << log_prefix << " Number of engine bindings is " << num_bindings << "\n";
     for (auto i=0; i<num_bindings; ++i) {
-        ostream_ << time_stamp() << " "  << log_levels_[ILogger::Severity::kINFO]
+        ostream_ << time_stamp() << " "  << log_levels_[severity::info]
                  << " " << log_prefix << " Engine binding index = " << i << ", name = " << engine->getBindingName(i) << ", is input = " << engine->bindingIsInput(i);
 #if NV_TENSORRT_MAJOR >= 3
         const Dims shape = engine->getBindingDimensions(i);
@@ -80,7 +80,7 @@ void logger_impl::log_bindings(ICudaEngine* engine, const std::string& log_prefi
     }
     ostream_ << std::flush;
 }
-
+#endif
 std::string logger_impl::time_stamp() {
     time_t rawtime;
     time (&rawtime);

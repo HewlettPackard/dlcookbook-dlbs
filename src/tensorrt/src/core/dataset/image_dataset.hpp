@@ -20,6 +20,8 @@
 
 #include "core/dataset/dataset.hpp"
 #include "core/logger.hpp"
+
+#if defined HAVE_OPENCV
 #include <opencv2/opencv.hpp>
 
 /**
@@ -73,5 +75,5 @@ public:
                            const size_t num_prefetches=4, const size_t num_infer_msgs=10,
                            const int num_warmup_batches=10, const int num_batches=100);
 };
-
+#endif // HAVE_OPENCV
 #endif

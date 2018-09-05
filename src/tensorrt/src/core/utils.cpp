@@ -58,7 +58,7 @@ bool from_string<bool>(const char* const val) {
 }
 
 std::string environment::file_reader() {
-    return environment::variable<std::string>("DLBS_TENSORRT_FILE_READER", "");
+    return environment::variable<std::string>("DLBS_TENSORRT_FILE_READER", "directio");
 }
 bool environment::remove_files_from_os_cache() {
     return environment::variable<bool>("DLBS_TENSORRT_REMOVE_FILES_FROM_OS_CACHE", "yes");
@@ -373,7 +373,9 @@ direct_reader::direct_reader(const std::string& dtype) :
     }
     if (dtype_ == data_type::dt_float) {
         throw std::invalid_argument(
-            "Single precision format is not supported yet."
+            "DirectIO file reader does not support input files storing images with 4 bytes per element (float data type). "\
+            "Probably, you forgort to provide data_name parameter: --data_name=tensors1. If running with DLBS, this will "\
+            "be tensorrt.data_name i.e. -Ptensorrt.data_name='\"tensors1\"'."
         );
     }
     
@@ -389,6 +391,7 @@ bool direct_reader::open(const std::string& fname) {
     DLOG(fmt("[direct reader] opening file (fname=%s).", fname.c_str()));
     // Reser buffer offset each time new file is opened.
     buffer_offset_ = 0;
+    eof_reached_ = false;
     // http://man7.org/linux/man-pages/man2/open.2.html
     fd_ = ::open(fname.c_str(), O_RDONLY | O_DIRECT);
     if (fd_ < 0) {
@@ -439,18 +442,29 @@ ssize_t direct_reader::read(host_dtype* dest, const size_t count) {
         nbytes_to_read                                                  // Number of bytes to read, always a whole number of blocks.
     );
     if (num_bytes_read < 0) {
-        DLOG(fmt("Error reading file (errno=%d). Debug me.", int(errno)));
-        // Can it be the case that when I try to read something after I reached EOF, read when working
-        // on files opened with O_DIRECT fails with EINVAL error instead of returning 0 bytes?
-        // I am getting this error on a very last batch.
-        return 0;
+        // This can happen in several cases:
+        //   - Invalid block size which is by default equals to 512. For instance, with some Lustre file systems,
+        //     the block size I use is 4096.
+        //   - We have reached EOF with previous call. Most likely, file offset now is not properly aligned, so we
+        //     have gotten EINVAL. For more details, see these URLs:
+        //         https://github.com/coreutils/coreutils/blob/master/src/dd.c#L1123
+        //         https://linux.die.net/man/2/read
+        if (num_bytes_read == -1 && errno == EINVAL && eof_reached_) {
+            // End of file reached at previous call.
+            return 0;
+        }
+        auto msg = fmt("Error reading file using Direct IO (errno=%d). Is the block size correct (block "\
+                       "size=%d)? You can change this value with DLBS_TENSORRT_STORAGE_BLOCK_SIZE "\
+                       "environment variable. If you use Lustre, try 4096.", int(errno), block_sz_);
+        throw std::runtime_error(msg);
     }
     if (num_bytes_read == 0) {
         // This is fine. The higher level code will close this file and will open another one.
+        // Can we get this error at all with O_DIRECT - if lenght of a file is a perfect multiple
+        // of a block size?
         DLOG("Read 0 bytes, EOF?");
         return 0;
     }
-    
     // Copy data from internal buffer to user provided dest buffer
     const size_t ntotal_bytes = nelements_preloaded + std::min(nelements_to_read, size_t(num_bytes_read));
     int read_idx(buffer_offset_);
@@ -482,8 +496,9 @@ ssize_t direct_reader::read(host_dtype* dest, const size_t count) {
         // Not all data have been read. It's either end of file or something else. This something else
         // can be (I think) some iterrupt signal. I should probably wrap the above call to read in a 
         // loop.
-        // If it's end of file, next call will return 0.
+        // If it's end of file, next call will return 0 or, most likely, EINVAL.
         buffer_offset_ = 0;  // Better solution?
+        eof_reached_ = true;
     }
 
     return ntotal_bytes;
