@@ -1,0 +1,31 @@
+    def end(self,session):
+        self.global_step_array=np.array(self.global_step_array)
+        self.loss_array=np.array(self.loss_array)
+        self.total_loss_array=np.array(self.total_loss_array)
+        self.batch_time_array=np.array(self.batch_time_array)
+        speeds=self.global_batch_size/self.batch_time_array
+        print('global_batch_size: ',self.global_batch_size)
+        speed_hmean = scipy.stats.hmean(speeds)
+        #Estimator of variance
+        if len(speeds)>2:
+            # https://stats.stackexchange.com/questions/7471/can-the-standard-deviation-be-calculated-for-harmonic-mean
+            n=len(speeds)
+            rspeeds=1/speeds
+            m=np.mean(rspeeds)
+            s=np.var(rspeeds)
+            hvar=s**2/m**4
+            hstd=np.sqrt(hvar)
+            speed_uncertainty=np.sqrt(hvar)
+        speed_madstd = 1.4826*np.median(np.abs(speeds - np.median(speeds)))
+        speed_jitter = speed_madstd
+        print('-' * 64)
+        print('Images/sec: %.1f +/- %.1f (jitter = %.1f)' % (speed_hmean, speed_uncertainty, speed_jitter))
+        print('-' * 64)
+        # Sergey
+        print("__results.throughput__=%s" % (json.dumps(speed_hmean)))
+        print("__results.throughput_uncertainty__=%s" % (json.dumps(speed_uncertainty)))
+        print("__results.throughput_jitter__=%s" % (json.dumps(speed_jitter)))
+        #print("__results.time__=%s" % (json.dumps(1000.0*self.global_batch_size/speed_hmean)))
+        print("__results.time__=%s" % (json.dumps(1000.0*self.batch_time_array.sum())))
+        print("__results.time_data__=%s" % (json.dumps((1000.0 * self.batch_time_array).tolist())))
+

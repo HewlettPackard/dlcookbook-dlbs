@@ -247,10 +247,10 @@ def main():
         """Converts 'val' to boolean value."""
         return val.lower() in ('true', 'on', 't', '1')
 
-    print("[PyTorch benchmakrs] torch.version.__version__=%s" % torch.version.__version__)
-    print("[PyTorch benchmakrs] torch.cuda.is_available()=%s" % torch.cuda.is_available())
-    print("[PyTorch benchmakrs] torch.version.cuda=%s" % torch.version.cuda)
-    print("[PyTorch benchmakrs] torch.backends.cudnn.version()=%s" % torch.backends.cudnn.version())
+    print("[PyTorch benchmarks] torch.version.__version__=%s" % torch.version.__version__)
+    print("[PyTorch benchmarks] torch.cuda.is_available()=%s" % torch.cuda.is_available())
+    print("[PyTorch benchmarks] torch.version.cuda=%s" % torch.version.cuda)
+    print("[PyTorch benchmarks] torch.backends.cudnn.version()=%s" % torch.backends.cudnn.version())
     ver = torch.version.__version__.split('.')
     if len(ver) >= 2 and ver[0] == '0' and int(ver[1]) < 4:
         print("[WARNING] Expecting PyTorch version 0.4 or above. Most likely something will fail.")
