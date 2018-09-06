@@ -1,5 +1,6 @@
 You must supply the following:
 
+Everything goes in the ../common directory.
 Base Docker image.
 nvidia_cuda_9.0_cudnn_7_ubuntu16.04.img
 Use the Singularity.nv script to pull the Docker base image and convert to a Singularity image.

@@ -5,7 +5,7 @@ unknown_params_action=set
 loginfo "$0 $*" >> ${exp_log_file}                  # Log command line arguments for debugging purposes
 echo "__exp.framework_title__=\"TensorFlow\"" >> ${exp_log_file}
 if [ "$exp_status" = "simulate" ]; then
-    echo "${tensorflow_env} ${runtime_launcher} python ${tensorflow_python_path}/tf_cnn_benchmarks.py ${tensorflow_args}"
+    echo "${tensorflow_env} ${runtime_launcher} python ${tensorflow_python_path}/tf_cnn_benchmarks.py ${tf_cnn_args}"
     exit 0
 fi
 # Check batch is small enough for this experiment
@@ -20,7 +20,7 @@ script="\
     export ${tensorflow_env};\
     echo -e \"__exp.framework_ver__= \x22\$(python -c 'import tensorflow as tf; print(tf.__version__);')\x22\";\
     echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-    ${runtime_launcher} ${runtime_python} ${tensorflow_python_path}/tf_cnn_benchmarks.py ${tensorflow_args} &\
+    ${runtime_launcher} ${runtime_python} ${tensorflow_python_path}/tf_cnn_benchmarks.py ${tf_cnn_args} &\
     proc_pid=\$!;\
     [ \"${monitor_frequency}\" != \"0\" ] && echo -e \"\${proc_pid}\" > ${monitor_backend_pid_folder}/proc.pid;\
     wait \${proc_pid};\
