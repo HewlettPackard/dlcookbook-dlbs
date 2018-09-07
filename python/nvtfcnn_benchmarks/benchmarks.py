@@ -40,7 +40,7 @@ def main():
     args, passthru = parser.parse_known_args()
 
     prog=pathlib.Path(__file__).parent.joinpath('cnn').joinpath(args.model+".py")
-    cmd=['python',prog]+passthru
+    cmd=['python',str(prog)]+passthru
     try:
         retcode = call(cmd)
         if retcode < 0:
@@ -49,18 +49,6 @@ def main():
         print("Execution failed:", e, file=sys.stderr)
     print('done')
     
-#    if times.size > 0:  
-#        times = 1000.0 * times                                              # from seconds to milliseconds
-#        mean_time = np.mean(times)                                          # average time in milliseconds
-#        mean_throughput = get_effective_batch_size(opts) / (mean_time/1000) # images / sec
-#        print("__results.time__=%s" % (json.dumps(mean_time)))
-#        print("__results.time_std__=%s" % (json.dumps(np.std(times))))
-#        print("__results.throughput__=%s" % (json.dumps(int(mean_throughput))))
-#        print("__exp.model_title__=%s" % (json.dumps(model_title)))
-#        print("__results.time_data__=%s" % (json.dumps(times.tolist())))
-#    else:
-#        print("__results.status__=%s" % (json.dumps("failure")))
-
 
 if __name__ == '__main__':
     main()
