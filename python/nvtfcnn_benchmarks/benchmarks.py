@@ -40,7 +40,7 @@ def main():
     args, passthru = parser.parse_known_args()
 
     prog=pathlib.Path(__file__).parent.joinpath('cnn').joinpath(args.model+".py")
-    cmd=['python',str(prog)]+passthru
+    cmd=['python',str(prog)] + passthru
     try:
         retcode = call(cmd)
         if retcode < 0:

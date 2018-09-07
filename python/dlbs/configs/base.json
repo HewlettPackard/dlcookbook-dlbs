@@ -428,7 +428,7 @@
       "desc": "The mpirun executable on the host machine."
     },
     "exp.mpirun_args": {
-      "val": "-bind-to none -map-by slot -x NCCL_DEBUG=INFO -mca pml ob1 -mca btl openib",
+      "val": "--allow-run-as-root -bind-to none -map-by slot -x NCCL_DEBUG=INFO -mca pml ob1 -mca btl openib",
       "type": "str",
       "desc": [
         "Arguments to the mpirun command.",
