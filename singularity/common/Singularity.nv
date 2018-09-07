@@ -1,6 +1,0 @@
-#Download the NVIDIA base docker image and convert to a Singularity image.
-#Saves a lot of time building images.
-Bootstrap: docker
-FROM: docker://nvidia/cuda:9.2-cudnn7-devel-ubuntu16.04
-#%setup
-#rm -rf /root/.singularity/docker
