@@ -17,23 +17,16 @@ if [ ! -z ${exp_mpirun_num_tasks} ]; then
 fi
 script="\
     export ${tensorflow_env};\
-    echo -e \"__exp.framework_ver__= \x22\$(python -c 'import tensorflow as tf; print(tf.__version__);')\x22\";\
     echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-    ${runtime_launcher} ${runtime_python} ${tensorflow_python_path}/benchmarks.py ${nvtfcnn_args} &\
-    proc_pid=\$!;\
-    [ \"${monitor_frequency}\" != \"0\" ] && echo -e \"\${proc_pid}\" > ${monitor_backend_pid_folder}/proc.pid;\
-    wait \${proc_pid};\
-    echo -e \"__results.end_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-    echo -e \"__results.proc_pid__= \${proc_pid}\";\
+    ${runtime_launcher}  ${exp_mpirun} ${exp_mpirun_args} ${runtime_python} ${tensorflow_python_path}/benchmarks.py ${nvtfcnn_args};\
+    echo -e \"__results.end_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";
 "
-echo "script: $script" >> /tmp/nvtfcnn.log
 if [ "${exp_docker}" = "true" ]; then
     assert_docker_img_exists ${exp_docker_image}
-    ${exp_docker_launcher} run ${tensorflow_docker_args} ${exp_mpirun} ${exp_mpirun_args} /bin/bash -c "eval $script" >> ${exp_log_file} 2>&1
+    ${exp_docker_launcher} run ${tensorflow_docker_args} /bin/bash -c "eval $script" >> ${exp_log_file} 2>&1
 elif [ "${exp_singularity}" = "true" ]; then
     assert_singularity_img_exists ${exp_singularity_image}
-    echo $script > /tmp/script
-    ${exp_mpirun} ${exp_mpirun_args} ${exp_singularity_launcher} exec ${tensorflow_singularity_args} /bin/bash -c "eval $script" >> ${exp_log_file} 2>&1
+    ${exp_singularity_launcher} exec ${tensorflow_singularity_args} /bin/bash -c "eval $script" >> ${exp_log_file} 2>&1
 else
     ${exp_mpirun} ${exp_mpirun_args} /bin/bash -c "eval $script" >> ${exp_log_file} 2>&1
 fi

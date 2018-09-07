@@ -48,7 +48,7 @@
     },
     "tensorflow.env": {
       "val": [
-        "PYTHONPATH=${tensorflow.python_path}:\\$PYTHONPATH",
+        "PYTHONPATH=${tensorflow.python_path}",
         "${runtime.EXPORT_CUDA_CACHE_PATH}",
         "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}",
         "TF_DISABLE_CUDNN_TENSOR_OP_MATH=$('false' if ${exp.use_tensor_core} else 'true')$"

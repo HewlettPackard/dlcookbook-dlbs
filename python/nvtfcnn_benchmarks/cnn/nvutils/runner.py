@@ -73,14 +73,12 @@ class _LogSessionRunHook(tf.train.SessionRunHook):
             dt = self.elapsed_secs / self.count
             img_per_sec = self.global_batch_size / dt
             epoch = print_step * self.global_batch_size / self.num_records
-            print('%6i %5.1f %7.1f %6.3f %6.3f %7.5f' %
-                  (print_step, epoch, img_per_sec, loss, total_loss, lr))
+            print('{:6d} {:5.1f} {:7.1f} {:6.3f} {:6.3f} {:7.5f}'.format(print_step, epoch, img_per_sec, loss, total_loss, lr))
             self.elapsed_secs = 0.
             self.count = 0
     def end(self,session):
         self.batch_times=np.array(self.batch_times)
         speeds=self.global_batch_size/self.batch_times
-        print('global_batch_size: ',self.global_batch_size)
         speed_hmean = scipy.stats.hmean(speeds)
         #Estimator of variance
         if len(speeds)>2:
@@ -94,16 +92,16 @@ class _LogSessionRunHook(tf.train.SessionRunHook):
         speed_madstd = 1.4826*np.median(np.abs(speeds - np.median(speeds)))
         speed_jitter = speed_madstd
         print('-' * 64)
-        print('Images/sec: %.1f +/- %.1f (jitter = %.1f)' % (speed_hmean, stdh, speed_jitter))
+        print('Images/sec: {:0.1f} +/- {:0.1f} (jitter = {:0.1f})'.format(speed_hmean, stdh, speed_jitter))
         print('-' * 64)
         # Sergey
-        print("__results.throughput__=%s" % (json.dumps(speed_hmean)))
-        print("__results.throughput_uncertainty__=%s" % (json.dumps(stdh)))
-        print("__results.throughput_jitter__=%s" % (json.dumps(speed_jitter)))
-        #print("__results.time__=%s" % (json.dumps(1000.0*self.global_batch_size/speed_hmean)))
+        print("__exp.framework_ver__={}".format(tf.__version__))
+        print("__results.throughput__={}".format(json.dumps(speed_hmean)))
+        print("__results.throughput_uncertainty__={}".format(json.dumps(stdh)))
+        print("__results.throughput_jitter__={}".format(json.dumps(speed_jitter)))
         #milliseconds
-        print("__results.time__=%s" % (json.dumps(1000.0*self.batch_times.sum())))
-        print("__results.time_data__=%s" % (json.dumps((1000.0 * self.batch_times).tolist())))
+        print("__results.time__={}".format(json.dumps(1000.0*self.batch_times.sum())))
+        print("__results.time_data__={}".format(json.dumps((1000.0 * self.batch_times).tolist())))
 
 def _cnn_model_function(features, labels, mode, params):
     model_func    = params['model']
