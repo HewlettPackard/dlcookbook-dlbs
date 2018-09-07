@@ -29,7 +29,7 @@ One note:  The script, build.sh, will create an image called "image.img" if the 
 *	nvidia-pytorch-examples.tgz - pytorch examples extracted from the NGC pytorch Docker image.  Only for pytorch.
 *	nvidia-tensorflow-examples.tgz - tensorflow examples extracted from the NGC tensorflow Docker image.  Only for tensorflow.
 *	nvidia-caffe2-examples.tgz -  caffe2 examples extracted from the NGC caffe2 Docker image.  Only for caffe2.
-*	nvidia-caffe2-binaries.tgz - additional stuff taken from the NGC image.
+*	nvidia-caffe2-binaries.tgz - C source files for some Caffe2 utilities.
 
 These will be changed as NVidia changes them. They are under the Apache OSS license. Note they these are unmodified. There are also modified versions for use in DLBS
 in dlbs/python/ (mostly additional logging output).
