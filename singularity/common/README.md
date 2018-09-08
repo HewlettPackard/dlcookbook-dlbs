@@ -39,6 +39,7 @@ in dlbs/python/ (mostly additional logging output).
 To build with Singularity.common and the framework recipes, the following archives, packages are required. Some, with obvious names, are only required by
 certain specific frameworks. Some of these require an NVidia account to download.
 
+*	 Anaconda3-5.2.0-Linux-x86_64.sh - Download the latest Linux 64-bit Python 3 from anaconda.com.
 *	 hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64.tbz - Mellanox HCX SDK. Containes OpenMPI with IB support.
 *	 MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tgz - Mellanox OFED drivers and libraries. The Singularity image requires the libraries. 
      This will of course change as version changes.
