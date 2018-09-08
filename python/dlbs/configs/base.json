@@ -444,7 +444,7 @@
     "exp.mpirun_num_tasks": {
       "val": "$(${exp.num_gpus})$",
       "type": "str",
-      "desc": "list of hosts:slots"
+      "desc": "Total number of MPI tasks"
     },
     "exp.sys_info": {
       "val": "",
