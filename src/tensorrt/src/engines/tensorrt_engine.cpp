@@ -308,6 +308,12 @@ void tensorrt_inference_engine::do_inference(abstract_queue<inference_msg*> &req
         logger_.log_info(fmt("%s: {({process:%.5f}|{fetch:%.5f}):%.5f}-->--{copy2host:%.5f}-->--{submit:%.5f}-->--{copy2device_synch:%.5f}",
                              me.c_str(), process.value(), fetch.value(), process_fetch.value(),
                              copy2host.value(), submit.value(), copy2device_synch.value()));
+        // Issue warning if fetch time takes more than 50% of compute time that may be an indication of
+        // an ingestion pipeline being a bottleneck.
+        if (fetch.value() > process.value() * 0.5) {
+            logger_.log_warning(fmt("%s: Fetch time (%.5f) seems to be large relative to compute time (%.5f). This may indicate "\
+                                    "that ingestion pipeline is a bottleneck. ", me.c_str(), fetch.value(), process.value()));
+        }
     }
 }
 
