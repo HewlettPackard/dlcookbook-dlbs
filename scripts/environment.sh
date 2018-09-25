@@ -2,7 +2,13 @@ export DLBS_NAME="Deep Learning Benchmarking Suite"
 export DLBS_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && cd .. && pwd )
 export PATH=$DLBS_ROOT/scripts${PATH:+:}${PATH}
 export PYTHONPATH=$DLBS_ROOT/python${PYTHONPATH:+:}${PYTHONPATH}
-export experimenter="python $DLBS_ROOT/python/dlbs/experimenter.py"
+
+export CUDA_CACHE_PATH=/dev/shm/dlbs
+
+export experimenter="$DLBS_ROOT/python/dlbs/experimenter.py"
+export logparser="$DLBS_ROOT/python/dlbs/logparser.py"
+export reporter="$DLBS_ROOT/python/dlbs/reports/summary_builder.py"
+export plotter="$DLBS_ROOT/python/dlbs/reports/series_builder.py"
 
 [ ! -z $(which date) ] && export HAVE_DATE=true || export HAVE_DATE=false
 [ ! -z $(which docker) ] && export HAVE_DOCKER=true || export HAVE_DOCKER=false

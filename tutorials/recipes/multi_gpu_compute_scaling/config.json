@@ -1,0 +1,17 @@
+{
+  "parameters": {
+    "exp.framework": "nvcnn",
+    "exp.docker_image": "nvcr.io/nvidia/tensorflow:18.04-py3",
+
+    "exp.num_warmup_batches": 10,
+    "exp.num_batches": 40,
+    "exp.log_file": "${BENCH_ROOT}/logs/${exp.num_gpus}_${exp.model}_${exp.effective_batch}.log",
+
+    "exp.dtype": "float16",
+    "exp.model": "resnet50",
+    "exp.replica_batch": 128
+  },
+  "variables":{
+    "exp.gpus": ["0", "0,1", "0,1,2,3", "0,1,2,3,4,5,6,7"]
+  }
+}
