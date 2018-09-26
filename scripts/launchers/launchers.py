@@ -23,6 +23,16 @@ class commonLauncherClass(object):
         self.loginfo(' '.join(cmd_args)) # Log command line arguments for debugging purposes
         if not self.check_key('runtime_launcher'): self.vdict['runtime_launcher']=''
 
+        self.assert_not_docker_and_singularity(self.logfatal)
+        self.docker=False
+        self.singularity=False
+        if self.test_for_true('exp_singularity',self.logfatal):
+            self.assert_singularity_image_exists()
+            self.singularity=True
+        elif self.test_for_true('exp_docker',self.logfatal):
+            self.assert_docker_image_exists()
+            self.docker=True
+
     def logfileout(self, logtype, s):
         timestamp=datetime.datetime.now().strftime('%m-%d-%Y %H:%M:%S')
         print('{} [{}] {}'.format(timestamp,logtype,s),file=self.logfile)
@@ -74,6 +84,18 @@ class commonLauncherClass(object):
            raise ValueError()
        else:
            return True
+
+    def setup_mpirun(self):
+        try:
+             self.mpirun_cmd=self.vdict['exp_mpirun']
+        except Exception:
+             self.logfatal('exp.mpirun is missing or empty and MPI was specified.')
+             raise ValueError()
+
+        if self.check_key('exp_mpirun_hosts'): self.mpi_run_cmd += self.vdict['exp_mpirun_args']) + " -H {} ".format(self.vdict['exp_mpirun_hosts'])
+        if not self.check_key('exp_mpirun_num_tasks'): num_tasks=1
+        else: num_tasks=self.vdict['exp_mpirun_num_tasks']
+        self.mpirun_cmd += " -np {} ".format(self.vdict['exp_mpirun_num_tasks'])
 
     def run(self,script):
         proc=subprocess.Popen(script,executable="/bin/bash",shell=True,stdout=self.logfile,stderr=self.logfile)

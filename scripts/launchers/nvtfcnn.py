@@ -5,42 +5,32 @@ import subprocess
 import launchers
 
 def main():
-    co=launchers.commonLauncherClass(sys.argv)
-    
-    print('__exp.framework_title__="TensorFlow"',file=co.logfile)
-
-   
-    if co.check_key('exp_mpirun_hosts'): co.vdict['exp_mpirun_args']="-H {} ".format(co.vdict['exp_mpirun_hosts']+co.vdict['exp_mpirun_args'])
-    if not co.check_key('exp_mpirun_num_tasks'): co.vdict['exp_mpirun_num_tasks']=1
-    co.vdict['exp_mpirun_args']="-np {} ".format(co.vdict['exp_mpirun_num_tasks'])+co.vdict['exp_mpirun_args']
     try:
-        co.assert_not_docker_and_singularity(co.logfatal)
-        if co.test_for_true('exp_singularity',co.logfatal):
-            co.assert_singularity_image_exists()
+        co=launchers.commonLauncherClass(sys.argv)
+        co.setup_mpirun()
+
+        print('__exp.framework_title__="TensorFlow"',file=co.logfile)
+
+        if self.singularity:
             runcommand=\
-                r'{runtime_launcher}  {exp_mpirun} {exp_mpirun_args} {exp_singularity_launcher} exec {tensorflow_singularity_args} {runtime_python} '.format(\
-                   runtime_launcher=co.vdict['runtime_launcher'],
-                   exp_mpirun=co.vdict['exp_mpirun'],
-                   exp_mpirun_args=co.vdict['exp_mpirun_args'],
+                r'{runtime_launcher}  {mpirun_cmd} {exp_singularity_launcher} exec {tensorflow_singularity_args} {runtime_python} '.format(\
+                   runtime_launcher=co.vdict['runtime_launcher'], mpirun_cmd=co.mpirun_cmd,
                    exp_singularity_launcher=co.vdict['exp_singularity_launcher'],
                    tensorflow_singularity_args=co.vdict['tensorflow_singularity_args'],
                    runtime_python=co.vdict['runtime_python'])
-        elif test_for_true('exp_docker',co.logfatal,co.vdict):
-            assert_docker_image_exists(co.vdict)
+        elif self.docker
             runcommand=\
-                r'{runtime_launcher} {exp_docker_launcher} run {tensorflow_docker_args} {exp_mpirun} {exp_mpirun_args} {runtime_python}'.format(\
+                r'{runtime_launcher} {exp_docker_launcher} run {tensorflow_docker_args} {mpirun_cmd} {runtime_python}'.format(\
                    runtime_launcher=co.vdict['runtime_launcher'],
                    exp_docker_launcher=co.vdict['exp_docker_launcher'],
                    tensorflow_docker_args=co.vdict['tensorflow_docker_args'],
-                   exp_mpirun=co.vdict['exp_mpirun'],
-                   exp_mpirun_args=co.vdict['exp_mpirun_args'],
+                   mpirun_cmd=co.mpirun_cmd,
                    runtime_python=co.vdict['runtime_python'])
         else:
             runcommand=\
-                r'{runtime_launcher} {exp_mpirun} {exp_mpirun_args} {runtime_python}'.format(\
+                r'{runtime_launcher} {mpirun_cmd} {runtime_python}'.format(\
                    runtime_launcher=co.vdict['runtime_launcher'],
-                   exp_mpirun=co.vdict['exp_mpirun'],
-                   exp_mpirun_args=co.vdict['exp_mpirun_args'],
+                   mpirun_cmd=co.mpirun_cmd,
                    runtime_python=co.vdict['runtime_python'])
         script=\
                 r'export {tensorflow_env}; '.format(tensorflow_env=co.vdict['tensorflow_env'])+ \
@@ -52,9 +42,9 @@ def main():
                 r'echo -e "__results.end_time__= \x22$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22"'
     except Exception as e:
         co.logfatal('Caught exception. Exiting.')
-        co.logfile.close()
         traceback.print_exc()
         sys.exit(-1)
+        co.logfile.close()
     co.run(script)
     #
     ## Do some post-processing
@@ -63,6 +53,7 @@ def main():
     #    update_error_file "${__batch_file__}" "${exp_replica_batch}";
     #    echo "__exp.status__=\"failure\"" >> ${exp_log_file}
     #fi
+    co.logfile.close()
 if __name__=='__main__':
     main()
 
