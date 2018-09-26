@@ -1,5 +1,5 @@
 Bootstrap: localimage
-FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
+FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04_common.img
 %environment
     # Can't get automatic sourcing of the HPCX init file. So hardwiring it here.
     # Version specific assignments here.
@@ -49,14 +49,11 @@ FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
     cp ${COMMON}/Anaconda3-5.2.0-Linux-x86_64.sh $SINGULARITY_ROOTFS
 
 %post
+    echo "Common: $COMMON"
     ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1 
     export LD_LIBRARY_PATH=/host-libs:/usr/local/cuda/extras/CUPTI/lib64:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs
-    export PATH=/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    export PATH=/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/anaconda3/bin:$PATH
 
-    bash /Anaconda3-5.2.0-Linux-x86_64.sh  -bfp /opt/anaconda3
-    rm /Anaconda3-5.2.0-Linux-x86_64.sh
-    export PATH=/opt/anaconda3/bin:$PATH
-    pip install --upgrade pip
     pip --no-cache-dir install --upgrade absl-py
 
     #Install Bazel

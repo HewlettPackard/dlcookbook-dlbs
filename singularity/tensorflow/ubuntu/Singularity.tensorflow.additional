@@ -46,9 +46,7 @@ FROM: tensorflow-1.10.1-base.img
     Maintainer: Stephen Fleischman
 %setup
     export COMMON=/lvol/sfleisch/dlbs/singularity/common
-    cp ${COMMON}/Anaconda3-5.2.0-Linux-x86_64.sh $SINGULARITY_ROOTFS
     cp ${COMMON}/nv-tensorrt-repo-ubuntu1604-cuda9.2-ga-trt4.0.1.6-20180612_1-1_amd64.deb $SINGULARITY_ROOTFS
-    cp ${COMMON}/pycuda-2018.1.tar.gz $SINGULARITY_ROOTFS
     cp nvidia-examples-18.06.tgz $SINGULARITY_ROOTFS
 
 %post
@@ -57,17 +55,9 @@ FROM: tensorflow-1.10.1-base.img
     #Install NVidia Examples from the nvcr.io/tensorflow:18.04-py3 NGC image
     cd /opt && tar xvzf /nvidia-examples-18.06.tgz && rm /nvidia-examples-18.06.tgz
 
-
-    python -m pip install --no-cache-dir pydot
-
-    # tensorrt
-    cd /opt
-    tar xvzf /pycuda-2018.1.tar.gz && rm /pycuda-2018.1.tar.gz
-    cd pycuda-2018.1
-    python setup.py install
-
-    # Keras
+    # Standalone Keras
     python -m pip install --no-cache-dir keras
+
     # TensorFlow Hub
     python -m pip install --no-cache-dir tensorflow_hub
     python -m pip install --no-cache-dir tensornets
@@ -104,6 +94,28 @@ FROM: tensorflow-1.10.1-base.img
     cd tensor2tensor
     git reset --hard 6edbd6b7d14ae81e359b328a47d6c6187d0d5844
     python setup.py install
+
+    # Geo stuff
+    python3 -m pip install rasterio
+    cd /tmp
+    wget http://download.osgeo.org/libtiff/tiff-4.0.9.tar.gz
+    tar xvf tiff-4.0.9.tar.gz
+    cd tiff-4.0.9
+    ./configure -prefix=/usr/local
+    make install
+    cd /tmp
+    rm -rf tiff-4.0.9.tar.gz tiff-4.0.9
+    wget http://download.osgeo.org/geotiff/libgeotiff/libgeotiff-1.4.2.tar.gz
+    tar xvf libgeotiff-1.4.2.tar.gz
+    cd libgeotiff-1.4.2
+    cmake ./CMakeLists.txt
+    make install
+    cmake ./CMakeLists.txt
+    cd /tmp
+    rm -rf libgeotiff-1.4.2.tar.gz libgeotiff-1.4.2 tmp*
+ 
+    pip install --no-cache-dir --upgrade tensorlayer
+    pip install --no-cache-dir --upgrade tensorlayer[all]
 
     ldconfig -v
 

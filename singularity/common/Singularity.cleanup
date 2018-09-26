@@ -26,6 +26,7 @@ FROM: /var/lib/SingularityImages/nvidia_cuda_9.0_cudnn_7_ubuntu16.04.img
     rm -rf /tmp/tmp.*
     rm -rf /tmp/MLNX_OFED_LINUX.*.logs  
     rm -rf  /root/.singularity/docker
+    rm -rf  /tmp/*tiff* /tmp/OFE*
 
 	ls /tmp
 

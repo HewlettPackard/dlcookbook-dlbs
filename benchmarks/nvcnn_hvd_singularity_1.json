@@ -31,7 +31,7 @@
         "exp.replica_batch" : [64],
         "exp.dtype" : ["float16"],
         "exp.model" : ["inception3","resnet50"],
-        "exp.test" : ["test3"],
+        "exp.test" : ["test6"],
         "exp.trial" :[0,1],
         "exp.data" : ["synthetic","real"]
     },

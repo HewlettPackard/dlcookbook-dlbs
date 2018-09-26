@@ -40,13 +40,13 @@ To build with Singularity.common and the framework recipes, the following archiv
 certain specific frameworks. Some of these require an NVidia account to download.
 
 *	 Anaconda3-5.2.0-Linux-x86_64.sh - Download the latest Linux 64-bit Python 3 from anaconda.com.
-*	 hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64.tbz - Mellanox HCX SDK. Containes OpenMPI with IB support.
-*	 MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tgz - Mellanox OFED drivers and libraries. The Singularity image requires the libraries. 
-     This will of course change as version changes.
+*    [Mellanox HPCX SDK. Includes OpenMPI.  hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64.tbz] (http://content.mellanox.com/hpc/hpc-x/v2.0/hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64.tbz) You can uncomment the wget in the recipe file but this is more efficient.
+*    [Mellanox OFED drivers MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tgz] ( http://www.mellanox.com/page/mlnx_ofed_eula?mtag=linux_sw_drivers&mrequest=downloads&mtype=ofed&mver=MLNX_OFED-4.2-1.2.0.0&mname=MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tgz) Requires clicking on acceptance of EULA. So can't wget from the recipe file unless you do something crafty.  This will of course change as version changes.
 *	 nccl_2.2.13-1+cuda9.2_x86_64.txz - Nvidia NCCL collective communications library for CUDA 9.2.  Only if you are building the CUDA 9.2 image.
-     This will of course change as version changes.
-*	 nv-tensorrt-repo-ubuntu1604-cuda9.2-ga-trt4.0.1.6-20180612_1-1_amd64.deb - Nvidia TensorRT.  This requires an Nvidia developer account.
+*    nv-peer-memory:  nvidia-peer-memory_1.0-5_all.deb nvidia-peer-memory-dkms_1.0-5_all.deb. Install on the host(s) with instructions from: https://github.com/Mellanox/nv_peer_memory.  Alternatively you can do it all in the recipe file by uploading the original tar file, nvidia-peer-memory_1.0.5.tar.gz.
+*	 nv-tensorrt-repo-ubuntu1604-cuda9.2-ga-trt4.0.1.6-20180612_1-1_amd64.deb - [Nvidia TensorRT.] (https://developer.nvidia.com/tensorrt) This requires an Nvidia developer account.
 *	 pycuda-2018.1.tar.gz - It proved difficult do a pip install so download the archive and build: See: https://wiki.tiker.net/PyCuda/Installation/Linux
+Up through dpkg-buildpackage -us -uc. This will create the .deb packages above.
 
 ## Images to build before building frameworks.
 

@@ -38,7 +38,6 @@ ignore_unknown_params=${ignore_unknown_params:-false}
 unknown_params_action=${unknown_params_action:-'ignore'}
 # Optionally, print found command line arguments
 __print_parsed_args=${__print_parsed_args:-false}
-
 while true; do
   [ -z "${1:-}" ] && break;  # break if there are no arguments
   case "$1" in
@@ -52,6 +51,7 @@ while true; do
     # If the first command-line argument begins with "--" (e.g. --foo-bar),
     # then work out the variable name as $name, which will equal "foo_bar".
   --*) name=`echo "$1" | sed s/^--// | sed s/-/_/g`;
+      echo "name: $name"
     # Next we test whether the variable in question is undefned-- if so it's
     # an invalid option and we die.  Note: $0 evaluates to the name of the
     # enclosing script.
@@ -89,7 +89,10 @@ while true; do
     # the option had spaces, like --cmd "queue.pl -sync y"
     # Why is dollar escaped? Read this - https://stackoverflow.com/a/9715377/575749.
     # Another option is to use declare $name=$2
+      echo -n name $name
       eval $name=\"\$2\";
+      echo $name $2
+      
       [ "$__print_parsed_args" = "true" ] && {
         echo "Found new command line argument: $name = ${!name}"
       }

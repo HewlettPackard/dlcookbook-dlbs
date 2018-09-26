@@ -102,7 +102,7 @@
       "desc": "This is a 'resize_method' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
     },
     "tensorflow.launcher": {
-      "val": "${DLBS_ROOT}/scripts/launchers/${exp.backend}.sh",
+      "val": "${${exp.backend}.launcher}",
       "type": "str",
       "desc": "Path to a script that launches a TensorFlow backend script."
     },
@@ -226,7 +226,7 @@
       "desc": "These are a command line arguments passed to nvcnn_hvd_benchmarks script."
     },
     "nvtfcnn.launcher": {
-      "val": "${DLBS_ROOT}/scripts/launchers/nvtfcnn.sh",
+      "val": "${DLBS_ROOT}/scripts/launchers/nvtfcnn.py",
       "type": "str",
       "desc": "Path to a script that launches a nvtfcnn backend script."
     },

@@ -1,8 +1,12 @@
 #!/bin/bash
+
 unknown_params_action=set
 . $DLBS_ROOT/scripts/parse_options.sh || exit 1;    # Parse command line options
 . $DLBS_ROOT/scripts/utils.sh
 loginfo "$0 $*" >> ${exp_log_file}                  # Log command line arguments for debugging purposes
+echo command line
+echo $@
+exit
 # The simulation mode: just print out what is about to be launched
 if [ "$exp_status" = "simulate" ]; then
   echo "${caffe_env} ${runtime_launcher} caffe ${caffe_action} ${caffe_args}"

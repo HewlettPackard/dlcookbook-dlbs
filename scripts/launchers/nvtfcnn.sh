@@ -1,6 +1,8 @@
 #!/bin/bash
+echo $1
 unknown_params_action=set
 . $DLBS_ROOT/scripts/parse_options.sh || exit 1;    # Parse command line options
+exit
 . $DLBS_ROOT/scripts/utils.sh
 loginfo "$0 $*" >> ${exp_log_file}                  # Log command line arguments for debugging purposes
 echo "__exp.framework_title__=\"TensorFlow\"" >> ${exp_log_file}
