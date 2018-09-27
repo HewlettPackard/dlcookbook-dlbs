@@ -41,14 +41,14 @@
       "type": "str",
       "desc": "For Singularity containerized benchmarks, these are the docker parameters."
     },
-    "tensorflow.python_path": {
+    "tensorflow.bench_path": {
       "val": "$('${DLBS_ROOT}/python/${exp.backend}_benchmarks' if ${exp.docker} is False and ${exp.singularity} is False else '/workspace/${exp.backend}_benchmarks')$",
       "type": "str",
       "desc": "Path to a backend benchmarks python folder. Depends on if bare metal/docker based benchmark is requested."
     },
     "tensorflow.env": {
       "val": [
-        "PYTHONPATH=${tensorflow.python_path}",
+        "PYTHONPATH=${tensorflow.bench_path}",
         "${runtime.EXPORT_CUDA_CACHE_PATH}",
         "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}",
         "TF_DISABLE_CUDNN_TENSOR_OP_MATH=$('false' if ${exp.use_tensor_core} else 'true')$"
@@ -278,7 +278,7 @@
       },
       "parameters": {
         "tensorflow.env": [
-          "PYTHONPATH=${tensorflow.python_path}:\\$PYTHONPATH",
+          "PYTHONPATH=${tensorflow.bench_path}:\\$PYTHONPATH",
           "${runtime.EXPORT_CUDA_CACHE_PATH}",
           "$('CUDA_CACHE_DISABLE=0' if '${runtime.cuda_cache}' else '')$",
           "$('CUDA_CACHE_MAXSIZE=2147483648' if '${runtime.cuda_cache}' else '')$",

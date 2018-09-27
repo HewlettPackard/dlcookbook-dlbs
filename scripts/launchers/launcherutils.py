@@ -30,7 +30,10 @@ class launcherutils(object):
         self.loginfo(' '.join(cmd_args)) # Log command line arguments for debugging purposes
         if not self.check_key('runtime_launcher'): self.vdict['runtime_launcher']=''
 
+        #This will raise an error that we aren't catching if it fails.
         self.assert_not_docker_and_singularity(self.logfatal)
+        # If simulate we just want to eventually create and print the script without testing.
+        if self.vdict['exp_status'] == 'simulate': return
         self.docker=False
         self.singularity=False
         if self.test_for_true('exp_singularity',self.logfatal):
@@ -190,5 +193,8 @@ class launcherutils(object):
             print('__exp.status__="failure"',file=self.logfile)
 
     def run(self,script):
+        if self.vdict['exp_status']=='simulate':
+            print(script)
+            sys.exit(0)
         proc=subprocess.Popen(script,executable="/bin/bash",shell=True,stdout=self.logfile,stderr=self.logfile)
         proc.communicate()

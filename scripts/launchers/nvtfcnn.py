@@ -8,7 +8,6 @@ def main():
     try:
         co=launcherutils(sys.argv)
         co.setup_mpirun()
-
         print('__exp.framework_title__="TensorFlow"',file=co.logfile)
 
         if co.singularity:
