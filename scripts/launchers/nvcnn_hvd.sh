@@ -9,7 +9,7 @@ if [ "${exp_phase}" == "inference" ]; then
 fi
 echo "__exp.framework_title__=\"TensorFlow-nvcnn-hvd\"" >> ${exp_log_file}
 if [ "$exp_status" = "simulate" ]; then
-    echo "${tensorflow_env} ${runtime_launcher} python ${tensorflow_python_path}/nvcnn_hvd.py ${nvcnn_hvd_args}"
+    echo "${tensorflow_env} ${runtime_launcher} python ${tensorflow_bench_path}/nvcnn_hvd.py ${nvcnn_hvd_args}"
     exit 0
 fi
 # Check batch is small enough for this experiment
@@ -33,7 +33,7 @@ if [ "${exp_singularity}" = "true" ];then
     echo "export ${tensorflow_env}" >> $f
     echo "echo -e \x22__exp.framework_ver__= \x24\x28python -c \x27import tensorflow as tf; print \x28tf.__version__\x29;\x27\x29\x22" >> $f
     echo "echo -e \x22__results.start_time__= \x24\x28date +%Y-%m-%d:%H:%M:%S:%3N\\x29\x22" >> $f
-    echo "${runtime_launcher} ${runtime_python} -u ${tensorflow_python_path}/nvcnn_hvd.py ${nvcnn_hvd_args} & proc_pid=\x24!; \\" >> $f
+    echo "${runtime_launcher} ${runtime_python} -u ${tensorflow_bench_path}/nvcnn_hvd.py ${nvcnn_hvd_args} & proc_pid=\x24!; \\" >> $f
     echo "[ \x22${monitor_frequency}\x22 != \x220\x22 ] && echo -e \x22\x24{proc_pid}\x22 > ${monitor_pid_folder}/proc.pid" >> $f
     echo "wait \x24{proc_pid}" >> $f
     echo "echo -e \x22__results.end_time__= \x24\x28date +%Y-%m-%d:%H:%M:%S:%3N\x29\x22" >> $f

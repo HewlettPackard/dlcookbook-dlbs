@@ -26,7 +26,7 @@ if [ "${exp_docker}" = "true" ]; then
     script="\
         export ${tensorflow_env};\
         echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-        ${runtime_launcher}  ${run_container} ${exp_mpirun} ${exp_mpirun_args} ${runtime_python} ${tensorflow_python_path}/benchmarks.py ${nvtfcnn_args};\
+        ${runtime_launcher}  ${run_container} ${exp_mpirun} ${exp_mpirun_args} ${runtime_python} ${tensorflow_bench_path}/benchmarks.py ${nvtfcnn_args};\
         echo -e \"__results.end_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";
 "
 elif [ "${exp_singularity}" = "true" ]; then
@@ -35,14 +35,14 @@ elif [ "${exp_singularity}" = "true" ]; then
     script="\
         export ${tensorflow_env};\
         echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-        ${runtime_launcher}  ${exp_mpirun} ${exp_mpirun_args} ${run_container} ${runtime_python} ${tensorflow_python_path}/benchmarks.py ${nvtfcnn_args};\
+        ${runtime_launcher}  ${exp_mpirun} ${exp_mpirun_args} ${run_container} ${runtime_python} ${tensorflow_bench_path}/benchmarks.py ${nvtfcnn_args};\
         echo -e \"__results.end_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";
     "
 else
     script="\
         export ${tensorflow_env};\
         echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-        ${runtime_launcher}  ${exp_mpirun} ${exp_mpirun_args} ${runtime_python} ${tensorflow_python_path}/benchmarks.py ${nvtfcnn_args};\
+        ${runtime_launcher}  ${exp_mpirun} ${exp_mpirun_args} ${runtime_python} ${tensorflow_bench_path}/benchmarks.py ${nvtfcnn_args};\
         echo -e \"__results.end_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";
     "
 fi
