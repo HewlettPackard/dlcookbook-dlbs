@@ -2,23 +2,23 @@
 import sys
 import traceback
 import subprocess
-import launchers
+from launcherutils import launcherutils
 
 def main():
     try:
-        co=launchers.commonLauncherClass(sys.argv)
+        co=launcherutils(sys.argv)
         co.setup_mpirun()
 
         print('__exp.framework_title__="TensorFlow"',file=co.logfile)
 
-        if self.singularity:
+        if co.singularity:
             runcommand=\
                 r'{runtime_launcher}  {mpirun_cmd} {exp_singularity_launcher} exec {tensorflow_singularity_args} {runtime_python} '.format(\
                    runtime_launcher=co.vdict['runtime_launcher'], mpirun_cmd=co.mpirun_cmd,
                    exp_singularity_launcher=co.vdict['exp_singularity_launcher'],
                    tensorflow_singularity_args=co.vdict['tensorflow_singularity_args'],
                    runtime_python=co.vdict['runtime_python'])
-        elif self.docker
+        elif co.docker:
             runcommand=\
                 r'{runtime_launcher} {exp_docker_launcher} run {tensorflow_docker_args} {mpirun_cmd} {runtime_python}'.format(\
                    runtime_launcher=co.vdict['runtime_launcher'],
@@ -41,19 +41,15 @@ def main():
                        nvtfcnn_args=co.vdict['nvtfcnn_args']) +\
                 r'echo -e "__results.end_time__= \x22$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22"'
     except Exception as e:
-        co.logfatal('Caught exception. Exiting.')
+        print('Caught exception. Exiting.')
         traceback.print_exc()
         sys.exit(-1)
-        co.logfile.close()
+
     co.run(script)
-    #
+
     ## Do some post-processing
-    #if tf_error ${exp_log_file}; then
-    #    logwarn "error in \"${exp_log_file}\" with effective batch ${exp_effective_batch} (replica batch ${exp_replica_batch})";
-    #    update_error_file "${__batch_file__}" "${exp_replica_batch}";
-    #    echo "__exp.status__=\"failure\"" >> ${exp_log_file}
-    #fi
+    co.check_for_failed_run()
     co.logfile.close()
+
 if __name__=='__main__':
     main()
-
