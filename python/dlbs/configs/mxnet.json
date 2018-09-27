@@ -1,7 +1,7 @@
 {
   "parameters": {
     "mxnet.launcher": {
-      "val": "${DLBS_ROOT}/scripts/launchers/mxnet.sh",
+      "val": "${DLBS_ROOT}/scripts/launchers/mxnet.py",
       "type": "str",
       "desc": "Path to script that launches MXNet benchmarks."
     },
@@ -11,9 +11,9 @@
       "desc": "An environment (a bunch of export directives) for the MXNet framework."
     },
     "mxnet.bench_path": {
-      "val": "$('${DLBS_ROOT}/python' if not ${exp.docker} else '/workspace')$",
+      "val": "$('${DLBS_ROOT}/python/${exp.backend}_benchmarks' if ${exp.docker} is False and ${exp.singularity} is False else '/workspace/${exp.backend}_benchmarks')$",
       "type": "str",
-      "desc": "Python path to where mxnet_benchmarks project is located. Depends on bare metal/docker benchmarks."
+      "desc": "Path to a backend benchmarks python folder. Depends on if bare metal/docker based benchmark is requested."
     },
     "mxnet.cudnn_autotune": {
       "val": true,

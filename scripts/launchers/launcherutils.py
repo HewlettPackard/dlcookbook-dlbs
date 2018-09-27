@@ -142,12 +142,15 @@ class launcherutils(object):
 
     def is_batch_good(self):
         if not os.path.isfile(self.__batch_file__): 
+            #self.logwarn('is_batch_good __batch_file__ {} no file found.'.format(self.__batch_file__))
             return True # File does not exist, no error information
         else:
             with open(self.__batch_file__,'r') as bf:
                 self.current_batch=int(bf.readline().strip())
-        if int(self.vdict['exp_replica_batch']) < self.current_batch: return False      # File exists, error batch is larger
-        else: return True        # File exists, error batch is smaller
+        if int(self.vdict['exp_replica_batch']) < self.current_batch: ret=True # File exists, error batch is larger
+        else: ret=False        # File exists, error batch is smaller
+        #self.logwarn('is_batch_good current_batch {} exp_replica_batch {} return status {}'.format(self.current_batch,self.vdict['exp_replica_batch'],ret))
+        return ret
 
     def update_error_file(self):
         if not os.path.isfile(self.__batch_file__):
@@ -192,9 +195,20 @@ class launcherutils(object):
             self.update_error_file()
             print('__exp.status__="failure"',file=self.logfile)
 
-    def run(self,script):
+    def run(self,env_command,run_command,benchmark_command,close_log=True):
+        script=\
+                r'export {framework_env}; '.format(framework_env=env_command)+ \
+                r'echo -e "__results.start_time__= \x22$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22"; '+ \
+                r'{run_command} {benchmark_command}'.format(run_command=run_command, benchmark_command=benchmark_command)+ \
+                r'echo -e "__results.end_time__= \x22$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22"'
+
         if self.vdict['exp_status']=='simulate':
             print(script)
             sys.exit(0)
         proc=subprocess.Popen(script,executable="/bin/bash",shell=True,stdout=self.logfile,stderr=self.logfile)
         proc.communicate()
+
+        ## Do some post-processing
+        self.check_for_failed_run()
+        if close_log: self.logfile.close()
+
