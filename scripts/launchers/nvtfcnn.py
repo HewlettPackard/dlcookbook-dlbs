@@ -34,9 +34,9 @@ def main():
         script=\
                 r'export {tensorflow_env}; '.format(tensorflow_env=co.vdict['tensorflow_env'])+ \
                 r'echo -e "__results.start_time__= \x22$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22"; '+ \
-                r'{runcommand} {tensorflow_python_path}/benchmarks.py {nvtfcnn_args}; '.format(\
+                r'{runcommand} {tensorflow_bench_path}/benchmarks.py {nvtfcnn_args}; '.format(\
                        runcommand=runcommand,
-                       tensorflow_python_path=co.vdict['tensorflow_python_path'],
+                       tensorflow_bench_path=co.vdict['tensorflow_bench_path'],
                        nvtfcnn_args=co.vdict['nvtfcnn_args']) +\
                 r'echo -e "__results.end_time__= \x22$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22"'
     except Exception as e:
