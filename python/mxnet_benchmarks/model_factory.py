@@ -27,6 +27,10 @@ import glob
 import os
 import importlib
 import inspect
+try:
+  basestring
+except NameError:
+  basestring = str
 
 def import_models():
     """Scans **./models** folder and imports models.
