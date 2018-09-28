@@ -23,7 +23,7 @@ if true; then
                            -Pexp.framework='"mxnet"'\
                            -Pexp.gpus='0'\
                            -Pexp.docker=true\
-                           -Pmonitor.frequency=0.1\
+                           -Pmonitor.frequency=0\
                            -Vexp.replica_batch='[16]'\
                            -Pexp.num_warmup_batches=10\
                            -Pexp.num_batches=10\

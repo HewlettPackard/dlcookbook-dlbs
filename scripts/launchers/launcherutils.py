@@ -121,7 +121,9 @@ class launcherutils(object):
              raise ValueError()
 
         if self.check_key('exp_mpirun_hosts'):
-            self.mpi_run_cmd += self.vdict['exp_mpirun_args'] + " -H {} ".format(self.vdict['exp_mpirun_hosts'])
+            self.mpirun_cmd += self.vdict['exp_mpirun_args'] + " -H {} ".format(self.vdict['exp_mpirun_hosts'])
+        else:
+            self.mpirun_cmd += " "+self.vdict['exp_mpirun_args']
         if not self.check_key('exp_mpirun_num_tasks'): num_tasks=1
         else: num_tasks=self.vdict['exp_mpirun_num_tasks']
         self.mpirun_cmd += " -np {} ".format(self.vdict['exp_mpirun_num_tasks'])

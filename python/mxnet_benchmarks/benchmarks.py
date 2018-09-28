@@ -61,6 +61,8 @@ import traceback
 import logging
 import mxnet as mx
 import numpy as np
+print("in benchmark.py python path {}".format(sys.path))
+print("in benchmark.py Env {}".format(os.environ))
 from mxnet_benchmarks.data_iterator import DataIteratorFactory
 from mxnet_benchmarks.model_factory import ModelFactory
 
@@ -386,7 +388,7 @@ if __name__ == '__main__':
         opts = vars(args)
         opts['phase'] = 'inference' if args.forward_only else 'training'
         model_title, times = benchmark(opts)
-    except Exception, e:
+    except Exception as e:
         #TODO: this is not happenning, program terminates earlier.
         # For now, do not rely on __results.status__=...
         times = np.zeros(0)

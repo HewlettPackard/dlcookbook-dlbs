@@ -349,7 +349,7 @@
     },
     "monitor.frequency": {
       "val": 0,
-      "type": "float",
+      "type": "int",
       "desc": [
         "A sampling frequency in seconds of embedded resource monitor. By default (0) resource monitor is disabled. If this value is",
         "> 0, experimenter will start embedded resource monitor (kind of a reference implementation) that will log system parameters",
