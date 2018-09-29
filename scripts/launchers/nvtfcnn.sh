@@ -25,18 +25,14 @@ if [ "${exp_docker}" = "true" ]; then
     # https://github.com/NVIDIA/nvidia-docker/wiki/Frequently-Asked-Questions#do-you-support-docker-compose:
     script="\
         export ${tensorflow_env};\
-        echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
         ${runtime_launcher}  ${run_container} ${exp_mpirun} ${exp_mpirun_args} ${runtime_python} ${tensorflow_bench_path}/benchmarks.py ${nvtfcnn_args};\
-        echo -e \"__results.end_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";
 "
 elif [ "${exp_singularity}" = "true" ]; then
     assert_singularity_img_exists ${exp_singularity_image}
     export run_container="${exp_singularity_launcher} exec ${tensorflow_singularity_args}"
     script="\
         export ${tensorflow_env};\
-        echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-        ${runtime_launcher}  ${exp_mpirun} ${exp_mpirun_args} ${run_container} ${runtime_python} ${tensorflow_bench_path}/benchmarks.py ${nvtfcnn_args};\
-        echo -e \"__results.end_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";
+        ${runtime_launcher}  ${exp_mpirun} ${exp_mpirun_args} ${run_container} ${runtime_python} ${tensorflow_bench_path}/benchmarks.py ${nvtfcnn_args}
     "
 else
     script="\

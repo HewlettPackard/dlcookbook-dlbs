@@ -1,4 +1,4 @@
-#!/lvol/sfleisch/anaconda3/bin/python3
+#!/lvol/sfleisch/anaconda3/bin/python
 import sys
 import datetime, time
 import shlex
@@ -63,6 +63,7 @@ class launcherutils(object):
 
     def logfileout(self, logtype, s):
         timestamp=datetime.datetime.now().strftime('%m-%d-%Y %H:%M:%S')
+        s=s.strip()
         print('{} [{}] {}'.format(timestamp,logtype,s),file=self.logfile)
     
     loginfo=partialmethod(logfileout,'INFO')
@@ -171,19 +172,18 @@ class launcherutils(object):
 
     #Check the log for fatal errors.  #See above.
     def _error(self):
-        if self.error_pat is None: return
         fn=self.logfile.name
         self.logfile.close()
         with open(fn,'r') as r:
             for l in r:
                 l=l.strip()
-                if re.search(self.error_pat,l):
+                if re.search('^__results.time__=[\d\.]',l):
                     found=True
                     break
             else:
                 found=False
         self.logfile=open(fn,'a')
-        return found
+        return not found
 
     # All of the scripts had the same code except for the error function which only differed by the pattern to search for. SO
     # I encapsulated it here.
@@ -197,20 +197,19 @@ class launcherutils(object):
             self.update_error_file()
             print('__exp.status__="failure"',file=self.logfile)
 
-    def run(self,env_command,run_command,benchmark_command,close_log=True):
+    def run(self,run_command,benchmark_command,close_log=True):
+        env=self.vdict['{}_env'.format(self.vdict['exp_framework'])]
         script=\
-                r'export {framework_env}; '.format(framework_env=env_command)+ \
-                r'echo -e "__results.start_time__= \x22$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22"; '+ \
-                r'{run_command} {benchmark_command}'.format(run_command=run_command, benchmark_command=benchmark_command)+ \
-                r'echo -e "__results.end_time__= \x22$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22"'
-
+                r'{run_command} /bin/bash -c " {env} {runtime_python} {benchmark_command}"'.format(\
+						run_command=run_command,env=env,runtime_python=self.vdict['runtime_python'],benchmark_command=benchmark_command)
         if self.vdict['exp_status']=='simulate':
             print(script)
             sys.exit(0)
-        proc=subprocess.Popen(script,executable="/bin/bash",shell=True,stdout=self.logfile,stderr=self.logfile)
+
+        proc=subprocess.Popen(script,executable="/bin/bash",shell=True,stdout=self.logfile,stderr=self.logfile,bufsize=1,universal_newlines=False)
         proc.communicate()
+
 
         ## Do some post-processing
         self.check_for_failed_run()
         if close_log: self.logfile.close()
-

@@ -19,7 +19,7 @@
       "val": "$('${DLBS_ROOT}/python' if ${exp.docker} is False and ${exp.singularity} is False else '/workspace')$",
       "type": "str",
       "desc": ["Path to a backend python folder. Depends on if bare metal/docker based benchmark is requested.",
-               "Used to set PYTHON_PATH and has to be one up from {exp.backend}_bencharks."]
+               "Used to set PYTHONPATH and has to be one up from {exp.backend}_bencharks."]
     },
     "mxnet.cudnn_autotune": {
       "val": true,
@@ -76,7 +76,7 @@
     },
     "mxnet.docker_args": {
       "val": [
-        "-i",
+        "-ti",
         "--security-opt seccomp=unconfined",
         "--pid=host",
         "--shm-size=1g",

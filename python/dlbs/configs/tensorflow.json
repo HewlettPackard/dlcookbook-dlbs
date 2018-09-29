@@ -10,7 +10,7 @@
     },
     "tensorflow.docker_args": {
       "val": [
-        "-i",
+        "-ti",
         "--security-opt seccomp=unconfined",
         "--pid=host",
         "--shm-size=1g",

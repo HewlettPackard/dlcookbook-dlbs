@@ -61,8 +61,6 @@ import traceback
 import logging
 import mxnet as mx
 import numpy as np
-print("in benchmark.py python path {}".format(sys.path))
-print("in benchmark.py Env {}".format(os.environ))
 from mxnet_benchmarks.data_iterator import DataIteratorFactory
 from mxnet_benchmarks.model_factory import ModelFactory
 
