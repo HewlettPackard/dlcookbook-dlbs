@@ -47,7 +47,7 @@ FROM: tensorflow-1.10.1-base.img
 %setup
     export COMMON=/lvol/sfleisch/dlbs/singularity/common
     cp ${COMMON}/nv-tensorrt-repo-ubuntu1604-cuda9.2-ga-trt4.0.1.6-20180612_1-1_amd64.deb $SINGULARITY_ROOTFS
-    cp nvidia-examples-18.06.tgz $SINGULARITY_ROOTFS
+    cp ${COMMON}/nvidia-examples-18.06.tgz $SINGULARITY_ROOTFS
 
 %post
     # Update when versions change
@@ -55,8 +55,26 @@ FROM: tensorflow-1.10.1-base.img
     #Install NVidia Examples from the nvcr.io/tensorflow:18.04-py3 NGC image
     cd /opt && tar xvzf /nvidia-examples-18.06.tgz && rm /nvidia-examples-18.06.tgz
 
+
+    # Geo stuff
+    mkdir -p /tmp/install
+    cd /tmp/install && curl -sL http://download.osgeo.org/geos/geos-3.7.0.tar.bz2|tar xvj 
+    cd /tmp/install/geos-3.7.0 && ./configure && make && make install
+    cd /tmp/install && curl -sL http://download.osgeo.org/proj/proj-4.9.1.tar.gz|tar xvz
+    cd /tmp/install/proj-4.9.1 && ./configure && make && make install
+    cd /tmp/install && curl -sL http://download.osgeo.org/libtiff/tiff-4.0.9.tar.gz|tar xvz
+    cd /tmp/install/tiff-4.0.9 && ./configure && make && make install
+    cd /tmp/install && curl -sL http://download.osgeo.org/geotiff/libgeotiff/libgeotiff-1.4.2.tar.gz|tar xvz
+    cd /tmp/install/libgeotiff-1.4.2 && cmake ./CMakeLists.txt && make install 
+    cd /tmp/install && git clone https://github.com/j08lue/pycpt.git
+    cd /tmp/install/pycpt &&  python ./setup.py install
+    python3 -m pip install rasterio geopandas shapely shapely[vectorized] folium cartopy rio-toa rio-l8qa
+
     # Standalone Keras
     python -m pip install --no-cache-dir keras
+    # Yet another wrapper around TF 
+    pip install --no-cache-dir --upgrade tensorlayer
+    pip install --no-cache-dir --upgrade tensorlayer[all]
 
     # TensorFlow Hub
     python -m pip install --no-cache-dir tensorflow_hub
@@ -95,29 +113,8 @@ FROM: tensorflow-1.10.1-base.img
     git reset --hard 6edbd6b7d14ae81e359b328a47d6c6187d0d5844
     python setup.py install
 
-    # Geo stuff
-    python3 -m pip install rasterio
-    cd /tmp
-    wget http://download.osgeo.org/libtiff/tiff-4.0.9.tar.gz
-    tar xvf tiff-4.0.9.tar.gz
-    cd tiff-4.0.9
-    ./configure -prefix=/usr/local
-    make install
-    cd /tmp
-    rm -rf tiff-4.0.9.tar.gz tiff-4.0.9
-    wget http://download.osgeo.org/geotiff/libgeotiff/libgeotiff-1.4.2.tar.gz
-    tar xvf libgeotiff-1.4.2.tar.gz
-    cd libgeotiff-1.4.2
-    cmake ./CMakeLists.txt
-    make install
-    cmake ./CMakeLists.txt
-    cd /tmp
-    rm -rf libgeotiff-1.4.2.tar.gz libgeotiff-1.4.2 tmp*
- 
-    pip install --no-cache-dir --upgrade tensorlayer
-    pip install --no-cache-dir --upgrade tensorlayer[all]
-
     ldconfig -v
+    cd /tmp && rm -rf *
 
 %runscript
     echo "Singularity Container: TensorFlow 1.9, Ubuntu 16.04, CUDA 9.2, cuDNN 7.1, Anaconda Python 3.6, AVX2 instructions."

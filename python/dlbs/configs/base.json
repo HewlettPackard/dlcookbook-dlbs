@@ -41,7 +41,7 @@
       "type": "str",
       "desc": [
         "The backend or benchmark harness script to benchmark. ",
-        "Supported backends: 'tf_cnn_benchmarks', 'nvcnn', 'nvcnn_hvd', 'caffe2', 'mxnet', 'tensorrt', 'caffe",
+        "Supported backends: 'tf_cnn_benchmarks', 'nvcnn', 'nvcnn_hvd', 'caffe2', 'mxnet', 'tensorrt', 'caffe", "nvtfcnn",
         "Currently required for TensorFlow backends."
       ]
     },
@@ -386,11 +386,6 @@
         "A sequence of commands that need to be placed on a command line right before benchmarking scripts. Can be used to pin process to certain",
         "CPUs (numactl, taskset)."
       ]
-    },
-    "runtime.multinode_shared_dir": {
-      "val": "/ml/ml01/sfleisch",
-      "type": "str",
-      "desc": "A shared directory or partition. This is needed for Horovod to store a temporary scripts."
     },
     "runtime.cuda_cache": {
       "val": "$('/dev/shm/cudacache_{}'.format(Launcher.uuid))$",

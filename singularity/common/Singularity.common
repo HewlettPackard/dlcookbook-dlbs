@@ -21,6 +21,7 @@ FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
     Maintainer: Stephen Fleischman
 
 %environment
+    unset XDG_RUNTIME_DIR
     export CUDA_DIR=/usr/local/cuda
     export HPCX_DIR=/opt/hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64
     export HPCX_MPI_DIR=${HPCX_DIR}/ompi-v3.0.x

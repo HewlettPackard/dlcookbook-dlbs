@@ -24,8 +24,8 @@
         "exp.phase" : "training",
         "monitor.frequency" : 5 ,
         "exp.sys_info" : "",
+        "runtime.env.PATH" :  "/opt/anaconda3/bin:$PATH",
         "tensorflow.singularity_image" : "/lvol/sfleisch/SingularityImages/tensorflow-1.8-cuda9.0-cudnn7.0-avx2.img"
-        
     },
     "variables" : {
         "exp.replica_batch" : [64],

@@ -1,4 +1,4 @@
-#!/lvol/sfleisch/anaconda3/bin/python
+#!/usr/bin/env python
 import sys
 import datetime, time
 import shlex
@@ -9,15 +9,6 @@ import subprocess
 from functools import partialmethod
 
 class launcherutils(object):
-    #Final error check of the logfile after the run.
-    #Ignored if the framework doesn't match
-    error_pats={
-        'caffe2': "^__results.time__",
-        'tensorflow': "(?:ResourceExhaustedError|core dumped|std::bad_alloc)",
-        'caffe': "Check failure stack trace: \*\*\*",
-        'mxnet': "^__results.time__"
-    }
-
     def __init__(self,cmd_args):
         self.vdict=dict([(re.sub('-','_',re.sub('^--','',k)),v) for (k,v) in zip(*[iter(cmd_args[1:])]*2)])
         # Batch information
@@ -52,14 +43,6 @@ class launcherutils(object):
             self.report_and_exit("skipped",
                "The replica batch size ({exp_replica_batch}) is too large for given SW/HW configuration.".format(
                     exp_replica_batch=self.vdict['exp_replica_batch']))
-
-        # Set the error check at the end of the run:
-        try:
-            self.error_pat=self.__class__.error_pats[self.vdict['exp_framework']]
-        except KeyError:
-            self.logwarn('Do not have a final error checking regex pattern for the framework: {}'.\
-                  format(self.vdict['exp_framework']))
-            self.error_pat=None
 
     def logfileout(self, logtype, s):
         timestamp=datetime.datetime.now().strftime('%m-%d-%Y %H:%M:%S')
@@ -128,20 +111,6 @@ class launcherutils(object):
         if not self.check_key('exp_mpirun_num_tasks'): num_tasks=1
         else: num_tasks=self.vdict['exp_mpirun_num_tasks']
         self.mpirun_cmd += " -np {} ".format(self.vdict['exp_mpirun_num_tasks'])
-
-    def grep(self,s):
-        fn=self.logfile.name
-        self.logfile.close()    
-        with open(fn,'r') as r:
-            for l in r:
-                l=l.strip()
-                if re.search(pat,l):
-                    found=True
-                    break
-            else:
-                found=False
-        self.logfile=open(fn,'a')
-        return found
 
     def is_batch_good(self):
         if not os.path.isfile(self.__batch_file__): 
