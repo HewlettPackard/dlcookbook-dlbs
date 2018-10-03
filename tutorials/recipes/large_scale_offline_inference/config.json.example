@@ -1,0 +1,34 @@
+{
+    "parameters": {
+        "exp.num_warmup_batches": 100,
+        "exp.num_batches": 400,
+        "monitor.frequency": 0,
+        "exp.status": "disabled",
+        "exp.log_file": "${BENCH_ROOT}/${logdir}/$(\"${exp.gpus}\".replace(\",\",\".\"))$_${exp.model}_${exp.effective_batch}.log",
+        "exp.docker": true,
+        "exp.docker_image": "dlbs/tensorrt:18.10",
+        "exp.framework": "tensorrt",
+        "exp.phase": "inference",
+        "exp.dtype": "float16",
+        "tensorrt.data_name": "tensors1"
+    },
+    "variables": {
+        "exp.gpus": ["0", "0,4", "0,2,4,6", "0,1,2,3,4,5,6,7"],
+        "exp.model": ["alexnet_owt", "resnet152", "resnet50"],
+        "exp.replica_batch": [64, 128, 256, 512, 1024]
+    },
+    "extensions": [
+        {
+            "condition": {"exp.model": "alexnet_owt", "exp.replica_batch": [512, 1024]},
+            "parameters": {"exp.status":"", "exp.num_batches": 500}
+        },
+        {
+            "condition": {"exp.model": "resnet152", "exp.replica_batch": [64,128]},
+            "parameters": {"exp.status":"", "exp.num_batches": 250}
+        },
+        {
+            "condition": {"exp.model": "resnet50", "exp.replica_batch": [128, 256]},
+            "parameters": {"exp.status":"", "exp.num_batches": 300}
+        }
+    ]
+}

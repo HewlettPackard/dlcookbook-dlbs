@@ -1,0 +1,40 @@
+#!/bin/bash
+export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
+. ${BENCH_ROOT}/../../../../scripts/environment.sh
+assert_files_exist "${BENCH_ROOT}/../config.sh"
+. ${BENCH_ROOT}/../config.sh
+
+# Copy data to /dev/shm/tensorrt if it's not there taking into account NUMA effects.
+# You may need to adjust paths and cores for your particular system.
+# The script will take data from source folder and will copy it to two destination
+# folders for CPU0 and CPU1. For each CPU, the source dataset will be replicated
+# len(chunks) times e.g. it will create the following directory structure:
+#
+# /dev/shm/tensorrt/numa0/{01,02,03,04}
+# /dev/shm/tensorrt/numa1/{01,02,03,04}
+#
+# This configuration is suitable for a 2 CPU system with 8 GPUs in a 4:1 configuration
+# in which 4 GPUs are attached to CPU0 and another 4 GPUs are attached to CPU1.
+# It is also assumed that input dataset is not really large and 8 replicas of that
+# dataset can fit into memory.
+#
+# This schema assumes that GPUs 0,1,2,3 are attached to CPU0 and GPUs 4,5,6,7 are
+# attached to CPU1.
+#
+# If your system has small amount of RAM, you should be good to go with just
+# /dev/shm/tensorrt/numa0/ and /dev/shm/tensorrt/numa1/ folders without replication.
+
+source_dir=${dataset_path}
+dest_dir=${dataset_mem_path}
+
+numa=( "numa0" "numa1" )           # Path to dataset for this NUMA node
+cores=( "0-17" "18-35" )           # Cores of two CPUs
+chunks=( "01" "02" "03" "04" )     # Replicate source dataset this number of times for each NUMA domain
+
+for i in "${!numa[@]}"; do
+    for chunk in "${chunks[@]}"; do
+        d=${dest_dir}/${numa[$i]}/${chunk}
+        mkdir -p $d
+        numactl --localalloc --physcpubind=${cores[$i]} cp -n ${source_dir}/*.tensors $d
+    done
+done

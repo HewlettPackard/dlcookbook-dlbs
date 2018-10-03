@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Run benchmarks with synthetic data using one DLBS process.
+
+#------------------------------------------------------------------------------#
+export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
+. ${BENCH_ROOT}/../../../../scripts/environment.sh
+assert_files_exist "${BENCH_ROOT}/../config.sh" "${BENCH_ROOT}/../config.json"
+. ${BENCH_ROOT}/../config.sh
+#------------------------------------------------------------------------------#
+# Set this path to run benchmarks with real data. Else, synthetic data is used.
+dataset=
+
+# Run experiments.
+action=run
+/usr/bin/python ${experimenter} ${action} --config="${BENCH_ROOT}/../config.json" \
+                                          -Plogdir='"b.sprocess/logs"' \
+                                          -Pexp.data_dir='"'"${dataset}'"'"
+                                          -Pexp.docker_image='"'"${docker_image}'"'"
+
+# Parse log files and build weak scaling report
+parse_log_files ./b.sprocess/logs ./b.sprocess/results

@@ -1,0 +1,44 @@
+# If you want to run benchmarks with real dataset, the tool needs to create
+# a dataset in a special format. The `image_dataset` variable points to where
+# your dataset is located (raw JPEG files).
+image_dataset="/fdata/chandlbe/imagenet/train"
+
+# This is where the tool will create dataset.
+dataset_path="/fdata/serebrya/imagenet/data/tensors1"
+
+# For benchmarks with dataset in memory, this is the base path
+dataset_mem_path="/dev/shm/tensorrt"
+
+# Name of a docker image to use.
+docker_image="dlbs/tensorrt:18.10"
+
+# Physical CPUs of your system
+cpus=("0-9" "10-19")
+
+# Depending on yout host OS, you may need to do it.
+# https://stackoverflow.com/questions/24288616/permission-denied-on-accessing-host-directory-in-docker
+#su -c "setenforce 0"
+
+
+# ------------------------------------------------------------------------------
+# Do not change code below
+# ------------------------------------------------------------------------------
+
+# Parse log files and build weak scaling report for single-process DLBS benchmarks.
+# parse_log_files LOG_DIR OUTPUT_DIR
+parse_log_files() {
+  [ "$#" -ne 2 ] && logfatal "parse_log_files: two arguments expected (LOG_DIR OUTPUT_DIR)";
+  # Clean output folder
+  create_dirs $2
+  remove_files $2/results.json $2/results.txt
+  # Parse log files
+  params='exp.status,exp.framework_title,exp.effective_batch,results.time,results.throughput,exp.model_title,exp.gpus'
+  /usr/bin/python ${logparser} $1/*.log --output_params "${params}" --output_file $2/results.json
+  # Build weak scaling report
+  if [ -f "$2/results.json" ]; then
+    /usr/bin/python ${reporter} --summary_file $2/results.json \
+                                --type weak-scaling \
+                                --target_variable results.time > $2/results.txt
+  fi
+}
+export -f parse_log_files

@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# Benchmark host to device bandwidth.
+# https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/src/tensorrt/docs/benchmark_host2device.md
+
+export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
+. ${BENCH_ROOT}/../../../../scripts/environment.sh
+assert_files_exist "${BENCH_ROOT}/../config.sh"
+. ${BENCH_ROOT}/../config.sh
+exec=./benchmark_host2device_copy.sh
+
+# Relationship between number of images and size of batch (MB) assuming image to be
+# of shape [3, 227, 227]
+#Batch Size (images) ->    32   64   128   256   512   1024
+#Batch Size (MB) ->        19   38    75   151   302   604
+
+# Sizes batches in MB
+sizes=( 19 38 75 151 302 604 )
+
+# Overrride if you do not want to take this value from global config
+cpus=("0-9")
+
+cd ${DLBS_ROOT}/tutorials/dlcookbook/tensorrt/
+for cores in "${cpus[@]}"; do
+    for sz in "${sizes[@]}"; do
+        ${exec} --gpu 0 --size ${sz} --pinned_mem true --num_warmup_batches 20 --num_batches 500 \
+                --cpus ${cores} --docker_img ${docker_image}
+    done
+done

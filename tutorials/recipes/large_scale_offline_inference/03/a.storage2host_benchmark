@@ -1,0 +1,37 @@
+#!/bin/bash
+#------------------------------------------------------------------------------#
+# Run read benchmarks with data stored on some attached storage.
+# You will probably need to run this multiple times adjusting number of prefetchers
+# below based on how fast your storage is.
+# Also, for large number of prefetchers you'll need to increase number of warmup
+# and benchmark batches. Large number of preallocated batches can cause OOM error.
+# This is something to adjust as well.
+# https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/src/tensorrt/docs/dataset_benchmarks.md
+
+# In case of getting IO errors or very slow reading results, you may want to adjust BLOCK size
+# https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/src/tensorrt/src/core/utils.hpp#L223
+# 512 is the default value, other popular choice is 4096.
+
+# You will want to run this multiple times adjusting dataset path if you have several options
+# for storing data (memory (/dev/shm), locally atttached SSD or NVMe drive, network-attached storage etc.)
+
+# You should be getting bandwidth close to its peak performance.
+#------------------------------------------------------------------------------#
+export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
+. ${BENCH_ROOT}/../../../../scripts/environment.sh
+assert_files_exist "${BENCH_ROOT}/../config.sh"
+. ${BENCH_ROOT}/../config.sh
+exec=${DLBS_ROOT}/tutorials/dlcookbook/tensorrt/benchmark_tensor_dataset.sh
+
+dataset=${dataset_path}
+batches=( 128 256 512 1024 )
+prefetchers=( 8 16 32 )
+
+for batch in "${batches[@]}"; do
+    for prefetcher in "${prefetchers[@]}"; do
+        ${exec} --data_dir "${dataset}" --dtype uchar --img_size 227 --batch_size "${batch}" \
+                --num_prefetchers ${prefetcher} \
+                --num_preallocated_batches 128 --num_warmup_batches 2000 --num_batches 8000 \
+                --docker_img ${docker_image}
+    done
+done

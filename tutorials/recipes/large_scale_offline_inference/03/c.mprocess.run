@@ -1,0 +1,121 @@
+#!/bin/bash
+#------------------------------------------------------------------------------#
+# This script will not run anything by default. You need to specify configuration
+# manually.
+#------------------------------------------------------------------------------#
+export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
+. ${BENCH_ROOT}/../../../../scripts/environment.sh
+assert_files_exist "${BENCH_ROOT}/../config.sh" "${BENCH_ROOT}/../config.json"
+. ${BENCH_ROOT}/../config.sh
+#------------------------------------------------------------------------------#
+p=/usr/bin/python                       # Use this python
+config=${BENCH_ROOT}/../config.json     # Reuse this JSON config
+
+# ------------------------------------------------------------------------------
+# This script is not fully automated, and most likely you will want to change
+# some parameters below in `run` function. Study that carefully, in particular:
+
+# 1. You may want to adjust number of readers:   -Ptensorrt.num_prefetchers=16
+#    I provide recommendations for certain cases on number of prefetchers (see below).
+# 2. If you run out of memory, you can try reducing number of pre-allocated batches:
+#       -Ptensorrt.inference_queue_size=96
+# 3. You may want to specify input dataset:      -Ptensorrt.data_dir='""'
+#    If you want to use process specific dataset, you have `tensorrt.rank` parameter
+#    that specifies process rank i.e. ${tensorrt.rank}. For instance, with two processes
+#    dataset path can look like this:
+#       -Ptensorrt.data_dir='"'"/dev/shm/tensorrt/numa${tensorrt.rank}"'"'
+# 4. If you experience issues with data reader, maybe your file system does not support
+#    direct IO or block size is not valid. Add the following to `launcher` varable below:
+#       DLBS_TENSORRT_STORAGE_BLOCK_SIZE=4096      to change block size for direct IO (default is 512)
+#       DLBS_TENSORRT_FILE_READER=default          to disable direct IO
+# ------------------------------------------------------------------------------
+
+# If you are running this script, most likely you have a NUMA system:
+cpu0="0-17"     # Range of physical cores for CPU 0
+cpu1="18-35"    # Range of physical cores for CPU 0
+
+# Function that runs in parallel two or more benchmarking process.
+# Usage:
+#    run MODEL REPLICA_BATCH GPUS VGPUS CPUS
+# Example:
+#    run "alexnet_owt" "512" "0,1,2,3;4,5,6,7" "0,1,2,3" "0-17;18-35"
+#       MODEL: alenet_owt
+#       REPLICA_BATCH (per-GPU batch size): 512
+#       GPUS: "0,1,2,3;4,5,6,7"
+#             Run two benchmark process, one uses 0,1,2,3 GPUs and the second one uses
+#             4,5,6,7 GPUs
+#       VGPUS: "0,1,2,3"
+#             Benchmarking Suite will use CUDA_VISIBLE_DEVICE to limit GPU visibility.
+#             Benchmarking processes should use this virtual GPUs to run benchmarks.
+#       CPUS: "0-17;18-35"
+#             First process will bind to NUMA node 0 (0-17), and the second process will
+#             bind to NUMA node 1 (18-35).
+function run () {
+    remove_files '/dev/shm/sem.dlbs_ipc'
+    model=$1                         # Model identifier like resnet50
+    batch=$2                         # Integer, per-GPU batch size
+    gpu_list=(${3//;/ })             # GPUs for each process e.g. ("0,2" "4,6")
+    vgpus=$4                         # List of GPUs for each process e.g. "0,1"
+    cpu_list=(${5//;/ })             # Pinn processes here e.g. ("0-17" "18-35")
+    nprocesses=${#gpu_list[@]}       # Integer, number of processes to run
+    for i in "${!gpu_list[@]}"; do
+        gpus=${gpu_list[$i]}
+        cpus=${cpu_list[$i]}
+        launcher="CUDA_VISIBLE_DEVICES=${gpus} DLBS_TENSORRT_SYNCH_BENCHMARKS=$i,$nprocesses,dlbs_ipc numactl --localalloc --physcpubind=${cpus} "
+        echo "#############$launcher###############"
+        logdir="${BENCH_ROOT}/logs_tensorrt5/${vgpus//,/.}_${model}_${batch}"
+        mkdir -p "$logdir"
+        $p $dlbs run --log-level=info --config=${config} -Ptensorrt.rank=$i \
+                       -Pexp.docker_args='"--rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --pid=host --ipc=host --privileged "' \
+                       -Pexp.gpus=\"${vgpus}\" -Vexp.model=\"${model}\" -Vexp.replica_batch=$batch \
+                       -Pruntime.launcher='"'"${launcher}"'"' \
+                       -Pexp.log_file='"'"${logdir}"'/rank_${tensorrt.rank}.log''"' \
+                       -Pexp.status='""' \
+                       -Ptensorrt.num_prefetchers=16 -Ptensorrt.inference_queue_size=96 -Pexp.num_batches=300 \
+                       -Ptensorrt.docker_image='"dlbs/tensorrt:18.10"' \
+                       -Ptensorrt.data_dir='""'&
+    done
+    wait
+    echo "-----------------------------------------------------------------------------------------------------"
+    echo "Model: $model, replica batch size: $batch, gpus: $3, logdir: $logdir"
+    ${DLBS_ROOT}/tutorials/dlcookbook/tensorrt/compute_mprocess_throughput.sh --logdir "${logdir}" --python "$p"
+    echo "-----------------------------------------------------------------------------------------------------"
+}
+
+# ---------------------------------------------------------------------------------
+#   BEST results achieved with this parameters
+#  DO NOT FORGET TO CHANGE NUMBER  OF PREFETCHERS IN THE ABOVE FUNCTION
+# 2 processes, num prefetchers=16
+#run "alexnet_owt" "1024" "0;4" "0" "${cpu0};${cpu1}"
+#run "alexnet_owt" "1024" "0,2;4,6" "0,1" "${cpu0};${cpu1}"
+#run "alexnet_owt" "1024" "0,1,2,3;4,5,6,7" "0,1,2,3" "${cpu0};${cpu1}"
+#run "alexnet_owt" "512" "0;4" "0" "${cpu0};${cpu1}"
+#run "alexnet_owt" "512" "0,2;4,6" "0,1" "${cpu0};${cpu1}"
+#run "alexnet_owt" "512" "0,1,2,3;4,5,6,7" "0,1,2,3" "${cpu0};${cpu1}"
+
+#run "resnet50" "256" "0,2;4,6" "0,1" "${cpu0};${cpu1}"
+#run "resnet50" "256" "0,1,2,3;4,5,6,7" "0,1,2,3" "${cpu0};${cpu1}"
+#run "resnet50" "128" "0,2;4,6" "0,1" "${cpu0};${cpu1}"
+#run "resnet50" "128" "0,1,2,3;4,5,6,7" "0,1,2,3" "${cpu0};${cpu1}"
+
+#run "googlenet" "128" "0,1,2,3;4,5,6,7" "0,1,2,3" "${cpu0};${cpu1}"
+#run "googlenet" "64" "0,1,2,3;4,5,6,7" "0,1,2,3" "${cpu0};${cpu1}"
+
+# 4 processes, num_prefetchers=8
+
+#run "alexnet_owt" "1024" "0;2;4;6" "0" "0-17;36-53;18-35;54-71"
+#run "alexnet_owt" "1024" "0,1;2,3;4,5;6,7" "0,1" "0-17;36-53;18-35;54-71"
+#run "alexnet_owt" "512"  "0;2;4;6" "0" "0-17;36-53;18-35;54-71"
+#run "alexnet_owt" "512" "0,1;2,3;4,5;6,7" "0,1" "0-17;36-53;18-35;54-71"
+#run "alexnet_owt" "512" "0,1;2,3;4,5;6,7" "0,1" "0-8;9-17;18-26;27-35"
+# ---------------------------------------------------------------------------------
+
+# How to interpret results?
+#   1. Search for lines similar to this one
+#         Model: resnet50, replica batch size: 256, gpus: 0,1,2,3;4,5,6,7
+#   2. Below, you'll see something like this:
+#         Benchmark 0 (per GPU perf): own throughput 21873.500000, effective throughput 20879.900000
+#         Benchmark 1 (per GPU perf): own throughput 21319.300000, effective throughput 21318.400000
+#         Adjusted throughput: 41321.163497
+#      You can select either adjusted througput as the final throughput or
+#      max(adjusted throughput, SUM(effective throughput)).

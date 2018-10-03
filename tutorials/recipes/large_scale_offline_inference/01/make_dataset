@@ -1,0 +1,27 @@
+#!/bin/bash
+export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
+. ${BENCH_ROOT}/../../../../scripts/environment.sh
+assert_files_exist "${BENCH_ROOT}/../config.sh"
+. ${BENCH_ROOT}/../config.sh
+
+# Read docs here: https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/src/tensorrt/docs/images2tensors.md
+# to adjust this file. This script does not directly call `images2tensors ` tool. Instead, it uses
+# DLBS make_imagenet_data.sh script. You will want to change parameters depending on a size of your
+# dataset. Also, depending on your system, in particular, number of CPUs and GPUs you will probably
+# need to replicate generated dataset and/or organize it in subfolders.
+
+# With default parameters, assuming you have imagenet dataset, the tool will take
+# randomly 200,000 images and split them into 10 files.
+input_dataset=${image_dataset}
+output_dataset=${dataset_path}
+
+cd ${DLBS_ROOT}
+./scripts/make_imagenet_data.sh --dataset tensors1 \
+                                --input ${input_dataset} \
+                                --output ${output_dataset} \
+                                --docker_image ${docker_image} \
+                                --docker docker \
+                                --nimages 200000 \
+                                --shuffle true \
+                                --images_per_file 20000 \
+                                --num_workers 2
