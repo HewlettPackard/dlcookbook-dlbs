@@ -1,7 +1,9 @@
-#Bootstrap: docker
-#FROM: docker://nvidia/cuda:9.2-cudnn7-devel-ubuntu16.04
-Bootstrap: localimage
-FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
+Bootstrap: docker
+FROM: docker://nvidia/cuda:9.2-cudnn7-devel-ubuntu16.04
+#You can save some time if you have to run this build script more than once by building an NVidia/Ubuntu base image once from the Docker image, with
+#Singularity.nv and commenting the first two lines above and uncommenting the next two lines.
+#Bootstrap: localimage
+#FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
 %labels
     Maintainer Stephen Fleischman
     Common packages

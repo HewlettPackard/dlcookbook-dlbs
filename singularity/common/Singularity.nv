@@ -1,5 +1,6 @@
 Bootstrap: docker
 FROM: docker://nvidia/cuda:9.2-cudnn7-devel-ubuntu16.04
+# This recipe downloads the CUDA 9.2 / Ubuntu 16.04 base Docker image and converts it to a Singularity image.
 %post
     apt-get update
     apt-get install -y --no-install-recommends build-essential
