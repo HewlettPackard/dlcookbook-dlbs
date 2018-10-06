@@ -7,10 +7,18 @@ somewhat isolated machine or building should be restricted to a trusted few.
 ## Scripts:
 
 
-build.sh - this is a convenience script to run a build with a Singularity recipe.  You must have sudo for singularity or root to run it.
+*  build.sh - this is a convenience script to run a build with a Singularity recipe.  You must have sudo for singularity or root to run it.
 	>  build.sh -r <recipe file> [-n <output image file>]
 
 If -n is not specified it will default to "image.img". 
+
+*  common_env.sh - This script contains environment variables that will specify software versions for various libraries and other software such as
+Mellanox OFED and HPCX SDK.  Whenever a version changes, update this file rather than change the Singularity recipes.
+The export statements contained in the file are used in multiple stages: 1) The setup section to copy in the prerequisite files (see below for the
+list of files that must be obtained before building images). The contents of the file are also appended to /.singularity.d/env/90environment.sh
+which will be sourced, and the variables added to the environment, every time the Singularity image is instantiated.
+
+The point of doing this is to remove version dependencies from the Singularity recipes themselves to the extent possible.
 
 ## Common Singularity recipe files
 
@@ -25,11 +33,6 @@ One note:  The script, build.sh, will create an image called "image.img" if the 
 
 ##Other files that are included.
 *	jupyter_notebook_config.py - this gets incorpated into the images. Edit to change startup options for Jupyter notebooks.
-*	nvidia-mxnet-examples.tgz - mxnet examples extracted from the NGC mxnet Docker image.  Only for mxnet.
-*	nvidia-pytorch-examples.tgz - pytorch examples extracted from the NGC pytorch Docker image.  Only for pytorch.
-*	nvidia-tensorflow-examples.tgz - tensorflow examples extracted from the NGC tensorflow Docker image.  Only for tensorflow.
-*	nvidia-caffe2-examples.tgz -  caffe2 examples extracted from the NGC caffe2 Docker image.  Only for caffe2.
-*	nvidia-caffe2-binaries.tgz - C source files for some Caffe2 utilities.
 
 These will be changed as NVidia changes them. They are under the Apache OSS license. Note they these are unmodified. There are also modified versions for use in DLBS
 in dlbs/python/ (mostly additional logging output).
@@ -39,8 +42,10 @@ in dlbs/python/ (mostly additional logging output).
 To build with Singularity.common and the framework recipes, the following archives, packages are required. Some, with obvious names, are only required by
 certain specific frameworks. Some of these require an NVidia account to download.
 
+The recipe files in this directory tree expect the files to be in the /path/to/dlbs/singularity/common directory.
+
 *	 Anaconda3-5.2.0-Linux-x86_64.sh - Download the latest Linux 64-bit Python 3 from anaconda.com.
-*    [Mellanox HPCX SDK. Includes OpenMPI.  hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64.tbz] (http://content.mellanox.com/hpc/hpc-x/v2.0/hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64.tbz) You can uncomment the wget in the recipe file but this is more efficient.
+*    [Mellanox HPCX SDK. Includes OpenMPI.  hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tbz] (http://content.mellanox.com/hpc/hpc-x/v2.0/hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tbz) You can uncomment the wget in the recipe file but this is more efficient.
 *    [Mellanox OFED drivers MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tgz] ( http://www.mellanox.com/page/mlnx_ofed_eula?mtag=linux_sw_drivers&mrequest=downloads&mtype=ofed&mver=MLNX_OFED-4.2-1.2.0.0&mname=MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tgz) Requires clicking on acceptance of EULA. So can't wget from the recipe file unless you do something crafty.  This will of course change as version changes.
 *	 nccl_2.2.13-1+cuda9.2_x86_64.txz - Nvidia NCCL collective communications library for CUDA 9.2.  Only if you are building the CUDA 9.2 image.
 *    nv-peer-memory:  nvidia-peer-memory_1.0-5_all.deb nvidia-peer-memory-dkms_1.0-5_all.deb. Install on the host(s) with instructions from: https://github.com/Mellanox/nv_peer_memory.  Alternatively you can do it all in the recipe file by uploading the original tar file, nvidia-peer-memory_1.0.5.tar.gz.

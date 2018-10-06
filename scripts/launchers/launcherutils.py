@@ -6,6 +6,7 @@ import re
 import os
 import traceback
 import subprocess
+import fnmatch
 from functools import partialmethod
 
 class launcherutils(object):
@@ -182,3 +183,12 @@ class launcherutils(object):
         ## Do some post-processing
         self.check_for_failed_run()
         if close_log: self.logfile.close()
+    @staticmethod
+    def findfiles(root,pat):
+        result=[]
+        for root,dirs,files in os.walk(root):
+            for name in files:
+                if fnmatch.fnmatch(name,pat):
+                    result.append(os.path.join(root,name))
+        return result
+

@@ -1,5 +1,5 @@
 Bootstrap: localimage
-FROM: /var/lib/SingularityImages/nvidia_cuda_9.0_cudnn_7_ubuntu16.04.img
+FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
 
 %help
     Build file to cleanup /tmp after build 
@@ -27,7 +27,8 @@ FROM: /var/lib/SingularityImages/nvidia_cuda_9.0_cudnn_7_ubuntu16.04.img
     rm -rf /tmp/MLNX_OFED_LINUX.*.logs  
     rm -rf  /root/.singularity/docker
     rm -rf  /tmp/*tiff* /tmp/OFE*
-
+    rm -rf  /tmp/bazel
+    rm -rf /tmp/.singularity-build.*
 	ls /tmp
 
 %runscript

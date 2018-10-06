@@ -5,28 +5,27 @@ FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
 %labels
     Maintainer Stephen Fleischman
     Common packages
-    Build  CUDA 9.0 cuDNN 7.1 x86_64 OFED IB.
-
+    Build CUDA 9.2 cuDNN 7.2.1 x86_64 OFED IB.
 %setup
-    export COMMON=/lvol/sfleisch/dlbs/singularity/common
-    cp ${COMMON}/MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tgz  $SINGULARITY_ROOTFS
-    cp ${COMMON}/hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64.tbz  $SINGULARITY_ROOTFS
-    cp ${COMMON}/jupyter_notebook_config.py  $SINGULARITY_ROOTFS
-    cp ${COMMON}/nccl_2.2.13-1+cuda9.2_x86_64.txz  $SINGULARITY_ROOTFS
-    cp ${COMMON}/Anaconda3-5.2.0-Linux-x86_64.sh  $SINGULARITY_ROOTFS
-    cp ${COMMON}/pycuda-2018.1.tar.gz $SINGULARITY_ROOTFS
+    cp common_env.sh ${SINGULARITY_ROOTFS}
+    . ./common_env.sh
+    cp upload/MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}.tgz  $SINGULARITY_ROOTFS
+    cp upload/hpcx-${HPCX_VERSION}-${HPCX_ARCH}-MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}.tbz  $SINGULARITY_ROOTFS
+    cp upload/nccl_${NCCL_VERSION}+${NCCL_ARCH}.txz  $SINGULARITY_ROOTFS
+    cp upload/Anaconda3-${ANACONDA3_VERSION}-${ANACONDA3_ARCH}.sh  $SINGULARITY_ROOTFS
+    cp upload/pycuda-${PYCUDA_VERSION}.tar.gz $SINGULARITY_ROOTFS
+    cp upload/jupyter_notebook_config.py  $SINGULARITY_ROOTFS
+	cat ./common_env.sh >> ${SINGULARITY_ROOTFS}/.singularity.d/env/90-environment.sh
 
 %help
     NVidia GPU Singularity Container with Common Packages
     Maintainer: Stephen Fleischman
 
 %environment
-    unset XDG_RUNTIME_DIR
     export CUDA_DIR=/usr/local/cuda
-    export HPCX_DIR=/opt/hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64
-    export HPCX_MPI_DIR=${HPCX_DIR}/ompi-v3.0.x
-    export HPCX_IPM_DIR=${HPCX_MPI_DIR}/tests/ipm-2.0.6
-#    # No version specific specifications below this line.
+    export HPCX_DIR=/opt/hpcx-${HPCX_VERSION}-${HPCX_ARCH}-MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}
+    export HPCX_MPI_DIR=${HPCX_DIR}/ompi-${OMPI_VERSION}
+    export HPCX_IPM_DIR=${HPCX_MPI_DIR}/tests/ipm-${IPM_VERSION}
     export HPCX_IPM_LIB=${HPCX_IPM_DIR}/lib/libipm.so
     export HPCX_BUPC_DIR=${HPCX_DIR}/bupc
     export HPCX_IBPROF_LIB=${HPCX_DIR}/ibprof/lib/libibprof.so
@@ -45,22 +44,26 @@ FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
     export OSHMEM_HOME=${HPCX_MPI_DIR}
     export LD_LIBRARY_PATH=${HPCX_DIR}/mxm/lib:${HPCX_UCX_DIR}/lib:${HPCX_SHARP_DIR}/lib:${HPCX_HCOLL_DIR}/lib:${HPCX_MPI_DIR}/lib
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${CUDA_DIR}/lib64:${CUDA_DIR}/extras/CUPTI/lib64
-    export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/.singularity.d/libs:/usr/lib/x86_64-linux-gnu
+    export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/.singularity.d/libs:/usr/lib/x86_64-linux-gnu:/usr/local/lib
     export PATH=/opt/anaconda3/bin:${HPCX_DIR}/bupc/bin:${HPCX_DIR}/hcoll/bin:${HPCX_DIR}/ucx/bin:${HPCX_DIR}/mxm/bin
     export PATH=${PATH}:${HPCX_MPI_DIR}/bin:${CUDA_DIR}/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
     export CPATH=${HPCX_MPI_DIR}/include:${HPCX_UCX_DIR}/include:${HPCX_SHARP_DIR}/include:${HPCX_MXM_DIR}/include:${HPCX_HCOLL_DIR}/include
     export JUPYTER_CONFIG_DIR=/.jupyter
+    export export LC_ALL=C
 
 %post
-
-    ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
-    export LD_LIBRARY_PATH=/host-libs:/usr/local/cuda/extras/CUPTI/lib64:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs
+    . /common_env.sh
+    export LD_LIBRARY_PATH=/host-libs:/usr/local/cuda/extras/CUPTI/lib64:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs:/usr/local/lib
     export PATH=/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-    export MOFED_DIR=/MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64
-    export MOFED_SITE_PLACE=MLNX_OFED-4.2-1.2.0.0
-    export MOFED_IMAGE=/MLNX_OFED_LINUX-4.2-1.2.0.0-ubuntu16.04-x86_64.tgz
-    export HPCX_TBZ=/hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64.tbz
-    export ANACONDA_INSTALLER=/Anaconda3-5.2.0-Linux-x86_64.sh
+    export MOFED_DIR=/MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}
+    export MOFED_SITE_PLACE=MLNX_OFED-${OFED_VERSION}
+    export MOFED_IMAGE=/MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}.tgz
+    export HPCX_TBZ=/hpcx-${HPCX_VERSION}-${HPCX_ARCH}-MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}.tbz
+    export ANACONDA_INSTALLER=/Anaconda3-${ANACONDA3_VERSION}-${ANACONDA3_ARCH}.sh
+    export NCCL_TGZ=/nccl_${NCCL_VERSION}+${NCCL_ARCH}.txz
+    export PYCUDA=pycuda-${PYCUDA_VERSION}
+    export PYCUDA_TGZ=/${PYCUDA}.tar.gz
+
 
     # Set up our notebook config.
     mkdir -p /.jupyter && mv /jupyter_notebook_config.py /.jupyter && chmod 777 /.jupyter && echo $(ls /.jupyter)
@@ -69,7 +72,8 @@ FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
     export PATH=/opt/anaconda3/bin:$PATH
     python3 -m pip install --upgrade pip
     python3 -m pip --no-cache-dir install pydot birdseye parallel-ssh mock
-
+    # Cool stuff
+    conda install -c conda-forge jupyterlab
 
     apt-get update 
     apt-get install -y --no-install-recommends \
@@ -79,6 +83,7 @@ FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
             cmake \
             curl \
             environment-modules \
+            firefox \
             gdb \
             git \
             hwloc \
@@ -123,6 +128,7 @@ FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
             unzip \
             vim \
             wget \
+            xfonts-base xfce4 xfce4-goodies tightvncserver \
             zip \
             zlib1g-dev
     apt-get clean
@@ -133,16 +139,17 @@ FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
     ${MOFED_DIR}/mlnxofedinstall --user-space-only --without-fw-update --all -q && cd /
     rm -rf ${MOFED_DIR} ${MOFED_IMAGE}
     # Install Mellanox HPCX SDK
-    cd /opt &&  tar xjf ${HPCX_TBZ} && rm -f ${HPCX_TBZ}
+    ls /
+    echo "HPCX_TBZ: $HPCX_TBZ"
+    cd /opt &&  tar xjf ${HPCX_TBZ} && rm ${HPCX_TBZ}
 
     ## Put NCCL in one place
-    cd /usr/local && tar xvf /nccl_2.2.13-1+cuda9.2_x86_64.txz && rm /nccl_2.2.13-1+cuda9.2_x86_64.txz
+    cd /usr/local && tar xvf $NCCL_TGZ && rm $NCCL_TGZ
 
     #pycuda
     cd /opt
-    tar xvzf /pycuda-2018.1.tar.gz && rm /pycuda-2018.1.tar.gz
-    cd pycuda-2018.1
-    python setup.py install
+    tar xvzf $PYCUDA_TGZ && rm $PYCUDA_TGZ
+    cd $PYCUDA && python setup.py install && cd .. && rm -rf $PYCUDA
     
 
     ldconfig
