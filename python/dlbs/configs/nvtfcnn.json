@@ -1,0 +1,93 @@
+{
+  "parameters": {
+    "nvtfcnn.launcher": {
+      "val": "${DLBS_ROOT}/scripts/launchers/nvtfcnn.sh",
+      "type": "str",
+      "desc": "Path to script that launches NVTFCNN benchmarks."
+    },
+    "nvtfcnn.python_path": {
+      "val": "${DLBS_ROOT}/python/nvtfcnn_benchmarks",
+      "type": "str",
+      "desc": "Path to a NVCNN benchmarks python folder. Depends on if bare metal/docker based benchmark is requested."
+    },
+    "nvtfcnn.env": {
+      "val": [
+        "${runtime.EXPORT_CUDA_CACHE_PATH}",
+        "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}"
+      ],
+      "type": "str",
+      "desc": "Environmental variables to set for NVTFCNN benchmarks."
+    },
+    "nvtfcnn.docker_image": {
+      "val": "nvcr.io/nvidia/tensorflow:18.07-py3",
+      "type": "str",
+      "desc": "The name of a docker image to use for PyTorch if containerized benchmark is requested."
+    },
+    "nvtfcnn.mpi_args": {
+      "val": "--allow-run-as-root --bind-to socket -np ${exp.num_gpus}",
+      "type": "str",
+      "desc": "In case if containerized benchmarks, this are the docker parameters."
+    },
+    "nvtfcnn.data_dir": {
+      "val": "",
+      "type": "str",
+      "desc": "A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline)."
+    },
+    "nvtfcnn.model_file": {
+      "val": "",
+      "type": "str",
+      "desc": "Model file name without py extension."
+    },
+    "nvtfcnn.model_args": {
+      "val": "",
+      "type": "str",
+      "desc": "Model file name without py extension."
+    },
+    "nvtfcnn.args": {
+      "val": [
+        "$('' if '${exp.data_dir}' == '' else '${exp.data_dir}')$",
+        "--precision=$('fp16' if '${exp.dtype}' == 'float16' else 'fp32')$",
+        "--log_dir=/tmp/nvtfcnn",
+        "--batch_size=${exp.replica_batch}",
+        "--num_iter=$(${exp.num_warmup_batches} + ${exp.num_batches})$",
+        "--iter_unit=batch",
+        "${nvtfcnn.model_args}"
+      ],
+      "type": "str",
+      "desc": "NVTFCNN script parameters."
+    },
+    "nvtfcnn.docker_args": {
+      "val": [
+        "-i",
+        "--security-opt seccomp=unconfined",
+        "--pid=host",
+        "--ipc=host",
+        "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
+        "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
+        "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
+        "${exp.docker_args}",
+        "${exp.docker_image}"
+      ],
+      "type": "str",
+      "desc": "In case if containerized benchmarks, this are the docker parameters."
+    }
+  },
+  "extensions": [
+    {
+      "condition":{"exp.framework": "nvtfcnn", "exp.model": "alexnet_owt"},
+      "parameters": {"nvtfcnn.model_file": "alexnet"}
+    },
+    {
+      "condition":{"exp.framework": "nvtfcnn", "exp.model": ["googlenet", "overfeat", "xception"]},
+      "parameters": {"nvtfcnn.model_file": "${exp.model}"}
+    },
+    {
+      "condition":{"exp.framework": "nvtfcnn", "exp.model": "inception(3|4)"},
+      "parameters": {"nvtfcnn.model_file": "inception_v${__condition.exp.model_1}"}
+    },
+    {
+      "condition":{"exp.framework": "nvtfcnn", "exp.model": "(vgg|resnet)([0-9]+)"},
+      "parameters": {"nvtfcnn.model_file": "${__condition.exp.model_1}", "nvtfcnn.model_args": "--layers=${__condition.exp.model_2}"}
+    }
+  ]
+}
