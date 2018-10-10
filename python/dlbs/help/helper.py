@@ -65,6 +65,7 @@ class Helper(object):
                                                                        search with this regexps in all parameters descriptions.")
         parser.add_argument('--frameworks', nargs='*', required=False, help="Show help for these frameworks. It'll report the most commonly used parameters.\
                                                                              If empty, list of supported framework is printed.")
+        parser.add_argument("--no-colors", default=False, action="store_true" , help="If your terminal does not support colors, use this switch to disable colored output.")
         args = parser.parse_args()
 
         if args.params is None and args.text is None and args.frameworks is None:
@@ -73,15 +74,49 @@ class Helper(object):
             assert args.frameworks is None, "The '--frameworks' argument must not be used with '--params' or '--text' arguments."
 
         if args.frameworks is not None and len(args.frameworks) == 0:
-            print ("Supported frameworks:")
-            print ("\ttensorflow")
-            print ("\tbvlc_caffe")
-            print ("\tnvidia_caffe")
-            print ("\tintel_caffe")
-            print ("\tcaffe2")
-            print ("\tmxnet")
-            print ("\tpytorch")
-            print ("\ttensorrt")
+            red =  '\33[91m'   # Framework name Color
+            grn =  '\33[32m'   # Benchmark backend Color
+            yellow = '\33[33m'   # Containers names
+            def colr(txt, colr):
+                return txt if args.no_colors else colr + txt + '\33[0m'
+
+            help_msg = (
+                colr("    TensorFlow\n", red) + 
+                colr("        nvtfcnn", grn) + "           Highly optimized benchmark backend that provides best results on multi-GPU machines.\n"
+                                "                          This backend must be used for best performance.\n" +
+                                "                          NGC container: " + colr("nvcr.io/nvidia/tensorflow:18.07-py3\n", yellow) +
+                colr("        nvcnn", grn) + "             Previous version of the 'nvtfcnn' benchmark backend.\n" +
+                                "                          NGC container: " + colr("nvcr.io/nvidia/tensorflow:18.04-py3\n", yellow) +
+                colr("        tensorflow", grn) + "        Google's TF_CNN_BENCHMARKS project. Will not provide very good performance with 8 GPUs.\n" +
+                                "                          Reference DLBS container: " + colr("hpe/tensorflow:cuda9-cudnn7\n", yellow) +
+                colr("    Caffe\n", red) + 
+                colr("        bvlc_caffe", grn) + "        Benchmarks based on original BVLC Caffe implementation.\n" +
+                                "                          Reference DLBS container: " + colr("hpe/bvlc_caffe:cuda9-cudnn7\n", yellow) +
+                colr("        nvidia_caffe", grn) + "      Benchmarks based on NVIDIA's version of BVLC Caffe.\n" +
+                                "                          NGC container: " + colr("nvcr.io/nvidia/caffe:18.05-py2\n", yellow) +
+                colr("        intel_caffe", grn) + "       Intel's version of BVLC Caffe suitable for CPUs.\n" +
+                                "                          Reference DLBS container: " + colr("hpe/intel_caffe:cuda9-cudnn7\n", yellow) +
+                colr("    Caffes\n", red) + 
+                colr("        caffe2", grn) +  "            Default benchmark backend for Caffe2 framework.\n" +
+                                 "                          NGC container: " + colr("nvcr.io/nvidia/caffe2:18.05-py2\n", yellow) +
+                colr("    MXNET\n", red) + 
+                colr("        mxnet", grn) +  "             Default benchmark backend for MXNET framework.\n" +
+                                 "                          NGC container: " + colr("nvcr.io/nvidia/mxnet:18.05-py2\n", yellow) +
+                colr("    PyTorch\n", red) + 
+                colr("        pytorch", grn) + "           Default benchmark backend for PyTorch framework.'\n" +
+                                "                          NGC container: " + colr("nvcr.io/nvidia/pytorch:18.06-py3\n", yellow) +
+                colr("    TensorRT\n", red) + 
+                colr("        tensorrt", grn) +  "          Default benchmark backend for TensorRT inference engine.\n" +
+                                 "                          DLBS container: " + colr("dlbs/tensorrt:18.10\n", yellow) +
+                "\n"
+                "Benchmark backends are specified with exp.framework parameter. For instance, to run benchmarks with fastest TensorFlow\n"
+                "backend, provide the following:\n"
+                "    CLI:  -Pexp.framework='\"nvtfcnn\"'\n"
+                "    JSON: \"exp.framework\": \"nvtfcnn\"\n"
+            )
+            if not args.no_colors:
+                print("\n(if your terminal does not support colors, rerun me with --no-colors switch)\n")
+            print(help_msg)
             print ("Usage: python %s help --frameworks [FRAMEWORK [FRAMEWORK ...]]" % (sys.argv[0]))
             return
 
