@@ -34,7 +34,7 @@ from __future__ import print_function
 import argparse
 import json
 from collections import defaultdict
-import dlbs.python_version   # pylint: disable=unused-import
+#import dlbs.python_version   # pylint: disable=unused-import
 from dlbs.utils import DictUtils
 
 

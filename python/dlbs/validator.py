@@ -38,6 +38,7 @@ import subprocess
 import string
 import copy
 from collections import defaultdict
+import sys
 #Python 2,3 interop.
 if sys.version_info[0] == 3:
     basestring=str

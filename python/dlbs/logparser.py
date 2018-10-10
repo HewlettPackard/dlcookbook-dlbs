@@ -70,7 +70,7 @@ import json
 import argparse
 import gzip
 import math
-import dlbs.python_version   # pylint: disable=unused-import
+#import dlbs.python_version   # pylint: disable=unused-import
 from dlbs.utils import DictUtils
 from dlbs.utils import IOUtils
 from dlbs.processor import Processor

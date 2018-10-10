@@ -42,7 +42,8 @@
       "desc": [
         "The backend or benchmark harness script to benchmark. ",
         "Supported backends: 'tf_cnn_benchmarks', 'nvcnn', 'nvcnn_hvd', 'caffe2', 'mxnet', 'tensorrt', 'caffe", "nvtfcnn",
-        "Currently required for TensorFlow backends."
+        "Currently required for TensorFlow backends.",
+        "All Caffe forks use the same backend."
       ]
     },
     "exp.framework": {
@@ -66,8 +67,7 @@
       "type": "str",
       "desc": [
         "A framework family identifier. In most situations this is the same as a framework identifier ('exp.framework'). For Caffe's forks",
-        "(bvlc, nvidia and intel) it is 'caffe'. This parameter is used to identify what launcher is responsible for",
-        "running benchmarks. All Caffe's forks share the same launcher."
+        "(bvlc, nvidia and intel) it is 'caffe'."
       ]
     },
     "exp.framework_ver": {
@@ -86,7 +86,7 @@
         "For Caffe it must be supplied."
       ]
     },
-    "exp.framework_commit": {
+	"exp.framework_commit": {
       "val":  "",
       "type": "str",
       "desc": [

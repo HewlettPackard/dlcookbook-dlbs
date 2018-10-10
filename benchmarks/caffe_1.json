@@ -35,7 +35,7 @@
         "exp.replica_batch" : [64],
         "exp.gpus" : ["0"],
         "exp.trial" : [0],
-        "exp.model" : ["googlenet"],
+        "exp.model" : ["alexnet"],
         "exp.dtype" : ["float32"],
         "exp.data" : ["synthetic"]
     },

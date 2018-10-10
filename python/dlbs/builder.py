@@ -90,7 +90,7 @@ class Builder(object):
         plan = []
         # Get order of variables in experiments
         # These are all variables that we will vary
-        var_keys = config['variables'].keys()
+        var_keys = list(config['variables'].keys())
         # Filter oder of those variables - remove ones that we do not actually have
         if 'sys.plan_builder.var_order' in config['parameters']:
             var_order = [k for k in config['parameters']['sys.plan_builder.var_order'] if k in var_keys]

@@ -138,7 +138,8 @@ class Processor(object):
                 #exit(0)
 
             # We need to remove all internal temp variables
-            for name in experiment.keys():
+            experiment_copy=experiment.copy()
+            for name in list(experiment.keys()):
                 if name.startswith('__dlbs_'):
                     experiment.pop(name)
 
