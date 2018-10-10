@@ -74,6 +74,10 @@ import dlbs.python_version   # pylint: disable=unused-import
 from dlbs.utils import DictUtils
 from dlbs.utils import IOUtils
 from dlbs.processor import Processor
+#Python 2,3 interop.
+if sys.version_info[0] == 3:
+    basestring=str
+    long=int
 
 class LogParser(object):
     """Parser for log files produced by Deep Learning Benchmarking Suite."""

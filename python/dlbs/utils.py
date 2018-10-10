@@ -31,6 +31,7 @@ from dlbs.exceptions import ConfigurationError
 if sys.version_info[0] == 3:
     basestring=str
     long=int
+    xrange=range
 
 def param2str(val):
     """Convert value val of some benchmark parameter to a string."""

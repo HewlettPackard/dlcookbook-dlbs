@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys
-import datetime, time
+from datetime import datetime
 import shlex
 import re
 import os
@@ -8,6 +8,8 @@ import traceback
 import subprocess
 import fnmatch
 from functools import partialmethod
+from shutil import copyfile
+import enum
 
 class launcherutils(object):
     def __init__(self,cmd_args):
@@ -25,7 +27,7 @@ class launcherutils(object):
         #This will raise an error that we aren't catching if it fails.
         self.assert_not_docker_and_singularity(self.logfatal)
         # If simulate we just want to eventually create and print the script without testing.
-        if self.vdict['exp_status'] == 'simulate': return
+        if 'exp_status' in self.vdict and self.vdict['exp_status'] == 'simulate': return
         self.docker=False
         self.singularity=False
         if self.test_for_true('exp_singularity',self.logfatal):
@@ -40,6 +42,7 @@ class launcherutils(object):
                                                 self.vdict['exp_framework'],
                                                 self.vdict['exp_device_type'],
                                                 self.vdict['exp_model']))
+        print('__batch_file__: ',self.__batch_file__)
         if not self.is_batch_good():
             self.report_and_exit("skipped",
                "The replica batch size ({exp_replica_batch}) is too large for given SW/HW configuration.".format(
@@ -192,3 +195,83 @@ class launcherutils(object):
                     result.append(os.path.join(root,name))
         return result
 
+    @staticmethod
+    def sed(infile,outfile=None,pats=None,count=0,flags=0):
+        with open(infile,'r') as r: lines=r.readlines()
+        for i,l in enumerate(lines):
+            for from_pat,to_pat in pats:
+                l=re.sub(from_pat,to_pat,l,count=count,flags=flags)
+                lines[i]=l
+    
+        if outfile is None: outfile=infile
+        with open(outfile,'w') as w:
+            for l in lines: w.write(l)
+    @staticmethod
+    def remove_files(files,silent=True):
+        for file in files:
+            try: os.remove(file)
+            except Exception as e:
+                if e.errno == 2:
+                    pass
+                else:
+                    co.logfatal('remove_files: file "{}" was not removed.'.format(file))
+                    #print('remove_files: file "{}" was not removed. Errno: {}'.format(file,e.errno))
+                    raise(e)
+            else:
+                if not silent: print("removed {}".format(file))
+    @staticmethod
+    def copy_files(file_tuples):
+        for from_file, to_file in file_tuples:
+            try:
+                copyfile(from_file, to_file)
+            except Exception as e:
+                report_and_exit("failure",'Cannot copy "{from_file}" to "{to_file}"'.\
+                    format(from_file=from_file,to__file=to__file))
+                raise(e)
+
+    @staticmethod
+    def gettimestamp(s,fmt="%m%d %H:%M:%S.%f",needyear=True):
+        try:
+            t=datetime.strptime(s, fmt)
+            if needyear: 
+                y=datetime.now().year
+            else:
+                y=t.year
+            ts=datetime(y,t.month,t.day,t.hour,t.minute,t.second,t.microsecond)
+            ts=ts.timestamp()
+        except Exception:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
+            raise
+
+        return ts
+
+    class GrepRet(enum.Enum):
+        first=enum.auto()
+        last=enum.auto()
+        all=enum.auto()
+    
+    @staticmethod
+    def grep(file=None, pat=None, group=0, split=None, splitOn=' ', occurence=GrepRet.first):
+        fn=file.name
+        print('grep fn: {}, pat {}'.format(fn,pat))
+        file.close()
+        with open(fn,'r') as file:
+            found=[]
+            for l in file:
+                m=re.search(pat,l)
+                if m:
+                    if group==0:
+                       f=l.strip()
+                    else:
+                       f=m.group(group).strip()
+                    if split is not None:
+                       f=f.split(splitOn)[split-1]
+                    found.append(f)
+                    if occurence==launcherutils.GrepRet.first: break
+        file.close()
+        file=open(fn,'a')
+        if len(found)==0: return None,file
+        elif occurence==launcherutils.GrepRet.first: return found[0],file
+        elif occurence==launcherutils.GrepRet.last: return found[-1],file
+        else: return found,file

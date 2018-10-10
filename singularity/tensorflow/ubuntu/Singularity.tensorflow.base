@@ -26,14 +26,13 @@ FROM: tensorflow-1.11.0-prelim.img
 
 %post
     . /common_env.sh
-    export PATH=/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/anaconda3/bin:$PATH
+    export PATH=/opt/anaconda3/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
     apt-get install libibverbs-dev
     # Update when hardware changes - not sure if this should be hardwired here.
     export TF_CUDA_COMPUTE_CAPABILITIES=3.0,3.5,3.7,5.2,6.0,6.1,7.0 
     export OFED=MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}
     export HPCX=hpcx-${HPCX_VERSION}-${HPCX_ARCH}-MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}
     export HPCX_MPI_DIR=/opt/${HPCX}/ompi-${OMPI_VERSION}
-    export PATH=/opt/anaconda3/bin:$PATH
     # Configure the build for our CUDA configuration.
     export CI_BUILD_PYTHON=/opt/anaconda3/bin/python
     export PYTHON_BIN_PATH=/opt/anaconda3/bin/python 

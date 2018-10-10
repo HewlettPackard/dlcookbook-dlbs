@@ -36,8 +36,8 @@
         "exp.gpus" : ["0"],
         "exp.trial" : [0],
         "exp.model" : ["googlenet"],
-        "exp.dtype" : ["float32","float16"],
-        "exp.data" : ["real","synthetic"]
+        "exp.dtype" : ["float32"],
+        "exp.data" : ["synthetic"]
     },
     "extensions" : [
         {"condition":{"exp.model" : "alexnet", "exp.replica_batch":[256,512]},"parameters":{"exp.status":""}},

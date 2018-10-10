@@ -20,6 +20,7 @@ import sys
 
 
 if sys.version_info.major != 2 and sys.version_info.minor != 7:
-    print ("The DLBS supports 2.7 python. Your version is %d.%d.%d" % \
-              (sys.version_info.major, sys.version_info.minor, sys.version_info.micro))
-    sys.exit()
+    pass
+#    print ("The DLBS supports 2.7 python. Your version is %d.%d.%d" % \
+#              (sys.version_info.major, sys.version_info.minor, sys.version_info.micro))
+#    sys.exit()

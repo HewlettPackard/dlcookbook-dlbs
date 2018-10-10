@@ -38,6 +38,11 @@ import subprocess
 import string
 import copy
 from collections import defaultdict
+#Python 2,3 interop.
+if sys.version_info[0] == 3:
+    basestring=str
+    long=int
+
 
 class Validator(object):
     """ Validates plan for various errors like log files collision, availability

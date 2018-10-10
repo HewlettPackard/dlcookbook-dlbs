@@ -6,7 +6,7 @@
             "desc": "All Caffe forks have the same family."
         },
         "caffe.launcher": {
-            "val": "${DLBS_ROOT}/scripts/launchers/caffe.sh",
+            "val": "${DLBS_ROOT}/scripts/launchers/caffe.py",
             "type": "str",
             "desc": "Path to script that launches Caffe benchmarks."
         },
