@@ -129,7 +129,6 @@
     "exp.data": {
       "val":  "$('synthetic' if '${exp.data_dir}' == '' else 'real')$",
       "type": "str",
-      "val_domain": ["synthetic", "real"],
       "desc": [
         "Indicator if real or synthetic data was used in experiment. Real data means the presence of input injection pipeline",
         "synthetic data means no injection pipeline. Input tensors are initialized with random numbers. The data specificatio is usually a",
@@ -281,7 +280,7 @@
       "desc": ["Docker image to use for current benchmark. Must exist in the system."]
     },
     "exp.docker_args": {
-      "val": "--rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864",
+      "val": "--rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host",
       "type": "str",
       "desc": [
         "Additional arguments to pass to docker, for instance, '--ipc=host' or '--privileged'.",

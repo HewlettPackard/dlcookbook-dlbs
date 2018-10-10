@@ -55,3 +55,6 @@ Some of the components of this project are derived/inspired from/by the followin
 
 14. Caffe's InceptionV4 descriptors are based on this deployment config:
     https://github.com/soeaver/caffe-model/blob/master/cls/inception/deploy_inception-v4.prototxt
+
+15. A large number of optimization tricks have been borrowed from NVIDIA's docker containers from
+    NGC.

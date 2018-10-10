@@ -69,27 +69,27 @@
     },
     "pytorch.args": {
       "val": [
-        "--model=${exp.model}",
-        "--forward_only=$('true' if '${exp.phase}'=='inference' else 'false')$",
-        "--batch_size=${exp.replica_batch}",
-        "--num_batches=${exp.num_batches}",
-        "--num_warmup_batches=${exp.num_warmup_batches}",
-        "--num_gpus=${exp.num_local_gpus}",
-        "--device=${exp.device_type}",
-        "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
-        "--data_backend=${pytorch.data_backend}",
-        "--data_shuffle=$('true' if ${pytorch.data_shuffle} else 'false')$",
-        "--num_loader_threads=${pytorch.num_loader_threads}",
-        "--dtype=${exp.dtype}",
-        "--cudnn_benchmark=$('true' if ${pytorch.cudnn_benchmark} else 'false')$",
-        "--cudnn_fastest=$('true' if ${pytorch.cudnn_fastest} else 'false')$",
-        "--data_loader_only=$('true' if ${pytorch.data_loader_only} is True else 'false')$"
+        "--model ${exp.model}",
+        "--forward_only $('true' if '${exp.phase}'=='inference' else 'false')$",
+        "--batch_size ${exp.replica_batch}",
+        "--num_batches ${exp.num_batches}",
+        "--num_warmup_batches ${exp.num_warmup_batches}",
+        "--device ${exp.device_type}",
+        "$('' if not '${exp.data_dir}' else '--data_dir ${exp.data_dir}' if ${exp.docker} is False else '--data_dir /workspace/data')$",
+        "--data ${exp.data}",
+        "--data_backend ${pytorch.data_backend}",
+        "--data_shuffle $('true' if ${pytorch.data_shuffle} else 'false')$",
+        "--num_loader_threads ${pytorch.num_loader_threads}",
+        "--dtype ${exp.dtype}",
+        "--cudnn_benchmark $('true' if ${pytorch.cudnn_benchmark} else 'false')$",
+        "--cudnn_fastest $('true' if ${pytorch.cudnn_fastest} else 'false')$",
+        "--data_loader_only $('true' if ${pytorch.data_loader_only} is True else 'false')$"
       ],
       "type": "str",
       "desc": "Command line arguments that launcher will pass to a pytorch_benchmarks script."
     },
     "pytorch.docker_image": {
-      "val": "hpe/pytorch:cuda9-cudnn7",
+      "val": "nvcr.io/nvidia/pytorch:18.06-py3",
       "type": "str",
       "desc": "The name of a docker image to use for PyTorch if containerized benchmark is requested."
     },

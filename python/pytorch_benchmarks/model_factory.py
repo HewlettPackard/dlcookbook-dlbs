@@ -23,11 +23,16 @@ To list supported models, run the following code:
 >>> print(ModelFactory.models.keys())
 """
 from __future__ import absolute_import
-from builtins import str
 import glob
 import os
 import importlib
 import inspect
+from six import string_types
+
+
+# Disable for entire file "Too few public methods warning"
+# pylint: disable=R0903
+
 
 def import_models():
     """Scans **./models** folder and imports models.
@@ -49,13 +54,14 @@ def import_models():
             if not model_cls or not inspect.isclass(model_cls) or not hasattr(model_cls, 'implements'):
                 continue
             implements = getattr(model_cls, 'implements')
-            if isinstance(implements, str):
+            #if isinstance(implements, str):
+            if isinstance(implements, string_types):
                 implements = [implements]
             assert isinstance(implements, list), "The 'implements' static member must be either a string or a list of strings"\
                                                  "Error in %s:%s class definition" % (fname, model_cls.__name__)
             for model_id in implements:
-                assert isinstance(model_id, str), "The 'implements' static member must be either a string or a list of strings"\
-                                                         "Error in %s:%s class definition" % (fname, model_cls.__name__)
+                assert isinstance(model_id, string_types), "The 'implements' static member must be either a string or a list of strings"\
+                                                           "Error in %s:%s class definition" % (fname, model_cls.__name__)
                 assert model_id not in models, "Model %s implements same model as %s (%s)" % (model_cls.__name__, models[model_id].__name__, model_id)
                 models[model_id] = model_cls
     return models

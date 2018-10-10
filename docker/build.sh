@@ -51,6 +51,7 @@ Optional arguments:\n\
                            different frameworks. As we update all frameworks, this update message will\n\
                            be removed. Frameworks benchmark backends that support new prefix:\n\
                                - TensorRT\n\
+                               - PyTorch\n\
                            ----------------------------------------------------------------------\n\
   --version COMMIT         If supported by a docker file, framework COMMIT to clone from github.\n\
                            Default value is taken from 'versions' file located in this directory.\n\
@@ -129,7 +130,7 @@ for dockerfile_dir in "$@"; do
     # Sergey: this code will be removed once all frameworks use new image prefix 'dlbs'
     # If prefix was not provided by a user, set it here.
     if [ "${prefix}XXX" == "XXX" ]; then
-        if [ "${name}" == "tensorrt" ]; then
+        if [ "${name}" == "tensorrt" ] || [ "${name}" == "pytorch" ]; then
             prefix=dlbs
         else
             prefix=hpe

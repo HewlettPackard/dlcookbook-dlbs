@@ -15,11 +15,22 @@ is_batch_good "${__batch_file__}" "${exp_replica_batch}" || {
 }
 # This script is to be executed inside docker container or on a host machine.
 # Thus, the environment must be initialized inside this scrip lazily.
+if [ "${exp_num_gpus}" == "1" ]; then
+    bench_launcher=""
+else
+    if [ "${exp_device_type}" == "gpu" ]; then
+        bench_launcher="-m torch.distributed.launch --nproc_per_node=${exp_num_local_gpus}"
+    else
+        bench_launcher="-m torch.distributed.launch --nproc_per_node=1"
+    fi
+fi
+
 [ -z "${runtime_launcher}" ] && runtime_launcher=":;"
+
 script="\
     export ${pytorch_env};\
     echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-    ${runtime_launcher} ${runtime_python} ${pytorch_bench_path}/pytorch_benchmarks/benchmarks.py ${pytorch_args} &\
+    ${runtime_launcher} ${runtime_python} ${bench_launcher} ${pytorch_bench_path}/pytorch_benchmarks/benchmarks.py ${pytorch_args} &\
     proc_pid=\$!;\
     [ \"${monitor_frequency}\" != \"0\" ] && echo -e \"\${proc_pid}\" > ${monitor_backend_pid_folder}/proc.pid;\
     wait \${proc_pid};\
@@ -32,9 +43,3 @@ if [ "${exp_docker}" = "true" ]; then
 else
     eval $script >> ${exp_log_file} 2>&1
 fi
-
-#if mxnet_error ${exp_log_file} ${exp_phase}; then
-#    logwarn "error in \"${exp_log_file}\" with effective batch ${exp_effective_batch} (replica batch ${exp_replica_batch})";
-#    update_error_file "${__batch_file__}" "${exp_replica_batch}";
-#    echo "__exp.status__=\"failure\"" >> ${exp_log_file}
-#fi
