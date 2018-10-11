@@ -185,7 +185,7 @@ class Validator(object):
                 break
         else:
             stats['num_host_exps'] += 1
-            self.check_host_backend(experiment['exp.backend'], experiment['{}.env'.format(experiment['exp.backend_family'])], experiment['runtime.python'])
+            self.check_host_backend(experiment['exp.backend'], experiment['{}.env'.format(experiment['exp.backend'])], experiment['runtime.python'])
         # Update CPU/GPU stats
         if 'exp.device_type' not in experiment: experiment['exp.device_type']= 'cpu'
         if experiment['exp.device_type'] == 'gpu':

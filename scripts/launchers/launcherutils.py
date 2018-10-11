@@ -42,14 +42,13 @@ class launcherutils(object):
                                                 self.vdict['exp_framework'],
                                                 self.vdict['exp_device_type'],
                                                 self.vdict['exp_model']))
-        print('__batch_file__: ',self.__batch_file__)
         if not self.is_batch_good():
             self.report_and_exit("skipped",
                "The replica batch size ({exp_replica_batch}) is too large for given SW/HW configuration.".format(
                     exp_replica_batch=self.vdict['exp_replica_batch']))
 
     def logfileout(self, logtype, s):
-        timestamp=datetime.datetime.now().strftime('%m-%d-%Y %H:%M:%S')
+        timestamp=datetime.now().strftime('%m-%d-%Y %H:%M:%S')
         s=s.strip()
         print('{} [{}] {}'.format(timestamp,logtype,s),file=self.logfile)
     
@@ -81,7 +80,8 @@ class launcherutils(object):
         if len(s)>0:
            return True
         else:
-           self.logfatal('The Docker image "{}" does not exist locally, pull it from a hub or build it manually'.format(image))
+           self.logfatal('The Docker image "{}" does not exist locally, pull it from a hub or build it manually'.\
+                           format(self.vdict['exp_docker_image']))
            raise ValueError()
     
     def assert_singularity_image_exists(self):
@@ -178,7 +178,6 @@ class launcherutils(object):
         if self.vdict['exp_status']=='simulate':
             print(script)
             sys.exit(0)
-
         proc=subprocess.Popen(script,executable="/bin/bash",shell=True,stdout=self.logfile,stderr=self.logfile,bufsize=1,universal_newlines=False)
         proc.communicate()
 

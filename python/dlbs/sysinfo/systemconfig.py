@@ -34,6 +34,7 @@ python ./python/dlbs/experimenter.py sysinfo
 """
 from __future__ import print_function
 import subprocess
+import sys
 import os
 import re
 import shlex
@@ -113,6 +114,7 @@ class SysInfo(object):
                                        stdout=subprocess.PIPE,
                                        close_fds=True)
             output = process.communicate()[0][3:]
+            if isinstance(output,bytes): output=output.decode("utf-8")
         except OSError:
             return None
 
@@ -126,6 +128,7 @@ class SysInfo(object):
                 except ValueError as err:
                     logging.warn("INXI output parsing error on line: " + line)
                     logging.exception(err)
+                    sys.exit(-1)
         return inxi_info
 
     @staticmethod
@@ -183,7 +186,10 @@ class SysInfo(object):
                                        stdin=subprocess.PIPE,
                                        stdout=subprocess.PIPE,
                                        close_fds=True)
-            output = str(process.communicate()[0]).split('\n')
+            output = process.communicate()[0]
+            if isinstance(output,bytes): output=output.decode("utf-8")
+            output=output.split('\n')
+            
         except OSError:
             return None
 
@@ -205,6 +211,7 @@ class SysInfo(object):
                                        stdout=subprocess.PIPE,
                                        close_fds=True)
             output, _ = process.communicate()
+            if isinstance(output,bytes): output=output.decode("utf-8")
             output = output.split('\n')
             #print(output)
         except OSError:

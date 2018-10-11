@@ -283,7 +283,7 @@
           "$('CUDA_CACHE_DISABLE=0' if '${runtime.cuda_cache}' else '')$",
           "$('CUDA_CACHE_MAXSIZE=2147483648' if '${runtime.cuda_cache}' else '')$",
           "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}",
-          "LD_LIBRARY_PATH=$('${nvcnn_hvd.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$"
+          "LD_LIBRARY_PATH=$('${tensorflow.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$"
         ]
       }
     }

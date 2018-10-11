@@ -10,10 +10,19 @@
             "type": "str",
             "desc": "Path to script that launches Caffe benchmarks."
         },
+        "caffe.bench_path": {
+          "val": "$('${DLBS_ROOT}/python/${exp.backend}_benchmarks' if ${exp.docker} is False and ${exp.singularity} is False else '/workspace/${exp.backend}_benchmarks')$",
+          "type": "str",
+          "desc": "Path to a backend benchmarks python folder. Depends on if bare metal/docker based benchmark is requested."
+        },
         "caffe.env": {
-            "val": "${runtime.EXPORT_CUDA_CACHE_PATH}",
-            "type": "str",
-            "desc": "An string that defines export variables that's used to initialize environment for Caffe."
+          "val": [
+            "PYTHONPATH=${caffe.bench_path}",
+            "${runtime.EXPORT_CUDA_CACHE_PATH}",
+            "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}"
+          ],
+          "type": "str",
+          "desc": "Environmental variables to set for TensorFlow benchmarks."
         },
         "caffe.action": {
             "val": "$('train' if '${exp.phase}' == 'training' else 'time')$",
@@ -115,7 +124,7 @@
             "desc": "In case if containerized benchmarks, this are the docker parameters."
         },
         "caffe.host_path": {
-              "val": "${HOME}/projects/'${exp.framework_fork}'_caffe/build/tools",
+              "val": "${HOME}/projects/caffe_${exp.framework}_caffe/build/tools",
               "type": "str",
               "desc": "Path to a Caffe executable in case of a bare metal run."
               },
