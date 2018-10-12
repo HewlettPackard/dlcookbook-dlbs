@@ -32,6 +32,16 @@ def main():
         if parser_state == state.SEARCH:
             parser_state = state.PROCESS if re.match(header, line) else state.SEARCH
             continue
+        # 
+        if 'tensorflow' in line:
+            # This can be warning mesasges related to recoverable OOM errors:
+            #    2018-10-12 02:14:08.982901: W tensorflow/stream_executor/cuda/cuda_dnn.cc:3797]
+            #    2018-10-12 02:34:28.983848: W tensorflow/core/common_runtime/bfc_allocator.cc:219] Allocator  ...
+            continue
+        if 'results.end_time' in line:
+            # Safe way to stop processing
+            break
+        #
         line = line.split()
         if len(line) != 6:
             break
