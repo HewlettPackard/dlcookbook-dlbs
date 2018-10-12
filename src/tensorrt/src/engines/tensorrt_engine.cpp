@@ -70,9 +70,11 @@ tensorrt_inference_engine::tensorrt_inference_engine(const int engine_id, const 
     engine_ = nullptr;
     std::string engine_fname = "";
     if (!opts.calibrator_cache_path_.empty()) {
+        // resnet50_float16_128_v3.bin
+        const int major_version = get_tensorrt_major_version();
         engine_fname = fmt(
-            "%s/%s_engine_%s_%d.bin", opts.calibrator_cache_path_.c_str(), opts.model_id_.c_str(),
-                                      opts.dtype_.c_str(), opts.batch_size_
+            "%s/%s_%s_%d_v%d.bin", opts.calibrator_cache_path_.c_str(), opts.model_id_.c_str(),
+                                   opts.dtype_.c_str(), opts.batch_size_, major_version
         );
         timer clock;
         engine_ = load_engine_from_file(engine_fname, logger_);
@@ -183,7 +185,7 @@ void tensorrt_inference_engine::init_device() {
 
 
 void tensorrt_inference_engine::copy_input_to_gpu_asynch(inference_msg *msg ,cudaStream_t stream) {
-#ifdef HOST_DTYPE_SP32
+#ifdef HOST_DTYPE_FP32
     // Just copy data into TensorRT buffer.
     cudaCheck(cudaMemcpyAsync(
         bindings_[input_idx_],
@@ -215,7 +217,7 @@ void tensorrt_inference_engine::do_inference(abstract_queue<inference_msg*> &req
     }
     const std::string me = fmt("[inference engine %02d/%02d]", abs(engine_id_), num_engines_);
     logger_.log_info(me + ": Implementation version is latest");
-#ifdef HOST_DTYPE_SP32
+#ifdef HOST_DTYPE_FP32
     logger_.log_info(me + ": Will consume tensor<float> tensors.");
 #elif defined HOST_DTYPE_INT8
     logger_.log_info(me + ": Will consume tensor<unsigned char> tensors. Casting to 'float' will be done on GPU.");

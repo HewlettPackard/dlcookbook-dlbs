@@ -15,6 +15,17 @@
 */
 
 #include "engines/tensorrt/tensorrt_utils.hpp"
+#include <sstream>
+
+std::string get_tensorrt_version() {
+    std::ostringstream os;
+    os << NV_TENSORRT_MAJOR << "." << NV_TENSORRT_MINOR << "." << NV_TENSORRT_PATCH;
+    return os.str();
+}
+
+int get_tensorrt_major_version() {
+    return static_cast<int>(NV_TENSORRT_MAJOR);
+}
 
 void check_bindings(ICudaEngine* engine, const std::string& input_blob, const std::string output_blob, logger_impl& logger) {
     const auto nb = engine->getNbBindings();

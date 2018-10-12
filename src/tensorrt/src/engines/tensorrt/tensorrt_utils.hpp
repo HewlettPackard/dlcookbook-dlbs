@@ -24,6 +24,18 @@
 using namespace nvinfer1;
 
 /**
+ * @brief Return version of the TensorRT engine as string
+ * @return Version as MAJOR.MINOR.PATCH
+ */
+std::string get_tensorrt_version();
+
+/**
+ * @brief Return major version of the TensorRT  engine
+ * @return Major version, integer
+ */
+int get_tensorrt_major_version();
+
+/**
  * @brief Verifies that this engine has required input and output tensors.
  * 
  * If there are no such tensors, program will terminate.

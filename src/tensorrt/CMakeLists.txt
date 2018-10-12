@@ -4,7 +4,6 @@ project(TensorRT_Benchmarks)
 
 option(DEBUG_LOG "Enable detailed logging for some of the componenets." OFF)
 set(HOST_DTYPE "INT8" CACHE STRING "Data type to use to store images in host OS (INT8 or FP32 (=INT8))")
-set(TENSORRT_VERSION "3" CACHE STRING "Version of TensorRT library (3 or 5 (=3))")
 
 # Following preprocessor variables can be defined: HAVE_CUDA, HAVE_NVINFER, HAVE_OPENCV
 find_package(Boost REQUIRED COMPONENTS program_options)
@@ -23,7 +22,7 @@ endif()
 
 include_directories(src)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-set(CMAKE_BUILD_TYPE Release CACHE STRING)
+set(CMAKE_BUILD_TYPE Release CACHE STRING "Release or Debug mode.")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 message("Configuring TensorRT benchmark backend in ${CMAKE_BUILD_TYPE} mode.")
@@ -52,13 +51,6 @@ else()
     message(FATAL_ERROR "Invalid value for HOST_DTYPE (=${HOST_DTYPE}). Must be INT8 or FP32.")
 endif()
 message("Configuring TensorRT benchmark backend with ${HOST_DTYPE} data type.")
-
-if("x${TENSORRT_VERSION}" STREQUAL "x3" OR "x${TENSORRT_VERSION}" STREQUAL "x5")
-    add_definitions(-DTENSORRT_VERSION=${TENSORRT_VERSION})
-else()
-    message(FATAL_ERROR "Invalid value for TENSORRT_VERSION (=${TENSORRT_VERSION}). Must be 3 or 5.")
-endif()
-message("Configuring TensorRT benchmark backend with TensorRT version ${TENSORRT_VERSION}.")
 # -------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------------------------

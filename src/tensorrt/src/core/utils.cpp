@@ -349,7 +349,7 @@ ssize_t reader::read(host_dtype* dest, const size_t count) {
 }
 
 void reader::allocate_if_needed(const size_t count) {
-#if defined HOST_DTYPE_SP32
+#if defined HOST_DTYPE_FP32
     // To convert from unsigned char in files to SP32 in host memory
     if (dtype_ == "uchar" && buffer_.size() != count) {
         buffer_.resize(count);

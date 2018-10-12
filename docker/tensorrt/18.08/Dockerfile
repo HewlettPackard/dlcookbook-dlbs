@@ -23,6 +23,8 @@ RUN dpkg -i /${TENSORRT_PACKAGE} && \
         cmake \
         git \
         wget \
+        doxygen \
+        graphviz \
         libprotobuf-dev \
         protobuf-compiler \
         tensorrt \
@@ -30,7 +32,6 @@ RUN dpkg -i /${TENSORRT_PACKAGE} && \
         uff-converter-tf \
         libboost-program-options-dev \
         libopencv-dev \
-        doxygen \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
@@ -38,8 +39,8 @@ COPY /tensorrt /tensorrt
 
 RUN cd /tensorrt && rm -rf -- ./build && \
     mkdir build && cd ./build/ && \
-    cmake -DHOST_DTYPE=SP32 -DCMAKE_INSTALL_PREFIX=/opt/tensorrt .. && \
-    make && make install && \
+    cmake -DHOST_DTYPE=FP32 -DCMAKE_INSTALL_PREFIX=/opt/tensorrt .. && \
+    make && make build_docs && make install && \
     cd / && rm -rf /tensorrt
 
 ENV DLBS_TENSORRT_FILE_READER default

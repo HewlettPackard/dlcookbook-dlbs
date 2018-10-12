@@ -18,3 +18,15 @@ run rime configuration (via environment variables) like type of file reader.
 
 We keep these two versions now for historical reasons. We plan to remove 18.08
 configuration in the future. This documentation will be updated accordingly.
+
+### 18.11
+This docker images is based on TensorRT version 5.0.0, in particular, the
+following package was tested:
+```
+nv-tensorrt-repo-ubuntu1604-cuda9.0-trt5.0.0.10-rc-20180906_1-1_amd64.deb
+```
+Other parameters are the same as in 18.10:
+
+- Uses unsigned char data type to store images in host memory
+- Uses direct io file reader that reads data bypassing OS caches (good for
+  storage benchmarks).

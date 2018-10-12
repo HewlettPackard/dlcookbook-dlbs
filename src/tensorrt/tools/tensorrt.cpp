@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
 namespace po = boost::program_options;
 
 void parse_command_line(int argc, char **argv,
-                        po::options_description opt_desc, po::variables_map& var_map,
+                        po::options_description& opt_desc, po::variables_map& var_map,
                         inference_engine_opts& engine_opts, dataset_opts& data_opts,
                         logger_impl& logger);
 void print_file_reader_warnings(logger_impl& logger, const std::string& me);
@@ -79,13 +79,13 @@ int main(int argc, char **argv) {
         po::variables_map var_map;
         parse_command_line(argc, argv, opt_desc, var_map, engine_opts, data_opts, logger);
         if (var_map.count("version")) {
-            std::cout << NV_GIE_MAJOR << "." << NV_GIE_MINOR << "." << NV_GIE_PATCH << std::endl;
+            std::cout << get_tensorrt_version() << std::endl;
             return 0;
         }
         if (var_map.count("help")) { 
             std::cout << "HPE Deep Learning Benchmarking Suite - TensorRT backend" << std::endl
                       << opt_desc << std::endl
-                      << "TensorRT version " << NV_GIE_MAJOR << "." << NV_GIE_MINOR << "." << NV_GIE_PATCH << std::endl;
+                      << "TensorRT version " << get_tensorrt_version() << std::endl;
             return 0;
         }
     } catch(po::error& e) {
@@ -93,16 +93,17 @@ int main(int argc, char **argv) {
         return 1;
     }
     const std::string me = "[main                  ]: ";
+    logger.log_info(me + "File format for cached models changed. It was: `resnet50_engine_float16_128.bin`, it is now: `resnet50_float16_128_v${MAJOR}.bin`. Please, clean your cache folder.");
     //
 #ifdef DEBUG_LOG
     logger.log_warning(me + "DEBUG logging is enabled. For real performance tests this should be disabled (recompile without -DDEBUG_LOG)");
 #endif
-#if defined HOST_DTYPE_SP32
-    logger.log_info(me + "Input data will be stored in host memory as tensor<float> tensors (reason: compiled with -DHOST_DTYPE_SP32).");
+#if defined HOST_DTYPE_FP32
+    logger.log_info(me + "Input data will be stored in host memory as tensor<float> tensors (reason: compiled with -DHOST_DTYPE_FP32).");
 #elif defined HOST_DTYPE_INT8
     logger.log_info(me + "Input data will be stored in host memory as tensor<unsigned char> tensors (reason: compiled with -DHOST_DTYPE_INT8).");
 #else
-    logger.log_error(me + "Input data will be stored in host memory as tensor<?> tensors. Recompile with -DHOST_DTYPE_SP32 or -DHOST_DTYPE_INT8.");
+    logger.log_error(me + "Input data will be stored in host memory as tensor<?> tensors. Recompile with -DHOST_DTYPE_FP32 or -DHOST_DTYPE_INT8.");
 #endif
     //
     logger.log_info(engine_opts);
@@ -257,7 +258,7 @@ int main(int argc, char **argv) {
 }
 
 void parse_command_line(int argc, char **argv,
-                        boost::program_options::options_description opt_desc, po::variables_map& var_map,
+                        boost::program_options::options_description& opt_desc, po::variables_map& var_map,
                         inference_engine_opts& engine_opts, dataset_opts& data_opts,
                         logger_impl& logger) {
     namespace po = boost::program_options;
