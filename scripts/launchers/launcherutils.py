@@ -214,7 +214,6 @@ class launcherutils(object):
                     pass
                 else:
                     co.logfatal('remove_files: file "{}" was not removed.'.format(file))
-                    #print('remove_files: file "{}" was not removed. Errno: {}'.format(file,e.errno))
                     raise(e)
             else:
                 if not silent: print("removed {}".format(file))
