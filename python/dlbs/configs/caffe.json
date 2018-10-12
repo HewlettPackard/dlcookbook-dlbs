@@ -44,20 +44,26 @@
             "desc": "Caffe's prototxt solver file."
         },
         "caffe.model_dir": {
-            "val": "$('${DLBS_ROOT}/python/caffe_benchmarks/models/${exp.model}' if not ${exp.docker} else '/workspace/model')$",
+            "val": "$('${DLBS_ROOT}/python/caffe_benchmarks/models/${exp.model}' if not ${exp.docker} and not ${exp.singularity} else '/workspace/model')$",
             "type": "str",
             "desc": "Directory where Caffe's model file is located. Different for host/docker benchmarks."
         },
+        "caffe.display_every": {
+            "val": 0,
+            "type": "int",
+            "desc": "Output display frequency."
+        },
         "caffe.solver": {
             "val": [
-                "net: '${caffe.model_dir}/${caffe.model_file}'\\n",
-                "max_iter: ${exp.num_batches}\\n",
-                "test_interval: 0\\n",
-                "snapshot: 0\\n",
-                "snapshot_after_train: false\\n",
-                "base_lr: 0.01\\n",
-                "lr_policy: 'fixed'\\n",
-                "solver_mode: $('${exp.device_type}'.upper())$\\n",
+                "net: '${caffe.model_dir}/${caffe.model_file}'\n",
+                "max_iter: ${exp.num_batches}\n",
+                "test_interval: 0\n",
+                "snapshot: 0\n",
+                "display: 1\n",
+                "snapshot_after_train: false\n",
+                "base_lr: 0.01\n",
+                "lr_policy: 'fixed'\n",
+                "solver_mode: $('${exp.device_type}'.upper())$\n",
                 "$('solver_data_type: ${caffe_nvidia.solver_precision}' if '${exp.framework_fork}' == 'nvidia' else '')$"
             ],
             "type": "str",
@@ -74,7 +80,7 @@
             "desc": "Command line arguments that launcher uses to launch Caffe."
         },
         "caffe.data_dir": {
-            "val": "",
+            "val": "", 
             "type": "str",
             "desc": "A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline)."
         },
@@ -112,11 +118,12 @@
                 "-i",
                 "--security-opt seccomp=unconfined",
                 "--pid=host",
-                "--volume=${DLBS_ROOT}/python/caffe_benchmarks/models/${exp.model}:/workspace/model",
+                "--network=host",
+                "--volume=${DLBS_ROOT}/python/${exp.backend}_benchmarks/models/${exp.model}:${caffe.model_dir}",
+                "--volume=${DLBS_ROOT}/python/${exp.backend}_benchmarks:${caffe.bench_path}",
                 "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
                 "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
                 "$('--volume=${caffe.data_mean_file_path}:/workspace/image_mean' if '${exp.data_dir}' else '')$",
-                "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
                 "${exp.docker_args}",
                 "${exp.docker_image}"
             ],
@@ -144,7 +151,17 @@
             "desc": "Singularity image"
         },
         "caffe.singularity_args": {
-            "val": "--nv",
+            "val": [
+                "--nv",
+                "-B ${DLBS_ROOT}/python/${exp.backend}_benchmarks/models/${exp.model}:${caffe.model_dir}",
+                "-B ${DLBS_ROOT}/python/${exp.backend}_benchmarks:${caffe.bench_path}",
+                "$('-B ${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
+                "$('-B ${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
+                "$('-B ${caffe.data_mean_file_path}:/workspace/image_mean' if '${exp.data_dir}' else '')$",
+                "$('-B ${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
+                "${exp.docker_args}",
+                "${exp.docker_image}"
+            ],
             "type": "str",
             "desc": "Singularity arguments"
         },

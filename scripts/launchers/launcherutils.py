@@ -251,10 +251,8 @@ class launcherutils(object):
         all=enum.auto()
     
     @staticmethod
-    def grep(file=None, pat=None, group=0, split=None, splitOn=' ', occurence=GrepRet.first):
+    def grep(file=None, pat=None, group=0, split=None, splitOn=' ', occurence=GrepRet.first, mode='a'):
         fn=file.name
-        print('grep fn: {}, pat {}'.format(fn,pat))
-        file.close()
         with open(fn,'r') as file:
             found=[]
             for l in file:
@@ -268,8 +266,7 @@ class launcherutils(object):
                        f=f.split(splitOn)[split-1]
                     found.append(f)
                     if occurence==launcherutils.GrepRet.first: break
-        file.close()
-        file=open(fn,'a')
+        file=open(fn,mode)
         if len(found)==0: return None,file
         elif occurence==launcherutils.GrepRet.first: return found[0],file
         elif occurence==launcherutils.GrepRet.last: return found[-1],file

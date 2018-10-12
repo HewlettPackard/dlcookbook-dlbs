@@ -80,8 +80,8 @@ class Worker(threading.Thread):
                 self.__dump_parameters(log_file)
             # This is where we launch process. Keep in mind, that the log file that's
             # supposed to be created is exp.log_file or exp_log_file in the script.
-            # Other output of the launching script will be printed by this pyhton code
-            # to a stanard output.
+            # Other output of the launching script will be printed by this python code
+            # to a standard output.
             try:
                 self.process = subprocess.Popen(self.command, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=self.environ)
             except OSError:

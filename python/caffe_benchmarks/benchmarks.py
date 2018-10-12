@@ -1,20 +1,26 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import division
+
 import sys
 import traceback
 import re
-import enum
+from enum import Enum
 import subprocess
 import os
 import fnmatch
 from shutil import copyfile
 import argparse
+import shlex
+try:
+    from io import StringIO
+except Exception:
+    from StringIO import StringIO
 
 #These will go into a dlbs/lib directory.
-def logwarn(logfile, s):
-    timestamp=datetime.datetime.now().strftime('%m-%d-%Y %H:%M:%S')
-    s=s.strip()
-    print('{} [WARNING] {}'.format(timestamp,logtype,s),file=self.logfile)
-
 def sed(infile,outfile=None,pats=None,count=0,flags=0):
     with open(infile,'r') as r: lines=r.readlines()
     for i,l in enumerate(lines):
@@ -56,75 +62,8 @@ def findfiles(root,pat):
                 result.append(os.path.join(root,name))
     return result
 
-class GrepRet(enum.Enum):
-    first=enum.auto()
-    last=enum.auto()
-    all=enum.auto()
-
-def grep(file=None, pat=None, group=0, split=None, splitOn=' ', occurence=GrepRet.first):
-    try:
-        fn=file.name
-        file.close()
-    except Exception:
-        fn=file
-    with open(fn,'r') as file:
-        found=[]
-        for l in file:
-            m=re.search(pat,l)
-            if m:
-                if group==0:
-                   f=l.strip()
-                else:
-                   f=m.group(group).strip()
-                if split is not None: f=f.split(splitOn)[split-1]
-                found.append(f)
-
-                if occurence==GrepRet.first: break
-    file.close()
-    file=open(fn,'a')
-    if len(found)==0: return None,file
-    elif occurence==GrepRet.first: return found[0],file
-    elif occurence==GrepRet.last: return found[-1],file
-    else: return found,file
-
-def caffe_postprocess_log(exp_log_file,exp_device_batch,exp_phase, exp_num_batches, exp_effective_batch):
-    #This needs to go into a benchmark.py for Caffe
-    with open(exp_log_file,"a") as logfile:
-        if self._error():
-            logwarn(logfile,'error in "{}" with effective batch {} (per device batch {})'.\
-                 format(exp_log_file,effective_batch,exp_device_batch))
-            self.update_error_file()
-    
-            error_hint,logfile=grep(logfile,"Check failed: .*",self.GrepRet.last)
-            print('__exp.status__= "failure"', file=logfile)
-            print('__exp.status_msg__= "Error has been found in Caffe log file ({})."'.format(error_hint),file=logfile)
-            return False
-        else:
-            # Here we know if we are in time or train mode.
-            if exp_phase== "inference":
-                elapsed_time,logfile = float(grep(r,'Average Forward pass:',group=0,split=8,occurence=self.GrepRet.last))
-            else:
-                try:
-                    start_time,logfile=grep(logfile,'^I(\d\d\d\d .*?) .*Solver ',group=1,
-                                      occurence=self.GrepRet.last)
-                    start_time=self.gettimestamp(start_time)
-    
-                    end_time,logfile=grep(logfile,'^I(\d\d\d\d .*?) .*Optimization Done',group=1,
-                                      occurence=self.GrepRet.last)
-                    end_time=self.gettimestamp(end_time)
-                    elapsed_time=1000.0*(end_time-start_time)/exp_num_batches
-                except Exception as e:
-                    exc_type, exc_value, exc_traceback = sys.exc_info()
-                    traceback.print_tb(exc_traceback, limit=1, file=sys.stdout)
-                    logwarn(logfile,'Exception {} Was not able to calculate the execution time from the log file.'.format(type(e)))
-                    return
-            throughput=1000*exp_effective_batch/elapsed_time
-            print('__results.time__= {}'.format(elapsed_time),file=logfile)
-            print('__results.throughput__= {}'.format(throughput),file=logfile)
-        return True
-
 def caffe_bench(
-                dlbs_root=None,
+                caffe_bench_path=None,
                 caffe_data_mean_file=None,
                 caffe_data_mean_file_name=None,
                 caffe_model_file=None,
@@ -151,14 +90,13 @@ def caffe_bench(
             ):
     try:
         # Make sure model exists
-        host_model_dir='{}/python/caffe_benchmarks/models/{}'.format(dlbs_root, exp_model)
+        host_model_dir='{}/models/{}'.format(caffe_bench_path, exp_model)
         model_file=findfiles("{host_model_dir}/".format(host_model_dir=host_model_dir),
                                 "*.{exp_phase}.prototxt".format(exp_phase=exp_phase))[-1]
         caffe_model_file_path =  os.path.join(host_model_dir, caffe_model_file)
         caffe_solver_file_path = os.path.join(host_model_dir,caffe_solver_file)
     
-        with open(exp_log_file,'a') as logfile:
-             print('__exp.framework_title__="TensorFlow"',file=logfile)
+        print('__exp.framework_title__="TensorFlow"')
     
         if not os.path.isfile(model_file):
             report_and_exit("failure","A model file ({model_file}) does not exist.".format(model_file=model_file))
@@ -167,7 +105,7 @@ def caffe_bench(
         copy_files([(model_file, caffe_model_file_path)])
         if exp_phase == "training":
             if exp_data_dir == "":
-                sed(caffe_model_file_path, "^#synthetic","")
+                sed(caffe_model_file_path, outfile=None, pats=[("^#synthetic","")])
             else:
                 if exp_docker or exp_singularity == "true":
                     real_data_dir="/workspace/data"
@@ -205,31 +143,43 @@ def caffe_bench(
             sed(caffe_model_file_path,pats=[("__EXP_DEVICE_BATCH__",exp_replica_batch)])
     
         if exp_phase == "training": 
-            caffe_solver=re.split('\\\\n',caffe_solver,re.MULTILINE)
+            c= StringIO(caffe_solver.decode('utf-8'))
             with open(caffe_solver_file_path,'w') as w:
-                for l in caffe_solver: print(l,file=w)
-        net_name,_=grep(file=caffe_model_file_path,pat='^name: +"(.*?)"',group=1,occurence=GrepRet.first)
+                for l in c:
+                     print(l.strip(),file=w)
+            c.close()
+        with open(caffe_model_file_path,'r') as r:
+             for line in r:
+                 m=re.match('name: +"(.*?)"',line)
+                 if m:
+                     net_name=m.group(1)
+                     break
+             else: net_name=''
     
         print('__exp.model_title__= "{net_name}"'.format(net_name=net_name))
     
         benchmark_command="caffe {caffe_action} {caffe_args}".format(caffe_action=caffe_action,caffe_args=caffe_args)
         # spawn command here
-        print('benchmark command: ',benchmark_command)
-        #post process the log
-        #caffe_postprocess_log(exp_log_file,exp_device_batch,exp_phase, exp_num_batches, exp_effective_batch)
+        process = subprocess.Popen(shlex.split(benchmark_command), shell=False, bufsize=1,
+                                   universal_newlines=True, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, env=os.environ)
+        output = []
+        while True:
+            line = process.stdout.readline()
+            if line == '' and process.poll() is not None: break
+            if line: print(line.strip())
+
     except Exception as e:
         print('Caught exception. Exiting.')
         traceback.print_exc()
         sys.exit(-1)
     finally:
         pass
-        #remove_files([caffe_model_file_path, caffe_solver_file_path])
+        remove_files([caffe_model_file_path, caffe_solver_file_path])
 
 def main():
-    for arg in sys.argv:
-        print(arg)
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dlbs_root',type=str, required=True, default='',help="dlbs_root")
+    parser.add_argument('--caffe_bench_path', type=str, required=True, default='',help="caffe_bench_path")
     parser.add_argument('--caffe_data_mean_file',type=str, required=True, default='',help="caffe_data_mean_file")
     parser.add_argument('--caffe_data_mean_file_name',type=str, required=True, default='',help="caffe_data_mean_file_name")
     parser.add_argument('--caffe_model_file',type=str, required=True, default='',help="caffe_model_file")
@@ -254,7 +204,6 @@ def main():
     parser.add_argument('--caffe_action',type=str, required=True, default='',help="caffe_action")
     parser.add_argument('--caffe_args',type=str, required=True, default='',help="caffe_args")
     args = parser.parse_args()
-    print('In caffe_benchmarks/benchmarks.py')
     caffe_bench(**dict(args._get_kwargs()))
 
 
