@@ -21,6 +21,20 @@ except Exception:
     from StringIO import StringIO
 
 #These will go into a dlbs/lib directory.
+def testforutf8():
+    if sys.stdout.encoding.upper() != 'UTF-8':
+        enc=sys.stdout.encoding.upper()
+        raise ValueError(
+           '''
+           The encoding for sys.stdout is not UTF-8.
+           Export PYTHONIOENCODING at the shell or set it on the command line.
+           I.e.,
+           export PYTHONIONENCODING=UTF-8
+           or,
+           PYTHONIONENCODING=UTF-8 {} ....
+           '''.format(sys.argv[0]))
+
+# Should change this to use the Template class
 def sed(infile,outfile=None,pats=None,count=0,flags=0):
     with open(infile,'r') as r: lines=r.readlines()
     for i,l in enumerate(lines):
@@ -89,6 +103,11 @@ def caffe_bench(
                 caffe_args=None,
             ):
     try:
+        try: testforutf8()
+        except ValueError as e:
+            print(e)
+            raise
+
         # Make sure model exists
         host_model_dir='{}/models/{}'.format(caffe_bench_path, exp_model)
         model_file=findfiles("{host_model_dir}/".format(host_model_dir=host_model_dir),
@@ -165,10 +184,12 @@ def caffe_bench(
                                    stderr=subprocess.STDOUT, env=os.environ)
         output = []
         while True:
-            line = process.stdout.readline()
-            if line == '' and process.poll() is not None: break
-            if line: print(line.strip())
-
+            output= process.stdout.readline()
+            pp=process.poll()
+            if isinstance(output,bytes): output=output.decode('utf-8')
+            if output == '' and (pp == 0 or pp is None): break
+            if output !='':
+                print(output.strip())
     except Exception as e:
         print('Caught exception. Exiting.')
         traceback.print_exc()
