@@ -1,22 +1,22 @@
 Bootstrap: localimage
 #Change this to reflect your location
-FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04_common.img
+FROM: /var/lib/SingularityImages/nvidia_cuda_!{CUDA_VERSION}_cudnn_!{CUDNN_MAJOR_VERSION}_ubuntu!{UBUNTU_VERSION}_common.img
 %labels
 	Maintainer Stephen Fleischman
     Framework TensorFlow
-    Version  1.11.0
-    Build  CUDA 9.2 cuDNN 7.2.1 x86_64 AVX2 (Broadwell), OFED IB.
+    Version  !{TF_VERSION}
+    Build  CUDA !{CUDA_VERSION} cuDNN !{CUDNN_VERSION} x86_64 AVX2 (Broadwell), OFED IB.
     Installed Horovod, OpenNMT
 
 %help
-    TensorFlow 1.11.0 GPU Singularity Container
+    TensorFlow !{TF_VERSION} GPU Singularity Container
     Maintainer: Stephen Fleischman
 
 %environment
     export PATH=/opt/anaconda3/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH
 
 %post
-    export BAZEL_VERSION=0.17.2
+    export BAZEL_VERSION=!{BAZEL_VERSION}
     ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1 
     export LD_LIBRARY_PATH=/host-libs:/usr/local/cuda/extras/CUPTI/lib64:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs
     export PATH=/opt/anaconda3/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH

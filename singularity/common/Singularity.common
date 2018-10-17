@@ -1,5 +1,5 @@
 Bootstrap: docker
-FROM: docker://nvidia/cuda:9.2-cudnn7-devel-ubuntu16.04
+FROM: docker://nvidia/cuda:!{CUDA_VERSION}-cudnn!{CUDNN_MAJOR_VERSION}-devel-ubuntu!{UBUNTU_VERSION}
 #You can save some time if you have to run this build script more than once by building an NVidia/Ubuntu base image once from the Docker image, with
 #Singularity.nv and commenting the first two lines above and uncommenting the next two lines.
 #Bootstrap: localimage
@@ -7,26 +7,24 @@ FROM: docker://nvidia/cuda:9.2-cudnn7-devel-ubuntu16.04
 %labels
     Maintainer Stephen Fleischman
     Common packages
-    Build CUDA 9.2 cuDNN 7.2.1 x86_64 OFED IB.
+    Build CUDA !{CUDA_VERSION} cuDNN !{CUDNN_VERSION} x86_64 OFED IB.
 %setup
-    cp common_env.sh ${SINGULARITY_ROOTFS}
-    . ./common_env.sh
-    cp upload/MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}.tgz  $SINGULARITY_ROOTFS
-    cp upload/hpcx-${HPCX_VERSION}-${HPCX_ARCH}-MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}.tbz  $SINGULARITY_ROOTFS
-    cp upload/nccl_${NCCL_VERSION}+${NCCL_ARCH}.txz  $SINGULARITY_ROOTFS
-    cp upload/Anaconda3-${ANACONDA3_VERSION}-${ANACONDA3_ARCH}.sh  $SINGULARITY_ROOTFS
-    cp upload/pycuda-${PYCUDA_VERSION}.tar.gz $SINGULARITY_ROOTFS
+    cp upload/MLNX_OFED_LINUX-!{OFED_VERSION}-!{OFED_ARCH}.tgz  $SINGULARITY_ROOTFS
+    cp upload/hpcx-!{HPCX_VERSION}-!{HPCX_ARCH}-MLNX_OFED_LINUX-!{OFED_VERSION}-!{OFED_ARCH}.tbz  $SINGULARITY_ROOTFS
+    cp upload/nccl_!{NCCL_VERSION}+!{NCCL_ARCH}.txz  $SINGULARITY_ROOTFS
+    cp upload/Anaconda3-!{ANACONDA3_VERSION}-!{ANACONDA3_ARCH}.sh $SINGULARITY_ROOTFS
+    cp upload/pycuda-!{PYCUDA_VERSION}.tar.gz $SINGULARITY_ROOTFS
     cp upload/jupyter_notebook_config.py  $SINGULARITY_ROOTFS
-	cat ./common_env.sh >> ${SINGULARITY_ROOTFS}/.singularity.d/env/90-environment.sh
 
 %help
     NVidia GPU Singularity Container with Common Packages
     Maintainer: Stephen Fleischman
 
 %environment
+    export PYTHONIOENCODING=UTF-8
     export CUDA_DIR=/usr/local/cuda
-    export HPCX_DIR=/opt/hpcx-${HPCX_VERSION}-${HPCX_ARCH}-MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}
-    export HPCX_MPI_DIR=${HPCX_DIR}/ompi-${OMPI_VERSION}
+    export HPCX_DIR=/opt/hpcx-!{HPCX_VERSION}-!{HPCX_ARCH}-MLNX_OFED_LINUX-!{OFED_VERSION}-!{OFED_ARCH}
+    export HPCX_MPI_DIR=${HPCX_DIR}/ompi-!{OMPI_VERSION}
     export HPCX_IPM_DIR=${HPCX_MPI_DIR}/tests/ipm-${IPM_VERSION}
     export HPCX_IPM_LIB=${HPCX_IPM_DIR}/lib/libipm.so
     export HPCX_BUPC_DIR=${HPCX_DIR}/bupc
@@ -51,19 +49,23 @@ FROM: docker://nvidia/cuda:9.2-cudnn7-devel-ubuntu16.04
     export PATH=${PATH}:${HPCX_MPI_DIR}/bin:${CUDA_DIR}/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
     export CPATH=${HPCX_MPI_DIR}/include:${HPCX_UCX_DIR}/include:${HPCX_SHARP_DIR}/include:${HPCX_MXM_DIR}/include:${HPCX_HCOLL_DIR}/include
     export JUPYTER_CONFIG_DIR=/.jupyter
-    export export LC_ALL=C
+    #export export LC_ALL=en_US.UTF-8
 
 %post
-    . /common_env.sh
+    echo "LC_ALL=en_US.UTF-8" >> /etc/environment
+    echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+    echo "LANG=en_US.UTF-8" > /etc/locale.conf
+    export PYTHONIOENCODING=UTF-8
+
     export LD_LIBRARY_PATH=/host-libs:/usr/local/cuda/extras/CUPTI/lib64:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs:/usr/local/lib
     export PATH=/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-    export MOFED_DIR=/MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}
-    export MOFED_SITE_PLACE=MLNX_OFED-${OFED_VERSION}
-    export MOFED_IMAGE=/MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}.tgz
-    export HPCX_TBZ=/hpcx-${HPCX_VERSION}-${HPCX_ARCH}-MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}.tbz
-    export ANACONDA_INSTALLER=/Anaconda3-${ANACONDA3_VERSION}-${ANACONDA3_ARCH}.sh
-    export NCCL_TGZ=/nccl_${NCCL_VERSION}+${NCCL_ARCH}.txz
-    export PYCUDA=pycuda-${PYCUDA_VERSION}
+    export MOFED_DIR=/MLNX_OFED_LINUX-!{OFED_VERSION}-!{OFED_ARCH}
+    export MOFED_SITE_PLACE=MLNX_OFED-!{OFED_VERSION}
+    export MOFED_IMAGE=/MLNX_OFED_LINUX-!{OFED_VERSION}-!{OFED_ARCH}.tgz
+    export HPCX_TBZ=/hpcx-!{HPCX_VERSION}-!{HPCX_ARCH}-MLNX_OFED_LINUX-!{OFED_VERSION}-!{OFED_ARCH}.tbz
+    export ANACONDA_INSTALLER=/Anaconda3-!{ANACONDA3_VERSION}-!{ANACONDA3_ARCH}.sh
+    export NCCL_TGZ=/nccl_!{NCCL_VERSION}+!{NCCL_ARCH}.txz
+    export PYCUDA=pycuda-!{PYCUDA_VERSION}
     export PYCUDA_TGZ=/${PYCUDA}.tar.gz
 
 
@@ -157,5 +159,5 @@ FROM: docker://nvidia/cuda:9.2-cudnn7-devel-ubuntu16.04
     ldconfig
 
 %runscript
-    echo "Singularity Container: Ubuntu 16.04, Mellanox IB, OpenMPI, CUDA 9.2, cuDNN 7.2.1, python 3.6, common Ubuntu and Python packages.
+    echo "Singularity Container: Ubuntu !{UBUNTU_VERSION}, Mellanox IB, OpenMPI, CUDA !{CUDA_VERSION}, cuDNN !{CUDNN_VERSION}, python !{PYTHON_VERSION}, common Ubuntu and Python packages.
     echo "The image contains: Jupyter

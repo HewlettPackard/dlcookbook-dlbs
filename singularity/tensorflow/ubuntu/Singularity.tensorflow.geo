@@ -1,19 +1,19 @@
 Bootstrap: localimage
-FROM: /var/lib/SingularityImages/tensorflow-1.11.0.img
+FROM: /var/lib/SingularityImages/tensorflow-!{TF_VERSION}.img
 
 %labels
 	Maintainer Stephen Fleischman
     Framework TensorFlow
-    Version  1.11.0
-    Build  CUDA 9.2 cuDNN 7.2.1 x86_64 AVX2 (Broadwell), OFED IB.
+    Version  !{TF_VERSION}
+    Build  CUDA !{CUDA_VERSION} cuDNN ${CUDNN_VERSION} x86_64 AVX2 (Broadwell), OFED IB.
     Installed Horovod, OpenNMT and Tensor2Tensor
 
 %help
-    TensorFlow 1.11.0 GPU Singularity Container
+    TensorFlow !{TF_VERSION} GPU Singularity Container
     Maintainer: Stephen Fleischman
 
 %post
-    export PATH=/opt/anaconda3/bin:/usr/local/cuda-9.2/bin:$PATH
+    export PATH=/opt/anaconda3/bin:/usr/local/cuda-!{CUDA_VERSION}/bin:$PATH
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 
     # Geo stuff
@@ -41,5 +41,5 @@ FROM: /var/lib/SingularityImages/tensorflow-1.11.0.img
     cd /tmp && rm -rf *
 
 %runscript
-    echo "Singularity Container: TensorFlow 1.11.0, Ubuntu 16.04, CUDA 9.2, cuDNN 7.2.1, Anaconda Python 3.6, AVX2 instructions."
+    echo "Singularity Container: TensorFlow !{TF_VERSION}, Ubuntu !{UBUNTU_VERSION}, CUDA !{CUDA_VERSION}, cuDNN ${CUDNN_VERSION}, Anaconda Python !{PYTHON_VERSION}, AVX2 instructions."
     echo "The image contains: Jupyter, Horovod, NVidia examples, OpenNMT for TensorFlow, Tensor2Tensor, GeoSpatial Python packages."

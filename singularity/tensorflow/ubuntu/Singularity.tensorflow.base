@@ -1,47 +1,39 @@
 Bootstrap: localimage
-FROM: tensorflow-1.11.0-prelim.img
+FROM: tensorflow-!{TF_VERSION}-prelim.img
 %labels
 	Maintainer Stephen Fleischman
     Framework TensorFlow
-    Version 1.11.0
-    Build  CUDA 9.2 cuDNN 7.2.1 x86_64 AVX2 (Broadwell), OFED IB.
+    Version !{TF_VERSION}
+    Build  CUDA !{CUDA_VERSION} cuDNN ${CUDNN_VERSION} x86_64 AVX2 (Broadwell), OFED IB.
     Base TensorFLow installation
 
 %help
     #change when version changes
-    TensorFlow 1.11.0 GPU Singularity Container
+    TensorFlow !{TF_VERSION} GPU Singularity Container
     Maintainer: Stephen Fleischman
 
 %setup
-    #Change these as versions change
     #TensorRT version
-    export TRT_VERSION=ubuntu1604-cuda9.2-ga-trt4.0.1.6-20180612_1-1_amd64
-
-    cp ../../common/common_env.sh ${SINGULARITY_ROOTFS}
-    . ${SINGULARITY_ROOTFS}/common_env.sh
-    cp ${COMMON}/upload/nv-tensorrt-repo-${TRT_VERSION}.deb $SINGULARITY_ROOTFS
-    # Might want this to go in a configuration file.
-    echo "export TRT_VERSION=${TRT_VERSION}"  >> ${SINGULARITY_ROOTFS}/common_env.sh
+    cp !{COMMON}/upload/!{TRT_REPO} $SINGULARITY_ROOTFS
 
 
 %post
-    . /common_env.sh
     export PATH=/opt/anaconda3/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
     apt-get install libibverbs-dev
     # Update when hardware changes - not sure if this should be hardwired here.
     export TF_CUDA_COMPUTE_CAPABILITIES=3.0,3.5,3.7,5.2,6.0,6.1,7.0 
-    export OFED=MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}
-    export HPCX=hpcx-${HPCX_VERSION}-${HPCX_ARCH}-MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}
-    export HPCX_MPI_DIR=/opt/${HPCX}/ompi-${OMPI_VERSION}
+    export OFED=MLNX_OFED_LINUX-!{OFED_VERSION}-!{OFED_ARCH}
+    export HPCX=hpcx-!{HPCX_VERSION}-!{HPCX_ARCH}-MLNX_OFED_LINUX-!{OFED_VERSION}-!{OFED_ARCH}
+    export HPCX_MPI_DIR=/opt/${HPCX}/ompi-!{OMPI_VERSION}
     # Configure the build for our CUDA configuration.
     export CI_BUILD_PYTHON=/opt/anaconda3/bin/python
     export PYTHON_BIN_PATH=/opt/anaconda3/bin/python 
     export LD_LIBRARY_PATH=/usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH 
     export TF_NEED_CUDA=1 
-    export TF_CUDA_VERSION=${CUDA_VERSION}
-    export TF_NCCL_VERSION=${NCCL_VERSION}
-    export NCCL_INSTALL_PATH=/usr/local/nccl_${NCCL_VERSION}+${NCCL_ARCH}
-    export TF_CUDNN_VERSION=${CUDNN_VERSION}
+    export TF_CUDA_VERSION=!{CUDA_VERSION}
+    export TF_NCCL_VERSION=!{NCCL_VERSION}
+    export NCCL_INSTALL_PATH=/usr/local/nccl_!{NCCL_VERSION}+!{NCCL_ARCH}
+    export TF_CUDNN_VERSION=!{CUDNN_VERSION}
     export TF_ENABLE_XLA=1 
     export TF_NEED_TENSORRT=1
     export TF_NEED_VERBS=0 
@@ -54,24 +46,25 @@ FROM: tensorflow-1.11.0-prelim.img
     ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
 
     if [ "$TF_NEED_TENSORRT"==1 ];then
-        #Install tensorrt and move to Anaconda Python 3.6
-        dpkg -i /nv-tensorrt-repo-${TRT_VERSION}.deb
-        rm -f /nv-tensorrt-repo-${TRT_VERSION}.deb
+        #Probably goes away with the next version
+        #Install tensorrt and move to Anaconda Python !{PYTHON_VERSION}
+        dpkg -i /!{TRT_REPO}
+        rm -f /!{TRT_REPO}
         apt-get update
         apt-get install -y --no-install-recommends tensorrt python3-libnvinfer-doc uff-converter-tf
-        tar cvf /tmp/dist-packages.tar -C /usr/lib/python3.5/dist-packages .
-        rm  -rf /usr/lib/python3.5/dist-packages/
-        cd /opt/anaconda3/lib/python3.6/site-packages
-        tar xvf /tmp/dist-packages.tar
-        rm /tmp/dist-packages.tar
-        # The current TensorRT whl assumes Python 3.5. This is a workaround that will hopefully go away with version 5 (in RC now).
-        cd /opt/anaconda3/lib/python3.6/site-packages/tensorrt
-        mv ./infer/_nv_infer_bindings.cpython-35m-x86_64-linux-gnu.so ./infer/_nv_infer_bindings.cpython-36m-x86_64-linux-gnu.so
-        mv ./plugins/_nv_infer_plugin_bindings.cpython-35m-x86_64-linux-gnu.so ./plugins/_nv_infer_plugin_bindings.cpython-36m-x86_64-linux-gnu.so
-        mv ./utils/_nv_utils_bindings.cpython-35m-x86_64-linux-gnu.so ./utils/_nv_utils_bindings.cpython-36m-x86_64-linux-gnu.so
-        mv ./parsers/uffparser/_nv_uff_parser_bindings.cpython-35m-x86_64-linux-gnu.so ./parsers/uffparser/_nv_uff_parser_bindings.cpython-36m-x86_64-linux-gnu.so
-        mv ./parsers/onnxparser/_nv_onnx_parser_bindings.cpython-35m-x86_64-linux-gnu.so ./parsers/onnxparser/_nv_onnx_parser_bindings.cpython-36m-x86_64-linux-gnu.so
-        mv ./parsers/caffeparser/_nv_caffe_parser_bindings.cpython-35m-x86_64-linux-gnu.so ./parsers/caffeparser/_nv_caffe_parser_bindings.cpython-36m-x86_64-linux-gnu.so
+#        tar cvf /tmp/dist-packages.tar -C /usr/lib/python3.5/dist-packages .
+#        rm  -rf /usr/lib/python3.5/dist-packages/
+#        cd /opt/anaconda3/lib/python3.6/site-packages
+#        tar xvf /tmp/dist-packages.tar
+#        rm /tmp/dist-packages.tar
+#        # The current TensorRT whl assumes Python 3.5. This is a workaround that will hopefully go away with version 5 (in RC now).
+#        cd /opt/anaconda3/lib/python3.6/site-packages/tensorrt
+#        mv ./infer/_nv_infer_bindings.cpython-35m-x86_64-linux-gnu.so ./infer/_nv_infer_bindings.cpython-36m-x86_64-linux-gnu.so
+#        mv ./plugins/_nv_infer_plugin_bindings.cpython-35m-x86_64-linux-gnu.so ./plugins/_nv_infer_plugin_bindings.cpython-36m-x86_64-linux-gnu.so
+#        mv ./utils/_nv_utils_bindings.cpython-35m-x86_64-linux-gnu.so ./utils/_nv_utils_bindings.cpython-36m-x86_64-linux-gnu.so
+#        mv ./parsers/uffparser/_nv_uff_parser_bindings.cpython-35m-x86_64-linux-gnu.so ./parsers/uffparser/_nv_uff_parser_bindings.cpython-36m-x86_64-linux-gnu.so
+#        mv ./parsers/onnxparser/_nv_onnx_parser_bindings.cpython-35m-x86_64-linux-gnu.so ./parsers/onnxparser/_nv_onnx_parser_bindings.cpython-36m-x86_64-linux-gnu.so
+#        mv ./parsers/caffeparser/_nv_caffe_parser_bindings.cpython-35m-x86_64-linux-gnu.so ./parsers/caffeparser/_nv_caffe_parser_bindings.cpython-36m-x86_64-linux-gnu.so
     fi 
 
     # Download and build TensorFlow.
@@ -115,5 +108,5 @@ FROM: tensorflow-1.11.0-prelim.img
     ldconfig -v
 
 %runscript
-    echo "Singularity Container: TensorFlow 1.11.0, Ubuntu 16.04, CUDA 9.2, cuDNN 7.2.1, Anaconda Python 3.6, AVX2 instructions."
+    echo "Singularity Container: TensorFlow !{TF_VERSION}, Ubuntu !{UBUNTU_VERSION}, CUDA !{CUDA_VERSION}, cuDNN ${CUDNN_VERSION}, Anaconda Python !{PYTHON_VERSION}, AVX2 instructions."
     echo "The image contains: TensorFlow, Jupyter, and Horovod for TensorFlow"
