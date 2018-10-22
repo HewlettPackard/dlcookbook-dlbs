@@ -15,6 +15,7 @@
 */
 
 #include "engines/tensorrt/tensorrt_utils.hpp"
+#include "core/filesystem/file_system.hpp"
 #include <sstream>
 
 std::string get_tensorrt_version() {
@@ -87,22 +88,31 @@ size_t get_binding_size(ICudaEngine* engine, const int idx) {
 
 ICudaEngine* load_engine_from_file(const std::string& fname, logger_impl& logger) {
     size_t nbytes_read(0);
-    char* data = fs_utils::read_data(fname, nbytes_read);
+    url engine_url(fname);
+    std::unique_ptr<file_system> fs(file_system_registry::get(engine_url));
     ICudaEngine* engine(nullptr);
-    if (nbytes_read > 0 && data) {
+    if (fs->status(engine_url.path()) == file_system::file_status::file) {
+        uint8_t *data(nullptr);
+        size_t data_length(0);
+        const auto nbytes_read = fs->read_bytes(engine_url.path(), data, data_length, true);
+        file_system::check_io(file_system::io_op::read, engine_url.path(), data_length, nbytes_read, logger, logger_impl::severity::error);
+        
         IRuntime *runtime = createInferRuntime(logger);
-        engine = runtime->deserializeCudaEngine(data, nbytes_read,nullptr);
+        engine = runtime->deserializeCudaEngine(data, nbytes_read, nullptr);
         runtime->destroy();
         delete [] data;
     }
     return engine;
 }
 
-void serialize_engine_to_file(ICudaEngine *engine_, const std::string& fname) {
+void serialize_engine_to_file(ICudaEngine *engine_, const std::string& fname, logger_impl& logger) {
     if (fname.empty()) {
         return;
     }
     IHostMemory *se = engine_->serialize();
-    fs_utils::write_data(fname, se->data(), se->size());
+    url engine_url(fname);
+    std::unique_ptr<file_system> fs(file_system_registry::get(engine_url));
+    const auto nbytes_written = fs->write_bytes(engine_url.path(), static_cast<uint8_t*>(se->data()), se->size(), true);
+    file_system::check_io(file_system::io_op::write, engine_url.path(), se->size(), nbytes_written, logger, logger_impl::severity::warning);
     se->destroy();
 }

@@ -18,6 +18,6 @@ enable_testing()
 include(CTest)
 include(Catch)
 
-add_executable(test_utils tests_main.cpp test_utils.cpp)
+add_executable(test_utils tests_main.cpp test_utils.cpp test_fs.cpp test_posix_fs.cpp)
     target_link_libraries(test_utils Catch2::Catch2 ${base_libs})
     catch_discover_tests(test_utils)

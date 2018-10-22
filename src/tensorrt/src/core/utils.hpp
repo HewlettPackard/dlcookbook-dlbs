@@ -76,6 +76,7 @@ void fill_random(unsigned char *vec, const size_t sz);
  * @return std::string
  */
 template<typename T> std::string S(const T &t) { return std::to_string(t); }
+#define _S(x) std::string(x)
 
 /**
  * @brief A template specialziation of S for bool type.
@@ -89,6 +90,10 @@ template<typename T> T from_string(const char* const val);
 template<> std::string from_string<std::string>(const char* const val);
 template<> int from_string<int>(const char* const val);
 template<> bool from_string<bool>(const char* const val);
+
+void rtrim_inplace(std::string& s, const std::string &sep=" ");
+std::string rtrim(const std::string& s, const std::string &sep=" ");
+
 
 
 /**
@@ -293,85 +298,23 @@ std::string fmt(const std::string& format, Args ... args) {
 }
 
 /**
- * @brief Various utility methods to work with file system, in particular, 
- * working with raw image datasets.
+ * @brief A class to work with URLs that specify paths to datasets.
  */
-class fs_utils {
+class url {
 private:
-    /**
-     * @brief Return human readeable 'errno' description.
-     */
-    static std::string get_errno() {
-        return std::string(strerror(errno));
-    }
+    bool good_ = true;
+    std::string scheme_ = "file";
+    std::string hdfs_namenode_ = "localhost";
+    int hdfs_port_ = 9820;
+    std::string path_ = "/";
 public:
-    /**
-     * @brief Return parent directory.
-     */
-    static std::string parent_dir(std::string dir);
-    /**
-     * @brief Create directory.
-     */
-    static int mk_dir(std::string dir, const mode_t mode=0700);
-    /**
-     * @brief Makes sure that a path 'dir', which is supposed to be a directory,
-     * ends with one forward slash '/'
-     * @param dir A directory name.
-     */
-    static std::string normalize_path(std::string dir);
-    /**
-     * @brief Write binary data to a file.
-     * @param fname Name of a file. If exists, it will be overwritten.
-     * @param ptr Pointer to a data.
-     * @param length Number of bytes to write.
-     */
-    static void  write_data(const std::string& fname, const void* ptr, std::size_t length);
-    /**
-     * @brief Read binary data from a file.
-     * @param fname Name of a file.
-     * @param data_length Number of bytes read.
-     * @return Pointer to a data. User is responsible for deallocating this memory (delete [] p;)
-     */
-    static char* read_data(const std::string& fname, std::size_t& data_length);
-    /**
-    * @brief Read file names from a cache located in \p dir directory.
-    * @param dir is the directory to search cache in.
-    * @param fnames Vector of file names read from cache file.
-    * @return True of file exists, false otherwise
-    */
-    static bool read_cache(const std::string& dir, std::vector<std::string>& fnames);
-    /**
-     * @brief Writes a cache with file names if that cache does not exist.
-     * @param dir A dataset root directory.
-     * @param fnames A list of image file names.
-     * @return True if file exists or has been written, false otherwise.
-     * 
-     */
-    static bool write_cache(const std::string& dir, const std::vector<std::string>& fnames);
-    /**
-     * @brief Prepend \p dir to all file names in \p fnames
-     * @param dir Full path to a dataset
-     * @param fnames Image files with relative file paths.
-     */
-    static void to_absolute_paths(const std::string& dir, std::vector<std::string>& fnames) {
-        for (auto& fname : fnames) {
-            fname = dir + fname;
-        }
-    }
-    /**
-     * @brief Scan recursively directory \p dir and return image files. List of image files will 
-     * contain paths relative to \p dir.
-     * @param dir A root dataset directory.
-     * @param files A list of image files.
-     * @param subdir A subdirectory relative to \p dir. Used for recusrive scanning.
-     * @return A list of image files found in \p dir or its subdirectories. Images files are identified
-     * by relative paths from \p dir.
-     */
-    static void get_image_files(std::string dir, std::vector<std::string>& files, std::string subdir="");
-    
-    static void initialize_dataset(std::string& data_dir, std::vector<std::string>& files);
-    
-    static int get_direct_io_block_size();
+    explicit url(const std::string &str);
+
+    bool good() const { return good_; }
+    const std::string& scheme() const { return scheme_; }
+    const std::string& hdfs_namenode() const { return hdfs_namenode_; }
+    int hdfs_port() const { return hdfs_port_; }
+    const std::string& path() const { return path_; }
 };
 
 /**
@@ -589,91 +532,6 @@ public:
 };
 template<> struct PictureTool::pixel<float> { static const char encoding = 1; };
 template<> struct PictureTool::pixel<unsigned char> { static const char encoding = 10; };
-
-
-/**
- * @brief Abstract class for file readers. 
- * 
- * File readers are used to read images from dataset files. In particular, provided
- * implementations read data from binary files of custom, quite simplified, format.
- */
-class abstract_reader {
-public:
-    virtual bool is_opened() = 0;
-    virtual bool open(const std::string& fname) = 0;
-    virtual void close() = 0;
-    virtual ssize_t read(host_dtype* dest, const size_t count) = 0;
-    virtual void allocate_if_needed(const size_t count) = 0;
-};
-
-/**
- * @brief A basic implementation that uses standard IO calls to read binary data.
- * 
- * This reader can be configured with environment variable @link environment#remove_files_from_os_cache @endlink
- * to instruct OS to remove opened files on close. Is suitable for file systems that do not support direct IO.
- */
-class reader : public abstract_reader {
-private:
-    int fd_ = -1;                          //!< File descriptor.
-    bool advise_no_cache_ = false;         //!< If true, advise OS not to cache file.
-    const std::string dtype_;              //!< Matrix data type in a binary file ('float', 'uchar').
-    std::vector<unsigned char> buffer_;    //!< If images are stored as unsigned chars, use this buffer.
-public:
-    reader(const std::string& dtype="float",
-           const bool advise_no_cache=false);
-    virtual ~reader() { close(); }
-    bool is_opened();
-    bool open(const std::string& fname);
-    void close();
-    ssize_t read(host_dtype* dest, const size_t count);
-    void allocate_if_needed(const size_t count);
-};
-
-/**
- * @brief An implementation of a file reader that uses DIRECT IO.
- * 
- * This is useful to bypass system caches and make sure that files
- * that we read are not cached. We use this to benchmark storage to
- * make sure we always stream data from it.
- */
-class direct_reader : public abstract_reader {
-private:
-    enum class data_type {
-        dt_float,
-        dt_unsigned_char
-    };
-    int block_sz_ = 512;                   //!< Block size for O_DIRECT. Use DLBS_TENSORRT_STORAGE_BLOCK_SIZE to overwrite this value.
-    int fd_ = -1;                          //!< File descriptor.
-    const data_type dtype_;                //!< Data type for batch tensor.
-    
-    unsigned char* buffer_ = nullptr;      // If images are stored as unsigned chars, use this buffer. This is an aligned 
-                                           // buffer on the block_sz_ boundary and its size is a multiple of block_sz_.
-    size_t buffer_size_ = 0;               // Size of the buffer in bytes.
-    size_t buffer_offset_ = 0;             // Offset in buffer if we have some bytes from previous read. In this case next read must 
-                                           // write to buffer_ starting from block_sz_ position. The value of buffer_offset_ is
-                                           // always < block_sz_.
-    bool eof_reached_ = false;             // !< We have reached EOF with previous call. 
-public:
-    /**
-     * @brief Class constructor
-     * @param dtype Data type used to store images. One of 'float' or 'uchar'.
-     */
-    direct_reader(const std::string& dtype="float");
-    virtual ~direct_reader() { close(); }
-    bool is_opened();
-    bool open(const std::string& fname);
-    void close();
-    /**
-     * @brief Read 'count' elements from file.
-     */
-    ssize_t read(host_dtype* dest, const size_t count);
-    // This is deprecated and does nothing. All allocations
-    // are done on the fly in read function.
-    void allocate_if_needed(const size_t count) {}
-private:
-    void allocate(const size_t new_sz);
-    void deallocate();
-};
 
 /**
  * @brief A base class for memory allocators.

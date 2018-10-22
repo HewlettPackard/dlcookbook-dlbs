@@ -15,6 +15,7 @@
 */
 
 #include "core/dataset/image_dataset.hpp"
+#include "core/filesystem/file_system.hpp"
 #if defined HAVE_OPENCV
 void image_dataset::prefetcher_func(image_dataset* myself,
                                     const size_t prefetcher_id, const size_t num_prefetchers) {
@@ -133,7 +134,10 @@ void image_dataset::decoder_func(image_dataset* myself, const int decoder_id, co
 image_dataset::image_dataset(const dataset_opts& opts, inference_msg_pool* pool,
                                abstract_queue<inference_msg*>* request_queue, logger_impl& logger) 
 : dataset(pool, request_queue), prefetch_queue_(opts.prefetch_queue_size_), opts_(opts), logger_(logger) {
-    fs_utils::initialize_dataset(opts_.data_dir_, file_names_);
+    url data_url(opts_.data_dir_);
+    std::unique_ptr<file_system> fs(file_system_registry::get(data_url));
+    fs->find_files(data_url.path(), file_names_);
+    fs->make_absolute(data_url.path(), file_names_);
     if (opts.shuffle_files_) {
         std::random_shuffle(file_names_.begin(), file_names_.end());
     }

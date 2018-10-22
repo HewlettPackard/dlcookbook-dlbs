@@ -15,6 +15,7 @@
 */
 
 #include "core/dataset/tensor_dataset.hpp"
+#include "core/filesystem/file_system.hpp"
 #include <sstream>
 
 #define _XOPEN_SOURCE 700
@@ -55,32 +56,12 @@ void tensor_dataset::prefetcher_func(tensor_dataset* myself,
     
     inference_msg *output(nullptr);
     size_t num_images_in_batch = 0;
-    abstract_reader* file_reader(nullptr);
-    const auto& reader_type = environment::file_reader();
-    if (reader_type == "default" || reader_type == "") {
-        myself->logger_.log_info(
-            fmt("[prefetcher       %02d/%02d]: Will use reader with regular IO (data can be cached by OS).",
-                prefetcher_id, num_prefetchers)
-        );
-        const bool advise_no_cache = environment::remove_files_from_os_cache();
-        myself->logger_.log_warning(fmt(
-            "[prefetcher       %02d/%02d]: will advise OS to not cache dataset files: %d",
-            prefetcher_id, num_prefetchers, int(advise_no_cache)
-        ));
-        file_reader = new reader(myself->opts_.dtype_, advise_no_cache);
-    } else if (reader_type == "directio") {
-        const int block_sz = fs_utils::get_direct_io_block_size();
-        myself->logger_.log_info(
-            fmt("[prefetcher       %02d/%02d]: Will use reader with direct IO (O_DIRECT) to bypass OS cache (block size=%d).",
-                prefetcher_id, num_prefetchers, block_sz)
-        );
-        file_reader = new direct_reader(myself->opts_.dtype_);
-    } else {
-        myself->logger_.log_error(
-            fmt("[prefetcher       %02d/%02d]: Invalid file reader (%s). Must be one of ['directio', 'default', '']",
-                prefetcher_id, num_prefetchers, reader_type.c_str())
-        );
-    }
+
+    std::unique_ptr<file_system> fs(file_system_registry::get(url(myself->opts_.data_dir_)));
+    std::unique_ptr<readable_file> file_reader(fs->new_readable_file(
+        {{"reader_type", environment::file_reader()}, {"data_type", myself->opts_.dtype_}}
+    ));
+    myself->logger_.log_info(fmt("[prefetcher       %02d/%02d]: " + file_reader->description(), prefetcher_id, num_prefetchers));
     try {
         timer clock;
         clock.restart();
@@ -90,7 +71,6 @@ void tensor_dataset::prefetcher_func(tensor_dataset* myself,
                 timer fetch_clock;
                 output = myself->inference_msg_pool_->get();
                 fetch.update(fetch_clock.ms_elapsed());
-                file_reader->allocate_if_needed(output->batch_size() * img_size);
             }
             // If we have read all images, submit them
             if (num_images_in_batch >= output->batch_size()) {
@@ -104,7 +84,7 @@ void tensor_dataset::prefetcher_func(tensor_dataset* myself,
                 clock.restart();
                 continue;
             }
-            if (!file_reader->is_opened()) {
+            if (!file_reader->is_open()) {
                 file_reader->open(my_files->next());
             }
 
@@ -124,7 +104,6 @@ void tensor_dataset::prefetcher_func(tensor_dataset* myself,
     } catch(queue_closed) {
     }
     delete my_files;
-    delete file_reader;
     myself->logger_.log_info(fmt(
         "[prefetcher       %02d/%02d]: {fetch:%.5f}-->--[load:%.5f]-->--{submit:%.5f}",
         prefetcher_id, num_prefetchers, fetch.value(), load.value(), submit.value()
@@ -134,7 +113,10 @@ void tensor_dataset::prefetcher_func(tensor_dataset* myself,
 tensor_dataset::tensor_dataset(const dataset_opts& opts, inference_msg_pool* pool,
                                abstract_queue<inference_msg*>* request_queue, logger_impl& logger)
 : dataset(pool, request_queue, static_cast<int>(opts.num_prefetchers_)), opts_(opts), logger_(logger) {
-    fs_utils::initialize_dataset(opts_.data_dir_, file_names_);
+    url data_url(opts_.data_dir_);
+    std::unique_ptr<file_system> fs(file_system_registry::get(data_url));
+    fs->find_files(data_url.path(), file_names_);
+    fs->make_absolute(data_url.path(), file_names_);
     if (opts.shuffle_files_) {
         std::random_shuffle(file_names_.begin(), file_names_.end());
     }

@@ -135,7 +135,7 @@ tensorrt_inference_engine::tensorrt_inference_engine(const int engine_id, const 
         logger_.log_info(fmt("%s Inference engine was created in %f seconds.", me.c_str(), (clock.ms_elapsed()/1000.0)));
         if (!engine_fname.empty()) {
             clock.restart();
-            serialize_engine_to_file(engine_, engine_fname);
+            serialize_engine_to_file(engine_, engine_fname, logger);
             logger_.log_info(fmt("%s Inference engine was serialized to file (%s) in %f ms.", me.c_str(), engine_fname.c_str(), clock.ms_elapsed()));
         }
     }

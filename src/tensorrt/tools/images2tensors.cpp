@@ -58,6 +58,7 @@
 
 #include "core/logger.hpp"
 #include "core/utils.hpp"
+#include "core/filesystem/file_system.hpp"
 
 #include <boost/program_options.hpp>
 #include <thread>
@@ -86,9 +87,10 @@ namespace po = boost::program_options;
  * Channels are RGB. Individual elements are floats (single precision). Pixel values are in range [0, 255].
  */
 template<typename T>
-void convert(std::vector<std::string>& input_files, const std::string input_dir, const std::string output_dir,
+void convert(std::vector<std::string>& input_files, const url &input, const std::string &output_dir,
              const size_t num_shards, const size_t my_shard, const size_t img_size, logger_impl& logger,
              const int images_per_file) {
+    if (input.scheme() != "file") { logger.log_error("Input directory for this tool must reside on local file system"); }
 #ifdef HAVE_OPENCV
     const size_t channel_size = img_size * img_size;
     std::vector<T> tensor(3 * channel_size);
@@ -100,13 +102,16 @@ void convert(std::vector<std::string>& input_files, const std::string input_dir,
     timer tm;
     const char pixel_encoding = PictureTool::pixel<T>::encoding;
     
-    std::ofstream out;
+    url output(output_dir);
+    std::unique_ptr<file_system> ofs(file_system_registry::get(output));
+    std::unique_ptr<writable_file> file(ofs->new_writable_file());
+    
     int num_images_written(0);
     int num_files_written(0);
     
     while(my_files.has_next()) {
         const std::string file_name = my_files.next();
-        cv::Mat img = cv::imread(input_dir + file_name, CV_LOAD_IMAGE_COLOR);
+        cv::Mat img = cv::imread(input.path() + "/" + file_name, CV_LOAD_IMAGE_COLOR);
         if (!img.data) {
             logger.log_warning(fmt("Thread %d: bad input file %s", int(my_shard), file_name.c_str()));
             continue;
@@ -122,38 +127,34 @@ void convert(std::vector<std::string>& input_files, const std::string input_dir,
         cv::resize(img, img, cv::Size(img_size, img_size), 0, 0, cv::INTER_LINEAR);
         PictureTool::opencv2tensor<T>((unsigned char*)(img.data), img.channels(), img.rows, img.cols, tensor.data());
 
-        if (!out.is_open()) {
+        if (!file->is_open()) {
             std::string output_file_name;
             if (images_per_file == 1) {
-                output_file_name = output_dir + file_name;
+                output_file_name = output.path() + file_name;
             } else {
-                output_file_name = output_dir + fmt("images-%d-%d.tensors", my_shard, num_files_written);
+                output_file_name = output.path() + fmt("images-%d-%d.tensors", my_shard, num_files_written);
             }
-            fs_utils::mk_dir(fs_utils::parent_dir(output_file_name));
-            out.open(output_file_name.c_str(), std::ios_base::binary);
-            if (!out.is_open()) {
+            ofs->make_dirs(file_system::parent_dir(output_file_name));
+            if (!file->open(output_file_name)) {
                 logger.log_warning(fmt("Thread %d: cannot open file %s", int(my_shard), output_file_name.c_str()));
                 continue; // exit?
             }
         }
-        // I want to try one read call per image OR one read call per multiple images
-        //out.write((const char*)&nchannels, sizeof(int))
-        //   .write((const char*)&img_size, sizeof(int))
-        //   .write((const char*)&img_size, sizeof(int))
-        //   .write((const char*)&pixel_encoding, sizeof(char))
-        out.write((const char*)tensor.data(), tensor.size()*sizeof(T));
+        const size_t size = tensor.size() * sizeof(T);
+        const ssize_t nbytes_written = file->write((uint8_t*)tensor.data(), size);
+        file_system::check_io(file_system::io_op::write, file->path(), size, nbytes_written, logger, logger_impl::severity::warning);
         
         nprocessed ++;
         num_images_written ++;
         
         if (num_images_written >= images_per_file) {
-            out.close();
+            file->close();
             num_files_written ++;
             num_images_written = 0;
         }
     }
-    if (out.is_open()) {
-        out.close();
+    if (file->is_open()) {
+        file->close();
     }
     const float throughput = 1000.0 * nprocessed / tm.ms_elapsed();
     logger.log_info(fmt("Thread %d: throughput %f images/sec", my_shard, throughput));
@@ -231,11 +232,13 @@ int main(int argc, char **argv) {
         std::cout << opt_desc << std::endl;
         logger.log_error("Cannot recover from previous errors");
     }
-
+    rtrim_inplace(input_dir, "/");
+    rtrim_inplace(output_dir, "/");
     // Get list of input files
-    input_dir = fs_utils::normalize_path(input_dir);
+    url input(input_dir);
+    std::unique_ptr<file_system> ifs(file_system_registry::get(input));
     std::vector<std::string> file_names;
-    fs_utils::get_image_files(input_dir, file_names);
+    ifs->find_files(input.path(), file_names);
     if (file_names.empty())
         logger.log_error(fmt("images2tensors: No input files found in '%s'", input_dir.c_str()));
     logger.log_info(fmt("images2tensors: have found %d images in '%s'", file_names.size(), input_dir.c_str()));
@@ -251,14 +254,13 @@ int main(int argc, char **argv) {
     logger.log_info(fmt("images2tensors: Number of images per file is %d", images_per_file));
     
     // Convert and write
-    output_dir = fs_utils::normalize_path(output_dir);
     std::vector<std::thread*> workers(nthreads, nullptr);
     timer tm;
     for (int i=0; i<nthreads; ++i) {
         if (dtype == "float")
-            workers[i] = new std::thread(convert<float>, std::ref(file_names), input_dir, output_dir, nthreads, i, size, std::ref(logger), images_per_file);
+            workers[i] = new std::thread(convert<float>, std::ref(file_names), input, output_dir, nthreads, i, size, std::ref(logger), images_per_file);
         else
-            workers[i] = new std::thread(convert<unsigned char>, std::ref(file_names), input_dir, output_dir, nthreads, i, size, std::ref(logger), images_per_file);
+            workers[i] = new std::thread(convert<unsigned char>, std::ref(file_names), input, output_dir, nthreads, i, size, std::ref(logger), images_per_file);
     }
     for (int i=0; i<nthreads; ++i) {
         workers[i]->join();

@@ -34,16 +34,16 @@
  * A simple logger implementation for TensorRT library.
  */
 class logger_impl : public ILogger {
-private:
-    std::mutex m_;           //!< Mutex that guards output stream.
-    std::ostream& ostream_;  //!< Output logging stream.
-
+public:
     enum class severity {
         internal_error = 0,
         error = 1,
         warning = 2,
         info = 3
     };
+private:
+    std::mutex m_;           //!< Mutex that guards output stream.
+    std::ostream& ostream_;  //!< Output logging stream.
 #if defined HAVE_NVINFER
     std::map<ILogger::Severity, severity> severity_transform_ = {
         {ILogger::Severity::kINTERNAL_ERROR, severity::internal_error},
@@ -96,23 +96,24 @@ public:
     // Print engine bindings (input/output blobs)
     void log_bindings(nvinfer1::ICudaEngine* engine, const std::string& log_prefix);
 
-    void log(nvinfer1::ILogger::Severity severity, const char* msg) override { log_internal(severity_transform_[severity], msg); }
+    void log(nvinfer1::ILogger::Severity severity, const char* msg) override { log(severity_transform_[severity], msg); }
 #endif
-    template <typename T> void log_internal_error(const T& msg) { log_internal(severity::internal_error, msg); }
-    template <typename T> void log_error(const T& msg) { log_internal(severity::error, msg); }
-    template <typename T> void log_warning(const T& msg) { log_internal(severity::warning, msg); }
-    template <typename T> void log_info(const T& msg) { log_internal(severity::info, msg); }
-private:
+    template <typename T> void log_internal_error(const T& msg) { log(severity::internal_error, msg); }
+    template <typename T> void log_error(const T& msg) { log(severity::error, msg); }
+    template <typename T> void log_warning(const T& msg) { log(severity::warning, msg); }
+    template <typename T> void log_info(const T& msg) { log(severity::info, msg); }
+
     template <typename T>
-    void log_internal(severity the_severity, const T& msg) {
+    void log(severity the_severity, const T& msg) {
         std::lock_guard<std::mutex> lock(m_);
         ostream_ << time_stamp() << " "  << log_levels_[the_severity] << " "  << msg << std::endl;
         if (the_severity == severity::internal_error || the_severity == severity::error) {
             exit(1);
         }
     }
-    
+private:    
     std::string time_stamp();
+
 private:
     std::map<severity, std::string> log_levels_ = {
         {severity::internal_error, "INTERNAL_ERROR"},

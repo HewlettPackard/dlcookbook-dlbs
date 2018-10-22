@@ -95,6 +95,17 @@ if (DOXYGEN_FOUND)
 
     install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION share/doc)
 endif(DOXYGEN_FOUND)
+
+find_path (HDFS_INCLUDE_PATH NAMES hdfs/hdfs.h PATHS /usr/local/include)
+find_path (HDFS_LIBRARY_PATH libhdfs3.so PATHS /usr/local/lib)
+if(HDFS_INCLUDE_PATH)
+    if(HDFS_LIBRARY_PATH)
+        message("Configuring TensorRT benchmark backend with HDFS file system layer.")
+        add_definitions(-DHAVE_HDFS)
+        include_directories(SYSTEM ${HDFS_INCLUDE_PATH})
+        set(hdfs_libs libhdfs3.so)
+    endif()
+endif()
 # -------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------------------------
@@ -107,9 +118,14 @@ add_library(trtbenchbase
             "src/core/infer_engine.hpp" "src/core/infer_engine.cpp"
             "src/core/dataset/dataset.hpp" "src/core/dataset/dataset.cpp"
             "src/core/dataset/image_dataset.hpp" "src/core/dataset/image_dataset.cpp"
-            "src/core/dataset/tensor_dataset.hpp" "src/core/dataset/tensor_dataset.cpp")
+            "src/core/dataset/tensor_dataset.hpp" "src/core/dataset/tensor_dataset.cpp"
+            "src/core/filesystem/file_system.hpp" "src/core/filesystem/file_system.cpp"
+            "src/core/filesystem/posix_file_system.hpp" "src/core/filesystem/posix_file_system.cpp"
+            "src/core/filesystem/hadoop_file_system.hpp" "src/core/filesystem/hadoop_file_system.cpp")
 set_target_properties(trtbenchbase PROPERTIES LINKER_LANGUAGE CXX)
-set(base_libs trtbenchbase pthread ${Boost_LIBRARIES})
+set(base_libs trtbenchbase pthread ${Boost_LIBRARIES} ${hdfs_libs})
+
+
 
 if(CUDA_FOUND)
     cuda_add_library(trtbenchcuda

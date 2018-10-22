@@ -73,9 +73,10 @@ ICudaEngine* load_engine_from_file(const std::string& fname, logger_impl& logger
 /**
  * @brief Serializes inference engine to a file.
  * @param engine_ Inference engine to serialize.
+ * @param logger is the logger to use.
  * @param fname is the file name.
  */
-void serialize_engine_to_file(ICudaEngine *engine_, const std::string& fname);
+void serialize_engine_to_file(ICudaEngine *engine_, const std::string& fname, logger_impl& logger);
 
 
 #endif

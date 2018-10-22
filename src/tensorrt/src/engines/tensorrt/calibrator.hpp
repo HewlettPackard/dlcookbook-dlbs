@@ -20,6 +20,7 @@
 #include "core/logger.hpp"
 #include "core/utils.hpp"
 #include "engines/tensorrt/tensorrt_utils.hpp"
+#include "core/filesystem/file_system.hpp"
 #include <sstream>
 
 /**
@@ -45,11 +46,11 @@ private:
   
     bool do_log_ = true;
   
-    std::string cache_path_;              // Path to calibration cache.
-    std::string model_;                   // Neural network model (to save/load calibration caches).
-    char* calibration_cache_ = nullptr;   // Calibration cache loaded from file.
+    std::string cache_path_;               // Path to calibration cache.
+    std::string model_;                    // Neural network model (to save/load calibration caches).
+    uint8_t* calibration_cache_ = nullptr; // Calibration cache loaded from file.
     size_t calibration_cache_length_ = 0;
-    char* histogram_cache_ = nullptr;     // Histogram cache loaded from file.
+    uint8_t* histogram_cache_ = nullptr;   // Histogram cache loaded from file.
     size_t histogram_cache_length_ = 0;
 public:
     explicit calibrator_impl(logger_impl& logger, const bool do_log=false) : logger_(logger), do_log_(do_log) {}
@@ -135,7 +136,10 @@ public:
         if (do_log_) {
             logger_.log_info("[calibrator] Calibrator::writeCalibrationCache(length=" + std::to_string(length) + ")");
         }
-        fs_utils::write_data(get_cache_file("calibration"), ptr, length);
+        url cache_url(get_cache_file("calibration"));
+        std::unique_ptr<file_system> fs(file_system_registry::get(cache_url));
+        const auto nbytes_written = fs->write_bytes(cache_url.path(), static_cast<const uint8_t*>(ptr), length, true);
+        file_system::check_io(file_system::io_op::write, cache_url.path(), length, nbytes_written, logger_, logger_impl::severity::warning);
     }
     const void* readHistogramCache(std::size_t& length/*output param*/) override { 
         if (do_log_) {
@@ -152,7 +156,10 @@ public:
         if (do_log_) {
             logger_.log_info("[calibrator] Calibrator::writeHistogramCache(length=" + std::to_string(length) + ")");
         }
-        fs_utils::write_data(get_cache_file("histogram"), ptr, length);
+        url cache_url(get_cache_file("histogram"));
+        std::unique_ptr<file_system> fs(file_system_registry::get(cache_url));
+        const auto nbytes_written = fs->write_bytes(cache_url.path(), static_cast<const uint8_t*>(ptr), length, true);
+        file_system::check_io(file_system::io_op::write, cache_url.path(), length, nbytes_written, logger_, logger_impl::severity::warning);
     }
     void setLog(const bool do_log=true) {
         if (do_log_ || do_log) {
@@ -217,9 +224,14 @@ private:
         }
         return "";
     }
-    void update_cache(char*& cache_data, size_t& cache_length, const std::string& fname) {
+    void update_cache(uint8_t*& cache_data, size_t& cache_length, const std::string& fname) {
         if (cache_data == nullptr) {
-            cache_data = fs_utils::read_data(fname, cache_length);
+            url cache_url(fname);
+            std::unique_ptr<file_system> fs(file_system_registry::get(cache_url));
+            if (fs->status(cache_url.path()) == file_system::file_status::file) {
+                const auto nbytes_read = fs->read_bytes(cache_url.path(), cache_data, cache_length, true);
+                file_system::check_io(file_system::io_op::read, cache_url.path(), cache_length, nbytes_read, logger_, logger_impl::severity::error);
+            }
         }
     }
 };
