@@ -127,8 +127,26 @@ writable_file* posix_file_system::new_writable_file(parameters params) {
 }
 
 readable_file* posix_file_system::new_readable_file(parameters params) {
-    std::string reader_type = boost::any_cast<std::string>(params["reader_type"]);
-    data_type dtype = boost::any_cast<data_type>(params["data_type"]);
+    // If there's no `reader_type` key in the parameter set, return default reader
+    if (params.find("reader_type") == params.end()) {
+        return new posix_readable_file();
+    }
+    // Else, the parameter set must contain two records - reader_type of type string
+    // and 'data_type' of type data_type.
+    std::string reader_type;
+    try {
+        reader_type = boost::any_cast<std::string>(params["reader_type"]);
+    } catch(const boost::bad_any_cast &e) {
+        std::cout << "Cannot cast value of 'reader_type' to std::string" << std::endl;
+        throw e;
+    }
+    data_type dtype = data_type::fp32();
+    try {
+        dtype = boost::any_cast<data_type>(params["data_type"]);
+    } catch(const boost::bad_any_cast &e) {
+        std::cout << "Cannot cast value of 'data_type' to data_type" << std::endl;
+        throw e;
+    }
     readable_file *file(nullptr);
     if (reader_type == "default" || reader_type == "") {
         file = new posix_readable_buffered_file(

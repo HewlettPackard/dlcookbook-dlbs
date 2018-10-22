@@ -4,6 +4,9 @@
 //
 // Everything here is completely untested. I only checked it compiles.
 //
+/**
+ * @brief This class loads data from binary files (*.tensors).
+ */
 class hadoop_readable_file : public readable_file {
 private:
     hdfsFS hdfs_ = nullptr;
@@ -24,6 +27,7 @@ public:
 //
 //
 hadoop_file_system::hadoop_file_system(const url &the_url) : file_system() {
+    // Check this - will default namenode and port be OK?
     const std::string &namenode = the_url.hdfs_namenode();
     const int port = the_url.hdfs_port();
     

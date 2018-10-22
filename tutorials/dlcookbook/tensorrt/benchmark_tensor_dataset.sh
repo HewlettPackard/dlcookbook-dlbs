@@ -8,7 +8,7 @@ export CUDA_CACHE_PATH=/dev/shm/cuda_cache
 # to stream data from storage to host memory.
 #------------------------------------------------------------------------------#
 data_dir=~/data/tensors1
-dtype=uchar
+dtype=uint8
 img_size=227
 batch_size=512
 num_prefetchers=2
@@ -16,7 +16,7 @@ num_preallocated_batches=4
 num_warmup_batches=10
 num_batches=50
 
-docker_img="hpe/tensorrt:cuda9-cudnn7"
+docker_img="dlbs/tensorrt:18.11"
 cpus=""
 
 help_message="\
@@ -28,9 +28,9 @@ to stream data from storage to host memory.\n\
 \n\
     --data_dir DIR                 This datset needs to be created with images2tensors\n\
                                    tool. [default: $data_dir]
-    --dtype float|uchar            Data type for image arrays in dataset:\n\
-                                       'float' - 4 bytes\n\
-                                       'uchar' (unsigned char) - 1 byte\n\
+    --dtype fp32|uint8             Data type for image arrays in dataset:\n\
+                                       'fp32' - 4 bytes\n\
+                                       'uint8' (unsigned char) - 1 byte\n\
                                    [default: $dtype]
     --img_size SIZE                Size of input images [3, img_size, img_size] in dataset.\n\
                                    [default: $img_size]

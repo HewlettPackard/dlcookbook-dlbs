@@ -177,7 +177,7 @@ elif [ "$dataset" == "fast_tfrecord" ]; then
   converter="/workspace/python/dlbs/data/imagenet/tensorflow_data.py"
   script="PYTHONPATH=/workspace/python python $converter --input_dir /imagenet/input --num_shards $num_shards --output_dir /imagenet/output --num_workers $num_workers --img_size $img_size"
 elif [[ "$dataset" =~ ^tensors(1|4)$ ]]; then
-  [ "$dataset" == "tensors1" ] && dtype="uchar" || dtype="float"
+  [ "$dataset" == "tensors1" ] && dtype="uint8" || dtype="fp32"
   [ "$shuffle" == "true" ] && shuffle_param="--shuffle" || shuffle_param=""
   docker_args="--rm -ti --volume=${input}:/imagenet/input --volume=${output}:/imagenet/output ${docker_image}"
   script="images2tensors --input_dir=/imagenet/input --output_dir=/imagenet/output --size=${img_size} --nimages=${nimages} --nthreads=${num_workers}"

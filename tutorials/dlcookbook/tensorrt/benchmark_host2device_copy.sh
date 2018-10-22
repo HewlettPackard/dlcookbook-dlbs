@@ -7,7 +7,7 @@ size=10
 pinned_mem=true
 num_warmup_batches=10
 num_batches=100
-docker_img="hpe/tensorrt:cuda9-cudnn7"
+docker_img="dlbs/tensorrt:18.11"
 cpus=""
 
 help_message="\
