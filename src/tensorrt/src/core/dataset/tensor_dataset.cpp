@@ -102,6 +102,8 @@ void tensor_dataset::prefetcher_func(tensor_dataset* myself,
             num_images_in_batch += read_count / img_size;
         }
     } catch(queue_closed) {
+    } catch(const std::ios_base::failure &e) {
+        myself->logger_.log_warning(std::string(e.what()));
     }
     delete my_files;
     myself->logger_.log_info(fmt(

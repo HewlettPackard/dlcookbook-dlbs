@@ -18,10 +18,18 @@
 #define DLBS_TENSORRT_BACKEND_CORE_FILESYSEM_HADOOPFILESYSTEM
 
 #include "core/filesystem/file_system.hpp"
+#include <ios>
 
 #if defined HAVE_HDFS
 // Forward declarations to not include hsdf.h header here.
 struct HdfsFileSystemInternalWrapper;
+
+class hdfs_failure : public std::ios_base::failure {
+public:
+    explicit hdfs_failure(const std::string &message) : std::ios_base::failure(message) {}
+    static hdfs_failure failure(const std::string &message);
+};
+
 //
 /**
  * It should have a prefix, like:

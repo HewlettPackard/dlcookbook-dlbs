@@ -30,6 +30,16 @@ from dlbs.utils import DictUtils
 from dlbs.utils import param2str
 
 
+class P:
+    @staticmethod
+    def resolve_dir(host_dir, container_dir, is_container):
+        if not host_dir:
+            return ''
+        if not is_container or host_dir.startswith('hdfs://'):
+            return host_dir
+        return container_dir
+
+
 class Processor(object):
     """Class that computes variables in all experiments.
 

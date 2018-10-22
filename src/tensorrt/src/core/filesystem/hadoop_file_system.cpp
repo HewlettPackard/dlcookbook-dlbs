@@ -3,7 +3,18 @@
 #include <hdfs/hdfs.h>
 //
 // Everything here is completely untested. I only checked it compiles.
+// I need better error handling - throw something else, not strings.
 //
+
+hdfs_failure hdfs_failure::failure(const std::string &message) {
+    const char *hdfs_error = hdfsGetLastError();
+    if (hdfs_error) {
+        return hdfs_failure(fmt("HDFS error (%s): %s", hdfs_error, message.c_str()));
+    } else {
+        return hdfs_failure(fmt("HDFS error (unknown): %s", message.c_str()));
+    }
+}
+
 /**
  * @brief This class loads data from binary files (*.tensors).
  */
@@ -27,18 +38,26 @@ public:
 //
 //
 hadoop_file_system::hadoop_file_system(const url &the_url) : file_system() {
-    // Check this - will default namenode and port be OK?
+    // Check this - will default namenode and port be OK? By default, it users
+    // do not specify them (i.e. hdfs:///path/to/dataset), the following values
+    // are used: namenode=localhost, port=9820
     const std::string &namenode = the_url.hdfs_namenode();
     const int port = the_url.hdfs_port();
     
     hdfsBuilder *builder = hdfsNewBuilder();
-    if (builder == nullptr) { throw "Cannot create hdfsNewBuilder"; }
+    if (builder == nullptr) {
+        throw hdfs_failure::failure(fmt("Cannot create hdfsNewBuilder"));
+    }
     
     hdfsBuilderSetNameNode(builder, namenode.c_str());
     hdfsBuilderSetNameNodePort(builder, port);
     
     hdfs_ = hdfsBuilderConnect(builder);
-    if (hdfs_ == nullptr) { throw "Cannot connect to HDFS"; }
+    if (!hdfs_ ) {
+        throw hdfs_failure::failure(
+            fmt("Cannot connect to HDFS (namenode=%s, port=%d)", namenode.c_str(), port)
+        );
+    }
     
     hdfsFreeBuilder(builder);
 }
@@ -70,7 +89,11 @@ file_system::file_status hadoop_file_system::status(const std::string &path) {
 bool hadoop_file_system::make_dir(std::string dir) {
     // Implement me! Create directory `dir`. This is not recursive call. Assumption
     // is that parent dir exists.
-    return (hdfsCreateDirectory(hdfs_, dir.c_str()) >= 0);
+    const bool dir_created = (hdfsCreateDirectory(hdfs_, dir.c_str()) >= 0);
+    if (!dir_created) {
+        std::cerr << hdfs_failure::failure(fmt("Cannot create directory '%s'", dir.c_str())).what() << std::endl;
+    }
+    return dir_created;
 }
 
 writable_file* hadoop_file_system::new_writable_file(parameters params) {
@@ -101,14 +124,20 @@ void hadoop_file_system::get_children(const std::string &dir, std::vector<std::s
 //
 bool hadoop_readable_file::open(const std::string &path) {
     // Implement me! Open file pointed by a `path`.
-    return false;
+    const int USE_DEFAULT = 0;
+    file_ = hdfsOpenFile(hdfs_, path.c_str(), O_RDONLY, USE_DEFAULT, USE_DEFAULT, USE_DEFAULT);
+    if (!file_) {
+        std::cerr << hdfs_failure::failure(fmt("Cannot open file '%s'", path.c_str())).what() << std::endl;
+    }
+    return is_open();
 }
 
 ssize_t hadoop_readable_file::read(host_dtype* dest, const size_t count) {
     // Implement me! Assumption is that `host_dtype` is unsigned char here.
-    // Read count bytes from a file from current position. This function can read
+    // Read `count` bytes from a file from current position. This function can read
     // less bytes if there are no more data left.
-    // Return 0 to indicate we are at the end of a file.
+    // Return 0 to indicate we are at the end of a file. The `dest` array will have
+    // enough space to store `count` bytes.
     return 0;
 }
 

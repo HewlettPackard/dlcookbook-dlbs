@@ -99,11 +99,11 @@
         "$('--profile' if ${tensorrt.profile} is True else '')$",
         "--input ${tensorrt.input}",
         "--output ${tensorrt.output}",
-        "--cache $('' if '${tensorrt.cache}' == '' else '${tensorrt.cache}' if ${exp.docker} is False else '/workspace/tensorrt_cache')$",
+        "--cache='$(P.resolve_dir('${tensorrt.cache}', '/workspace/tensorrt_cache/', ${exp.docker}))$'",
         "--report_frequency=${tensorrt.report_frequency}",
         "$('--no_batch_times' if ${tensorrt.no_batch_times} else '')$",
         "--gpus ${exp.gpus}",
-        "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data/')$",
+        "--data_dir='$(P.resolve_dir('${exp.data_dir}', '/workspace/data/', ${exp.docker}))$'",
         "--resize_method ${tensorrt.resize_method}" ,
         "--num_prefetchers ${tensorrt.num_prefetchers}",
         "--num_decoders ${tensorrt.num_decoders}",
@@ -141,7 +141,7 @@
         "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
         "$('--volume=${tensorrt.cache}:/workspace/tensorrt_cache' if '${tensorrt.cache}' != '' else '')$",
         "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
-        "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
+        "$('--volume=${exp.data_dir}:/workspace/data' if '${tensorrt._data_fs}' == 'posix' else '')$",
         "${exp.docker_args}",
         "${exp.docker_image}"
       ],
@@ -187,6 +187,11 @@
       "desc": [
         "Name of an input dataset - 'images', 'tensors1' or 'tensors4'"
       ]
+    },
+    "tensorrt._data_fs": {
+      "val": "$('none' if not '${exp.data_dir}' else 'hdfs' if '${exp.data_dir}'.startswith('hdfs://') else 'posix')$",
+      "type": "str",
+      "desc": "Internal parameter that must not be used by users."
     }
   },
   "extensions": [
