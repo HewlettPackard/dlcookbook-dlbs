@@ -55,7 +55,7 @@ public:
         stream_.read((char*)(ptr), static_cast<std::streamsize>(length));
         return static_cast<ssize_t>(stream_.gcount());
     }
-    std::string description() { return "posix_readable_buffered_file"; }
+    std::string description() { return "posix_readable_file"; }
 };
 
 
@@ -71,7 +71,13 @@ public:
     bool is_open() override { return (fd_ > 0); }
     ssize_t read(host_dtype* dest, const size_t count) override;
     void close() override;
-    std::string description() { return "posix_readable_buffered_file"; }
+    std::string description() { 
+        const std::string advise_no_cache_str = (advise_no_cache_ ? "yes" : "no");
+        return fmt(
+            "posix_readable_buffered_file [advise_no_cache: %s, dtype=%s]",
+            advise_no_cache_str.c_str(), dtype_.str().c_str()
+        );
+    }
 };
 
 class posix_readable_unbuffered_file : public readable_file {
@@ -249,9 +255,8 @@ void posix_readable_buffered_file::close()  {
 }
 
 
-posix_readable_unbuffered_file::posix_readable_unbuffered_file(const data_type &dtype, const int block_sz) : 
-dtype_(dtype), block_sz_(block_sz) {
-
+posix_readable_unbuffered_file::posix_readable_unbuffered_file(const data_type &dtype, 
+                                                               const int block_sz) : dtype_(dtype), block_sz_(block_sz) {
     if (dtype_.is_fp32()) {
         throw std::invalid_argument(
             "DirectIO file reader does not support input files storing images with 4 bytes per element (fp32 data type). "\
@@ -260,7 +265,6 @@ dtype_(dtype), block_sz_(block_sz) {
         );
     }
     
-    block_sz_ = environment::storage_block_size();
     DLOG(fmt("[direct reader] direct_reader::direct_reader(dtype=%s, block size=%u).", dtype.c_str(), block_sz_));
 }
 
