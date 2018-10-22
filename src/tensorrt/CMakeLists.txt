@@ -3,6 +3,7 @@ project(TensorRT_Benchmarks)
 
 
 option(DEBUG_LOG "Enable detailed logging for some of the componenets." OFF)
+option(WITH_HDFS "Link against libhdfs(3) library if found." ON)
 set(HOST_DTYPE "INT8" CACHE STRING "Data type to use to store images in host OS (INT8 or FP32 (=INT8))")
 
 # Following preprocessor variables can be defined: HAVE_CUDA, HAVE_NVINFER, HAVE_OPENCV
@@ -96,16 +97,18 @@ if (DOXYGEN_FOUND)
     install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION share/doc)
 endif(DOXYGEN_FOUND)
 
-find_path (HDFS_INCLUDE_PATH NAMES hdfs/hdfs.h PATHS /usr/local/include)
-find_path (HDFS_LIBRARY_PATH libhdfs3.so PATHS /usr/local/lib)
-if(HDFS_INCLUDE_PATH)
-    if(HDFS_LIBRARY_PATH)
-        message("Configuring TensorRT benchmark backend with HDFS file system layer.")
-        add_definitions(-DHAVE_HDFS)
-        include_directories(SYSTEM ${HDFS_INCLUDE_PATH})
-        set(hdfs_libs libhdfs3.so)
+if (WITH_HDFS)
+    find_path (HDFS_INCLUDE_PATH NAMES hdfs/hdfs.h PATHS /usr/local/include)
+    find_path (HDFS_LIBRARY_PATH libhdfs3.so PATHS /usr/local/lib)
+    if(HDFS_INCLUDE_PATH)
+        if(HDFS_LIBRARY_PATH)
+            message("Configuring TensorRT benchmark backend with HDFS file system layer (libhdfs3.so).")
+            add_definitions(-DHAVE_HDFS)
+            include_directories(SYSTEM ${HDFS_INCLUDE_PATH})
+            set(hdfs_libs libhdfs3.so)
+        endif()
     endif()
-endif()
+endif(WITH_HDFS)
 # -------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------------------------

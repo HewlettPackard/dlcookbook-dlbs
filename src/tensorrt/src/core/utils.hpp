@@ -56,6 +56,27 @@
     #define DLOG(msg)
 #endif
 
+
+class data_type {
+public:
+    enum _type {
+        dt_fp32 = 1,
+        dt_uint8 = 2
+    };
+    _type type_ = dt_fp32;
+public:
+    explicit data_type(const std::string &str_type);
+    bool const is_fp32()  const { return type_ == dt_fp32; };
+    bool const is_uint8() const { return type_ == dt_uint8; };
+    std::string str() const { return is_fp32() ? "fp32" : "uint8"; }
+    
+    static void __attribute__((optimize("O0"))) check(const std::string &str_type) {
+        data_type t(str_type);
+    }
+    static data_type fp32() { return data_type("fp32"); }
+    static data_type uint8() { return data_type("uint8"); }
+};
+
 /**
  * @brief Fill vector with random numbers uniformly dsitributed in [0, 1).
  * @param vec Vector to initialize.

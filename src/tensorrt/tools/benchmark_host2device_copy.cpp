@@ -74,6 +74,7 @@ int main(int argc, char **argv) {
     //
     int gpu(0), size(0), num_warmup_batches(0), num_batches(0);
     bool pinned(false);
+    std::string output("json");
     // Parse command line options
     po::options_description opt_desc("Images2Tensors");
     po::variables_map var_map;
@@ -83,7 +84,8 @@ int main(int argc, char **argv) {
         ("num_warmup_batches", po::value<int>(&num_warmup_batches)->default_value(10), "Number of warmup iterations.")
         ("num_batches", po::value<int>(&num_batches)->default_value(50), "Number of benchmark iterations.")
         ("size", po::value<int>(&size)->default_value(10), "Size of a data chunk in MegaBytes.")
-        ("pinned",  po::bool_switch(&pinned)->default_value(false), "Use pinned memory");
+        ("pinned",  po::bool_switch(&pinned)->default_value(false), "Use pinned memory")
+        ("output",  po::value<std::string>(&output)->required()->default_value("json"), "Type of output - JSON or DLBS.");
     try {
         po::store(po::parse_command_line(argc, argv, opt_desc), var_map);
         if (var_map.count("help")) {
@@ -97,7 +99,6 @@ int main(int argc, char **argv) {
         logger.log_error("Cannot recover from previous errors");
     }
     //
-    
 #if not defined HAVE_CUDA
     std::cerr << "The benchmark_host2device_copy was compiled without CUDA." << std::endl;
     logger.log_error("Can not do anything without CUDA support.");
@@ -113,9 +114,22 @@ int main(int argc, char **argv) {
     //
     benchmark(host_mem, device_mem, nbytes, num_warmup_batches, helper);
     const float throughput = benchmark(host_mem, device_mem, nbytes, num_batches, helper);
+    //
     std::string memory = (pinned ? "pinned" : "pageable");
-    std::cout << fmt("{\"gpu\": %d, \"warmup_iters\": %d, \"bench_iters\": %d, \"size_mb\": %d, \"memory\": \"%s\", \"throughput_mb_s\": %f}",
-                     gpu, num_warmup_batches, num_batches, size, memory.c_str(), throughput) << std::endl;
+    if (output == "json") {
+        std::cout << fmt("{\"gpu\": %d, \"warmup_iters\": %d, \"bench_iters\": %d, \"size_mb\": %d, \"memory\": \"%s\", \"throughput_mb_s\": %f}",
+                        gpu, num_warmup_batches, num_batches, size, memory.c_str(), throughput) << std::endl;
+    } else {
+#if defined HAVE_HDFS
+        std::cout << "__exp.hdfs_support__=true" << std::endl;
+#endif
+        std::cout << "__exp.gpus__=" << gpu  << std::endl;
+        std::cout << "__exp.num_warmup_batches__=" << num_warmup_batches << std::endl;
+        std::cout << "__exp.num_batches__=" << num_batches << std::endl;
+        std::cout << "__exp.msg_size_mb__=" << size << std::endl;
+        std::cout << "__exp.memory__=\"" << memory << "\"" << std::endl;
+        std::cout << "__results.throughput__=" << throughput << std::endl;
+    }
     //
     cudaCheck(cudaFree(device_mem));
     alloc->deallocate(host_mem);

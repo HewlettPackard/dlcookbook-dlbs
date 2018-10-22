@@ -22,8 +22,8 @@
  * 
  * For example:
  * @code{.sh}
- * benchmark_tensor_dataset --data_dir=/mnt/imagenet/uchar227 --batch_size=512 \
- *                          --dtype=uchar --img_size=227 --num_prefetchers=3 \
+ * benchmark_tensor_dataset --data_dir=/mnt/imagenet/uint8_227 --batch_size=512 \
+ *                          --dtype=uint8 --img_size=227 --num_prefetchers=3 \
  *                          --prefetch_pool_size=9 --num_warmup_batches=1000 \
  *                          --num_batches=5000
  * @endcode
@@ -37,7 +37,7 @@
  *    preallocated in advance and then reused by prefetchers.
  * 6. `--num_warmup_batches` Number of warmup iterations.
  * 7. `--num_batches` Number of benchmark iterations.
- * 8. `--dtype` Tensor data type in the dataset- 'float' or 'uchar'.
+ * 8. `--dtype` Tensor data type in the dataset- 'fp32' or 'uint8'.
  */
 #include "core/dataset/tensor_dataset.hpp"
 #include <boost/program_options.hpp>
@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
         ("prefetch_pool_size", po::value<int>(&prefetch_pool_size)->default_value(2), "Number of pre-allocated batches.")
         ("num_warmup_batches", po::value<int>(&num_warmup_batches)->default_value(10), "Number of warmup iterations.")
         ("num_batches", po::value<int>(&num_batches)->default_value(50), "Number of benchmark iterations.")
-        ("dtype", po::value<std::string>(&dtype)->default_value("float"), "Tensor data type - 'float' or 'uchar'.");
+        ("dtype", po::value<std::string>(&dtype)->default_value("fp32"), "Tensor data type in files - 'fp32' or 'uint8'.");
     //
     try {
         po::store(po::parse_command_line(argc, argv, opt_desc), var_map);
@@ -74,26 +74,31 @@ int main(int argc, char **argv) {
             return 0;
         }
         po::notify(var_map);
-    } catch(po::error& e) {
+    } catch(po::error &e) {
         logger.log_warning(e.what());
         std::cout << opt_desc << std::endl;
         logger.log_error("Cannot recover from previous errors");
     }
     //
-    logger.log_info(fmt(
-        "[benchmarks            ]: data_dir=%s, batch_size=%d, img_size=%d, num_prefetchers=%d, prefetch_pool_size=%d, num_warmup_batches=%d, num_batches=%d, dtype=%s",
-        data_dir.c_str(), batch_size, img_size, num_prefetchers, prefetch_pool_size, num_warmup_batches, num_batches, dtype.c_str()
-    ));
-    const auto images_sec = tensor_dataset::benchmark(
-        data_dir, batch_size, img_size, num_prefetchers, prefetch_pool_size,
-        num_warmup_batches, num_batches, dtype
-    );
-    if (images_sec >= 0) {
-        // 3 channels times number of elements per channel times element size in bytes devided by bytes in megabyte
-        const float img_mb = float(3*img_size*img_size)*(dtype == "float" ? 4 : 1) / (1024*1024);
-        const float mb_sec = images_sec * img_mb;
-        logger.log_info(fmt("[benchmarks            ]: images/sec=%f, MB/sec=%f", images_sec, mb_sec));
-    } else {
-        logger.log_warning("[benchmarks            ]: Benchmark returned error code indicating there was an error.");
+    try {
+        data_type::check(dtype);
+        logger.log_info(fmt(
+            "[benchmarks            ]: data_dir=%s, batch_size=%d, img_size=%d, num_prefetchers=%d, prefetch_pool_size=%d, num_warmup_batches=%d, num_batches=%d, dtype=%s",
+            data_dir.c_str(), batch_size, img_size, num_prefetchers, prefetch_pool_size, num_warmup_batches, num_batches, dtype.c_str()
+        ));
+        const auto images_sec = tensor_dataset::benchmark(
+            data_dir, batch_size, img_size, num_prefetchers, prefetch_pool_size,
+            num_warmup_batches, num_batches, data_type(dtype)
+        );
+        if (images_sec >= 0) {
+            // 3 channels times number of elements per channel times element size in bytes devided by bytes in megabyte
+            const float img_mb = float(3*img_size*img_size)*(dtype == "fp32" ? 4 : 1) / (1024*1024);
+            const float mb_sec = images_sec * img_mb;
+            logger.log_info(fmt("[benchmarks            ]: images/sec=%f, MB/sec=%f", images_sec, mb_sec));
+        } else {
+            logger.log_warning("[benchmarks            ]: Benchmark returned error code indicating there was an error.");
+        }
+    } catch(const std::exception &e) {
+        logger.log_warning(e.what());
     }
 }

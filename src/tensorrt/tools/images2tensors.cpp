@@ -24,7 +24,7 @@
  * 
  * Images are stored as tensors of shape `[3, Width, Height]` where `Width` and `Height` are always
  * the same (`Size`). Each tensor is an array of length `3*Size*Size`. The tool can create tensors of
- * type `float` or `unsigned char` (`uchar`). For instance, in case of unsigned char data type and 
+ * type `fp32` (float) or `uint8` (unsigned char) . For instance, in case of unsigned char data type and 
  * images of shape [3,227,227], each image will be represented as an array of 157587 elements (bytes)
  * or 151KB per image.
  * 
@@ -34,7 +34,7 @@
  * For example:
  * @code{.sh}
  * images2tensors --input_dir=/mnt/imagenet100k/jpegs --output_dir=/mnt/imagenet100k/tensors1 \
- *                --size=227 --dtype=uchar --nthreads=5 --images_per_file=20000
+ *                --size=227 --dtype=uint8 --nthreads=5 --images_per_file=20000
  * @endcode
  * 
  * The tool accepts the following parameters:
@@ -43,9 +43,9 @@
  *    of a valid directory structure.
  * 2. `--output_dir` Output directory. The tool will write output files in this directory.
  * 3. `--size` Resize images to this size. Output images will have the following shape [3, size, size].
- * 4. `--dtype` A data type to use. Two types are supported: 'float' and 'uchar'. The 'float' is a
+ * 4. `--dtype` A data type to use. Two types are supported: 'fp32' and 'uint8'. The 'fp32' is a
  *    single precision 4 byte numbers. Images take more space but are read directly into an inference
- *    buffer. The 'uchar' (unsigned char) is a one byte numbers that takes less disk space but need to
+ *    buffer. The 'uint8' (unsigned char) is a one byte numbers that takes less disk space but need to
  *    be converted from unsigned char to float array.
  * 5. `--shuffle` Shuffle list of images. Is used with combination `--nimages` to convert only a small
  *    random subset.
@@ -198,10 +198,10 @@ int main(int argc, char **argv) {
         ("size", po::value<int>(&size)->default_value(227), 
             "Resize images to this size. Output images will have square shape [3, size, size]."
         )
-        ("dtype", po::value<std::string>(&dtype)->required()->default_value("float"),
-            "A data type for a matrix storage. Two types are supported: 'float' and 'uchar'. "
-            "The 'float' is a single precision 4 byte storage. Images take more space but are read "
-            "directly into an inference buffer. The 'uchar' (unsigned char) is a one byte storage "
+        ("dtype", po::value<std::string>(&dtype)->required()->default_value("fp32"),
+            "A data type for a matrix storage. Two types are supported: 'fp32' and 'uint8'. "
+            "The 'fp32' is a single precision 4 byte storage. Images take more space but are read "
+            "directly into an inference buffer. The 'uint8' (unsigned char) is a one byte storage "
             "that takes less disk space but needs to be converted from unsigned char to float array."
         )
         ("shuffle",  po::bool_switch(&shuffle)->default_value(false),
@@ -232,6 +232,7 @@ int main(int argc, char **argv) {
         std::cout << opt_desc << std::endl;
         logger.log_error("Cannot recover from previous errors");
     }
+    data_type::check(dtype);
     rtrim_inplace(input_dir, "/");
     rtrim_inplace(output_dir, "/");
     // Get list of input files
@@ -257,7 +258,7 @@ int main(int argc, char **argv) {
     std::vector<std::thread*> workers(nthreads, nullptr);
     timer tm;
     for (int i=0; i<nthreads; ++i) {
-        if (dtype == "float")
+        if (dtype == "fp32")
             workers[i] = new std::thread(convert<float>, std::ref(file_names), input, output_dir, nthreads, i, size, std::ref(logger), images_per_file);
         else
             workers[i] = new std::thread(convert<unsigned char>, std::ref(file_names), input, output_dir, nthreads, i, size, std::ref(logger), images_per_file);

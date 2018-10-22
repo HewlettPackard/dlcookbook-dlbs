@@ -50,9 +50,9 @@
 #endif
 
 DataType str2dtype(const std::string& dtype) {
-    if (dtype == "float32" || dtype == "float")
+    if (dtype == "float32" || dtype == "float" || dtype == "fp32")
         return DataType::kFLOAT;
-    if (dtype == "float16")
+    if (dtype == "float16" || dtype == "fp16")
         return DataType::kHALF;
     return DataType::kINT8;
 }
@@ -220,7 +220,7 @@ void tensorrt_inference_engine::do_inference(abstract_queue<inference_msg*> &req
 #ifdef HOST_DTYPE_FP32
     logger_.log_info(me + ": Will consume tensor<float> tensors.");
 #elif defined HOST_DTYPE_INT8
-    logger_.log_info(me + ": Will consume tensor<unsigned char> tensors. Casting to 'float' will be done on GPU.");
+    logger_.log_info(me + ": Will consume tensor<unsigned char> tensors. Casting to 'fp32' will be done on GPU.");
 #else
     logger_.log_warning(me + ": Will consume tensor<?> tensors. This is BUG.");
 #endif

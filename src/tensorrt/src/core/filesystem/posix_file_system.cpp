@@ -63,10 +63,10 @@ class posix_readable_buffered_file : public readable_file {
 private:
     int fd_ = -1;                          //!< File descriptor.
     bool advise_no_cache_ = false;         //!< If true, advise OS not to cache file.
-    const std::string dtype_;              //!< Matrix data type in a binary file ('float', 'uchar').
+    const data_type dtype_;                //!< Matrix data type in a binary file ('fp32', 'uint8').
     std::vector<unsigned char> buffer_;    //!< If images are stored as unsigned chars, use this buffer.
 public:
-    posix_readable_buffered_file(const std::string& dtype="float", const bool advise_no_cache=false);
+    posix_readable_buffered_file(const data_type &dtype=data_type::fp32(), const bool advise_no_cache=false);
     bool open(const std::string &path) override;
     bool is_open() override { return (fd_ > 0); }
     ssize_t read(host_dtype* dest, const size_t count) override;
@@ -76,10 +76,6 @@ public:
 
 class posix_readable_unbuffered_file : public readable_file {
 private:
-    enum class data_type {
-        dt_float,
-        dt_unsigned_char
-    };
     int block_sz_ = 512;                   //!< Block size for O_DIRECT. Use DLBS_TENSORRT_STORAGE_BLOCK_SIZE to overwrite this value.
     int fd_ = -1;                          //!< File descriptor.
     const data_type dtype_;                //!< Data type for batch tensor.
@@ -92,12 +88,17 @@ private:
                                            // always < block_sz_.
     bool eof_reached_ = false;             // !< We have reached EOF with previous call. 
 public:
-    posix_readable_unbuffered_file(const std::string& dtype="float", const int block_sz=512);
+    posix_readable_unbuffered_file(const data_type &dtype=data_type::fp32(), const int block_sz=512);
     bool open(const std::string &path) override;
     bool is_open() override { return (fd_ > 0); }
     ssize_t read(host_dtype* dest, const size_t count) override;
     void close() override;
-    std::string description() { return "posix_readable_unbuffered_file"; }
+    std::string description() {
+        return fmt(
+            "posix_readable_unbuffered_file [directio=true, block_size=%d, dtype=%s]",
+            block_sz_, dtype_.str().c_str()
+        );
+    }
 private:
     void allocate(const size_t new_sz);
     void deallocate();
@@ -127,16 +128,16 @@ writable_file* posix_file_system::new_writable_file(parameters params) {
 
 readable_file* posix_file_system::new_readable_file(parameters params) {
     std::string reader_type = boost::any_cast<std::string>(params["reader_type"]);
-    std::string data_type = boost::any_cast<std::string>(params["data_type"]);
+    data_type dtype = boost::any_cast<data_type>(params["data_type"]);
     readable_file *file(nullptr);
     if (reader_type == "default" || reader_type == "") {
         file = new posix_readable_buffered_file(
-            data_type,
+            dtype,
             environment::remove_files_from_os_cache()
         );
     } else if (reader_type == "directio") {
         file = new posix_readable_unbuffered_file(
-            data_type,
+            dtype,
             environment::storage_block_size()
         );
     }
@@ -180,7 +181,7 @@ void posix_file_system::get_children(const std::string &dir, std::vector<std::st
 }
 
 
-posix_readable_buffered_file::posix_readable_buffered_file(const std::string& dtype,
+posix_readable_buffered_file::posix_readable_buffered_file(const data_type &dtype,
                                                            const bool advise_no_cache) : advise_no_cache_(advise_no_cache), dtype_(dtype) {
 }
 
@@ -195,12 +196,14 @@ bool posix_readable_buffered_file::open(const std::string &path) {
 ssize_t posix_readable_buffered_file::read(host_dtype* dest, const size_t count)  {
 #if defined HOST_DTYPE_FP32
     // To convert from unsigned char in files to SP32 in host memory
-    if (dtype_ == "uchar" && buffer_.size() != count) {
+    if (dtype_.is_uint8() && buffer_.size() != count) {
         buffer_.resize(count);
     }
 #else
-    if (dtype_ == "float") {
-        throw "With unsigned char host data type files with SP32 elements are not supported.";
+    if (dtype_.is_fp32()) {
+        throw std::invalid_argument(
+            "When host dtype is UINT8, file dtype must also be UINT8. Now - host dtype is UINT8, file dtype is FP32."
+        );
     }
 #endif
     ssize_t read_count;
@@ -228,17 +231,12 @@ void posix_readable_buffered_file::close()  {
 }
 
 
-posix_readable_unbuffered_file::posix_readable_unbuffered_file(const std::string& dtype, const int block_sz) : 
-dtype_(dtype == "float" ? data_type::dt_float : data_type::dt_unsigned_char), block_sz_(block_sz) {
+posix_readable_unbuffered_file::posix_readable_unbuffered_file(const data_type &dtype, const int block_sz) : 
+dtype_(dtype), block_sz_(block_sz) {
 
-    if (dtype != "float" && dtype != "uchar") {
+    if (dtype_.is_fp32()) {
         throw std::invalid_argument(
-            "Invalid image data type (expecting 'float' or 'uchar') but given '" + dtype + "'."
-        );
-    }
-    if (dtype_ == data_type::dt_float) {
-        throw std::invalid_argument(
-            "DirectIO file reader does not support input files storing images with 4 bytes per element (float data type). "\
+            "DirectIO file reader does not support input files storing images with 4 bytes per element (fp32 data type). "\
             "Probably, you forgort to provide data_name parameter: --data_name=tensors1. If running with DLBS, this will "\
             "be tensorrt.data_name i.e. -Ptensorrt.data_name='\"tensors1\"'."
         );

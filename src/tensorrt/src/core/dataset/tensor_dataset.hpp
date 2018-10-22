@@ -66,7 +66,7 @@ public:
     static float benchmark(const std::string dir, const size_t batch_size=512, const size_t img_size=227,
                            const size_t num_prefetches=4, const size_t num_infer_msgs=10,
                            const int num_warmup_batches=10, const int num_batches=100,
-                           const std::string& dtype="float");
+                           const data_type &dtype=data_type::fp32());
 };
 
 

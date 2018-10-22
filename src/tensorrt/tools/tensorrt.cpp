@@ -149,10 +149,10 @@ int main(int argc, char **argv) {
         } else {
             if (data_opts.data_name_ == "tensors1") {
                 logger.log_info(me + "Will use 'tensors1' data set");
-                data_opts.dtype_ = "uchar";
+                data_opts.dtype_ = data_type::uint8();
             } else if (data_opts.data_name_ == "tensors4") {
                 logger.log_info(me + "Will use 'tensors4' data set");
-                data_opts.dtype_ = "float";
+                data_opts.dtype_ = data_type::fp32();
             } else {
                 logger.log_error(me + "Invalid input dataset (" + data_opts.data_name_ + ")");
             }

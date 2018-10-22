@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
     
     std::unique_ptr<file_system> fs(file_system_registry::get(fpath));
     std::unique_ptr<readable_file> reader(fs->new_readable_file(
-        {{"reader_type", "directio"}, {"data_type", "uchar"}}
+        {{"reader_type", "directio"}, {"data_type", data_type::uint8()}}
     ));
     
     if (!reader->open(fpath.path())) {

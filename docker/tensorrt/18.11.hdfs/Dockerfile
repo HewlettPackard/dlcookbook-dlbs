@@ -57,3 +57,4 @@ RUN cd /tensorrt && rm -rf -- ./build && \
 
 
 ENV PATH /opt/tensorrt/bin:$PATH
+ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH

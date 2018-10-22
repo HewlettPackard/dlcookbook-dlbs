@@ -138,7 +138,7 @@ void tensor_dataset::run() {
 float tensor_dataset::benchmark(const std::string dir, const size_t batch_size, const size_t img_size,
                                 const size_t num_prefetches, const size_t num_infer_msgs,
                                 const int num_warmup_batches, const int num_batches,
-                                const std::string& dtype) {
+                                const data_type &dtype) {
     logger_impl logger;
     dataset_opts opts;
     opts.data_dir_ = dir;

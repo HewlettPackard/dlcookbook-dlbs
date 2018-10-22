@@ -26,6 +26,18 @@
 #include <algorithm>
 #include <regex>
 
+data_type::data_type(const std::string &str_type) {
+    if (str_type == "fp32") { 
+        type_ = dt_fp32; 
+    } else if (str_type == "uint8") {
+        type_ = dt_uint8;
+    } else {
+        throw std::invalid_argument(
+            fmt("Invalid data type (%s). Must be one of ('fp32', 'uint8')", str_type.c_str())
+        );
+    }
+}
+
 void fill_random(float *vec, const size_t sz) {
   std::random_device rnd_device;
   std::mt19937 mersenne_engine(rnd_device());
