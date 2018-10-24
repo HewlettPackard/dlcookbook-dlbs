@@ -1,0 +1,9 @@
+#!/bin/bash
+
+export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
+. ${BENCH_ROOT}/../../../../scripts/environment.sh
+
+[ ! -d "./logs" ] && logfatal "You must create './logs' directory before running this script."
+
+rank=$1
+python $experimenter run --config=./config.json -Ppytorch.distributed_rank=${rank}

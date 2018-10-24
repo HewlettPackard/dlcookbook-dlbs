@@ -1,0 +1,19 @@
+{
+  "parameters": {
+    "exp.framework": "pytorch",
+    "exp.docker_image": "nvcr.io/nvidia/pytorch:18.06-py3",
+    "exp.docker_args": "--rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host --net=host --privileged",
+
+    "exp.num_nodes": 1,
+    "pytorch.distributed_rendezvous": "127.0.0.1:29500",
+    "exp.gpus": "0,1,2,3,4,5,6,7",
+
+    "exp.num_warmup_batches": 100,
+    "exp.num_batches": 400,
+    "exp.log_file": "${BENCH_ROOT}/logs/rank_${pytorch.distributed_rank}.log",
+
+    "exp.dtype": "float16",
+    "exp.model": "resnet50",
+    "exp.replica_batch": 256
+  }
+}

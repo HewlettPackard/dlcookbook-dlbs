@@ -118,6 +118,26 @@
       "val": "",
       "type": "str",
       "desc": "Basically, it's a LD_LIBRARY_PATH for PyTorch in case of a bare metal run."
+    },
+    "pytorch.distributed_rank": {
+      "val": 0,
+      "type": "int",
+      "desc": "Experimental support  for distributed PyTorch. Rank of this DLBS process."
+    },
+    "pytorch.distributed_rendezvous": {
+      "val": "localhost:4000",
+      "type": "str",
+      "desc": "Experimental support  for distributed PyTorch. Rendezvous point - IP_ADDRESS:PORT."
+    },
+    "pytorch.__master_addr": {
+      "val": "$('${pytorch.distributed_rendezvous}'.split(':')[0] if ':' in '${pytorch.distributed_rendezvous}' else '')$",
+      "type": "str",
+      "desc": "Private parameter that must not be used by users"
+    },
+    "pytorch.__master_port": {
+      "val": "$('${pytorch.distributed_rendezvous}'.split(':')[1] if ':' in '${pytorch.distributed_rendezvous}' else '')$",
+      "type": "int",
+      "desc": "Private parameter that must not be used by users"
     }
   },
   "extensions": [

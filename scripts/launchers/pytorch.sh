@@ -15,14 +15,21 @@ is_batch_good "${__batch_file__}" "${exp_replica_batch}" || {
 }
 # This script is to be executed inside docker container or on a host machine.
 # Thus, the environment must be initialized inside this scrip lazily.
-if [ "${exp_num_gpus}" == "1" ]; then
-    bench_launcher=""
+if [ "${exp_num_nodes}" == "1" ]; then
+  if [ "${exp_num_gpus}" == "1" ]; then
+      bench_launcher=""
+  else
+      if [ "${exp_device_type}" == "gpu" ]; then
+          bench_launcher="-m torch.distributed.launch --nproc_per_node=${exp_num_local_gpus}"
+      else
+          bench_launcher="-m torch.distributed.launch --nproc_per_node=1"
+      fi
+  fi
 else
-    if [ "${exp_device_type}" == "gpu" ]; then
-        bench_launcher="-m torch.distributed.launch --nproc_per_node=${exp_num_local_gpus}"
-    else
-        bench_launcher="-m torch.distributed.launch --nproc_per_node=1"
-    fi
+  bench_launcher="-m torch.distributed.launch --nnodes=${exp_num_nodes} --node_rank=${pytorch_distributed_rank}"
+  bench_launcher="${bench_launcher} --master_addr=${pytorch___master_addr} --master_port=${pytorch___master_port}"
+  bench_launcher="${bench_launcher} --nproc_per_node=${exp_num_local_gpus}"
+  #echo "Bench launcher: ${bench_launcher}"
 fi
 
 [ -z "${runtime_launcher}" ] && runtime_launcher=":;"
