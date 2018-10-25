@@ -1,36 +1,65 @@
 # __Introduction to Benchmarking Suite__
+Every benchmark is defined by a collection of parameters. Every parameter is a key-value pair. Parameters define everything - framework names, batch sizes, log files, neural network models etc. Benchmarks can be defined manually be enumerating specific parameters for each benchmark, or automatically, by providing a configuration that defines how parameters should vary from one benchmark to another. A script called [experimenter](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/dlbs/experimenter.py) varies parameters (basically, by doing Cartesian product) and creates multiple benchmarks with different parameters.
 
-Every benchmark is defined by a set of parameters. Every parameter is a key-value pair. Parameters define everything - frameworks, batch sizes, log files, models etc. Benchmark can be defined manually be enumerating all parameters, or automatically, by providing a configuration that defines how parameters should vary from one experiment to another. A script called [exerimenter](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/dlbs/experimenter.py) varies parameters (basically, by doing Cartesian product) and creates multiple benchmarks with different parameters.
+DLBS runs deep learning benchmarks using so called benchmark backends. A benchmark backend is a tool or collection of tools that is specifically designed to run benchmarks or regular deep learning workloads like training or inference. DLBS, based on benchmark parameters, runs benchmark backend and passes benchmark parameters to this backend. It is backend's responsibility to parse those parameters and run requested benchmark.
+
+Every benchmark backend provides a launcher script. Currently, it is a shell script that runs benchmark backend. DLBS and benchmark backends are loosely connected via these launcher scripts. All what DLBS does is runs a launcher script in separate process associated with a requested benchmark backend and passes benchmark parameters.
+
+A launcher script is a part of a specific benchmark backend. It knows how to run that benchmark backend. Also, launcher script must be able to run a benchmark backend in various runtime environments - docker or singularity containers or bare metal.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/HewlettPackard/dlcookbook-dlbs/master/docs/intro/imgs/overview.png">
 </p>
 
-Every framework that we support has a wrapper script - a short 40-80 line bash file that knows how to run benchmarks for a specific framework (Caffe's forks do not have it). Experimenter launches this script and passes all benchmark parameters on a command line. Bash wrapper script then parses these parameters and launches a framework.
 
 ## Architecture overview
 There are several components in DLBS:
-1. `Experimenter` - a single entry point python script that's responsible of generating benchmark configurations and launching benchmark scripts. Input parameters to this script are benchmark specifications in a json format. Alternatively, benchmark specifications can be passed on a command line. This script is responsible of generating all benchmark configurations and launching benchmarks one at a time. It uses a special wrapper scripts (currently, written in bash) for that purpose. It launches script and passes to that script all parameters of a current experiment.
+1. `Experimenter` - a single entry point python script that's responsible of generating benchmark configurations and launching benchmark scripts. Input parameters to this script are benchmark specifications in a JSON format. Alternatively, benchmark specifications can be passed on a command line. This script is responsible of generating all benchmark configurations and launching benchmarks one at a time. It uses a special launcher scripts (currently, written in bash) for that purpose. It launches script and passes to that script all parameters of a current experiment.
 
-2. `Launcher script` - aka launcher - a thin bash wrapper script that launches framework with appropriate arguments. Its task is to parse command line arguments and launch respective framework using these parameters. If supported, this script must be able to launch experiments in docker and host environments or in distributed environment.
+2. `Launcher script` - aka launcher - a thin bash wrapper script that launches benchmark backend  with corresponding arguments. Its task is to parse command line arguments and launch respective backend using these parameters. If supported, this script must be able to launch experiments in docker, singularity or host environments or in distributed environments.
 
-3. `Benchmark script` - if present, usually a python project that knows how to run training/inference with a particular model for one framework. We take advantage of existing TensorFlow's CNN [benchmarks](https://github.com/tensorflow/benchmarks/tree/master/scripts/tf_cnn_benchmarks) to benchmark TensorFlow. We have our in-house implementation of benchmarking projects with similar command line API for [Caffe2](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/caffe2_benchmarks), and [MXNet](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/mxnet_benchmarks) frameworks. Caffe's forks do not require similar benchmark scripts due to natural integration with launcher scripts.
+3. `Benchmark script` - if present, usually a python project that knows how to run training/inference with a particular model for a particular framework. Whenever possible, we take advantage of existing open source benchmark projects and integrate them into DLBS. We also have our in-house implementation of benchmarking projects with similar command line API for [Caffe2](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/caffe2_benchmarks), [MXNet](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/mxnet_benchmarks) and other frameworks. Caffe's forks do not require similar benchmark scripts due to natural integration with launcher scripts.
 
-4. `Log parser`. Every entity in DLBS writes information to log files as key-value pairs. Log parser parses any textual file and extracts those key-value pairs and puts them into a dictionary. A value can be an arbitrary json parsable string (i.e. values can be any json-serialziable objects like numbers, strings, lists, dictionaries, objects etc.)
+4. `Log parser`. Every entity in DLBS writes information to log files as key-value pairs. Log parser parses any textual file and extracts those key-value pairs and puts them into a dictionary. A value can be an arbitrary JSON parsable string (i.e. values can be any json-serialziable objects like numbers, strings, lists, dictionaries, objects etc.)
 
-5. `Report builder`. A tool that can generate simple reports outlining weak/strong scaling results of performed experiments.
+5. `Report builder`. A tool that can generate simple reports outlining weak/strong scaling results of performed benchmarks.
 
+## Benchmark backends
+A benchmark backend is a tool that runs benchmarks. Usually, one benchmark backend runs benchmarks for one particular deep learning framework. Open source projects that implement this functionality can be integrated with DLBS and can become its backends. Several examples of open source projects that have been/will be/can be integrated with DLBS:
+
+1. [TF_CNN_BENCHMARKS](https://github.com/tensorflow/benchmarks/tree/master/scripts/tf_cnn_benchmarks).
+2. [Tensor2Tensor](https://github.com/tensorflow/tensor2tensor/).
+3. MXNET's Image classification [examples](https://github.com/apache/incubator-mxnet/tree/master/example/image-classification).
+
+Being able to support multiple backends means users have an option what benchmark backend to choose to run experiments given there are more than 1 option for a particular framework. Thus, it is important to understand different backends and select the right one. The following table presents existing backends and provides suggestion on what user should be using as their default choice.
+
+| Framework       | Backend       | Default choice |
+|-----------------|---------------|----------------|
+| TensorRT        | tensorrt      | yes            |
+| TensorFlow      | nvtfcnn       | yes            |
+| TensorFlow      | nvcnn         |                |
+| TensorFlow      | tensorflow    |                |
+| Caffe2          | caffe2        | yes            |
+| MXNET           | mxnet         | yes            |
+| PyTorch         | pytorch       | yes            |
+| Caffe           | nvidia_caffe  | yes            |
+| Caffe           | intel_caffe   |                |
+| Caffe           | bvlc_caffe    |                |
+
+These recommendations are based on average raw performance (throughput) on a number of hardware configurations.
+
+Specific backend is selected with `exp.framework` parameter. I.e. to run recommended TensorFlow benchmarks, provide the following: `-Pexp.framework='"nvtfcnn"'`. Usually, other parameters such docker image, can be used with their default values. This is what we tested and we cannot guarantee it will work with other docker images.
 
 ## Benchmark specification
-Every benchmark is specified by a set of parameters. Some of those parameters have specific meaning. Otherwise, arbitrary parameters can be used. For instance, the following json object defines a benchmark to run GoogleNet in TensorFlow with batch equal to 8 images per model replica (device if no model parallelism is used):
+Every benchmark is specified by a set of parameters. Some of those parameters have specific meaning. Otherwise, arbitrary parameters can be used. For instance, the following json object defines a benchmark to run GoogleNet in TensorFlow with batch equal to 8 images per model replica (per device if no model parallelism is used):
 ```json
 {
     'exp.model': 'googlenet',
-    'exp.framework': 'tensorflow',
+    'exp.framework': 'nvtfcnn',
     'exp.replica_batch': 8
 }
 ```
-It is assumed that for every framework (`exp.framework`) there must be a parameter with name `framework-name.launcher`, for instance, `tensorflow.launcher`, `caffe.launcher`, `caffe2.launcher` etc. Experimenter will run this script and will pass all parameters from current experiment as command line arguments. Since we cannot use '.' in parameter names, all dots will be converted to underscores '\_'. For instance, if TensorFlow is configured with the following launcher:
+It is assumed that for every benchmark backend (`exp.framework`) there must be a parameter with name `framework-name.launcher`, for instance, `tensorflow.launcher`, `caffe.launcher`, `caffe2.launcher` etc. Experimenter will run this script and will pass all parameters from current experiment as command line arguments. Since we cannot use '.' in parameter names, all dots will be converted to underscores '\_'. For instance, if TensorFlow is configured with the following launcher:
 
 ```json
 { 'tensorflow.launcher': 'tensorflow_hpm.sh' }
@@ -40,7 +69,7 @@ then the experimenter will launch the following process:
 ```bash
 tensorflow_hpm.sh --exp_model 'googlenet'  --exp_framework 'tensorflow' --exp_replica_batch 8
 ```
-The script `tensorflow_hpm.sh` can then parse command line arguments and access these parameters. In general, there can be many parameters passed to a particular launcher. You should only use those that are required to run benchmark in a specific framework.
+The script `tensorflow_hpm.sh` can then parse command line arguments and access these parameters. In general, there can be many parameters passed to a particular launcher. You should only use those that are required to run experiments in a specific benchmark backend.
 
 
 ## Benchmark generation
@@ -62,7 +91,7 @@ Instead of providing manually configurations for every benchmark, experimenter c
 ```
 ### Parameters
 `Parameters` section defines parameters that do not need to be varied in different experiments.
-Typical examples for such parameters are number of warm-up and benchmark iterations or docker images for various frameworks. If some of these parameters need to be varied, use `variables` section to define these parameters. This is an example configuration:
+Typical examples for such parameters are number of warm-up and benchmark iterations or docker images for various benchmark backends. If some of these parameters need to be varied, use `variables` section to define these parameters. This is an example configuration:
 ```json
 {
     'parametes':{
@@ -74,11 +103,11 @@ Typical examples for such parameters are number of warm-up and benchmark iterati
 ```
 
 ### Variables
-`Variables` section defines parameters that need to be varied in experiment. For instance, frameworks, models and batch size can go here. If for some reason you do not need to vary them, have just one value for them or move them to `parameters` section.
+`Variables` section defines parameters that need to be varied in experiment. For instance, benchmark backends, models and batch size can go here. If for some reason you do not need to vary them, have just one value for them or move them to `parameters` section.
 ```json
 {
     'variables':{
-        'exp.framework': ['tensorflow', 'caffe2', 'tensorrt'],
+        'exp.framework': ['nvtfcnn', 'caffe2', 'tensorrt'],
         'exp.replica_batch': [8, 16, 32, 64],
         'exp.phase': ['training', 'inference']
     }

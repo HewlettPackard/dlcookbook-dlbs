@@ -16,21 +16,24 @@ In current version, models are defined depending on which framework backend is u
 1. ``TensorFlow`` with [tf_cnn_benchmarks](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/tf_cnn_benchmarks)
    backend. Models are defined in python code in this [folder](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/tf_cnn_benchmarks)
    in python files ending with **_model.py**.
-2. ``Caffe2`` with [caffe2 benchmarks](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/caffe2_benchmarks)
+2. ``TensorFlow``with [nvcnn benchmarks](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/nvcnn_benchmarks) backend. Models are implemented in a single [file](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/python/nvcnn_benchmarks/nvcnn.py).
+3. ``TensorFlow`` with [nvtfcnn benchmark](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/nvcnn_benchmarks) backend. Currently, DLBS runs files distributed with specific containers from NGC.
+3. ``Caffe2`` with [caffe2 benchmarks](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/caffe2_benchmarks)
    backend. Models are defined in [models](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/caffe2_benchmarks/models)
    folder.
-3. ``Caffe`` (Intel/BVLC/NVIDIA) models are defined as inference and training prototxt files in
+4. ``Caffe`` (Intel/BVLC/NVIDIA) models are defined as inference and training prototxt files in
    [models](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models) folder. This folder contains
    multiple subfolders - one subfolder for one model.
    **Important**: The inference and training descriptors are not true Caffe descriptors. They cannot be used
    directly by Caffe tool. A Caffe [luncher](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/scripts/launchers/caffe.sh)
    does some preprocessing, like setting batch size, selecting appropriate data source and specifying
    type of data if supported (NVIDIA fork currently).
-4. ``MXNet`` with [mxnet benchmarks](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/mxnet_benchmarks)
+5. ``MXNet`` with [mxnet benchmarks](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/mxnet_benchmarks)
    backend. Models are defined in [models](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/mxnet_benchmarks/models)
    folder.
-5. ``TensorRT`` uses Caffe\`s prototxt inference models defined in [models](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models)
+6. ``TensorRT`` uses Caffe\`s prototxt inference models defined in [models](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/models)
    folder.
+7. ``PyTorch`` with [pytorch benchmarks](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/pytorch_benchmarks) backend. Models are defined in [models](https://github.com/HewlettPackard/dlcookbook-dlbs/tree/master/python/pytorch_benchmarks/models) folder.
 
 ## Supported models
 
