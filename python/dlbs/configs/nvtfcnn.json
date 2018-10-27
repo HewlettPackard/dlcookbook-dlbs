@@ -45,7 +45,7 @@
     },
     "nvtfcnn.args": {
       "val": [
-        "$('' if '${exp.data_dir}' == '' else '${exp.data_dir}')$",
+        "$('' if not '${exp.data_dir}' else '--data_dir ${exp.data_dir}' if ${exp.docker} is False else '--data_dir /workspace/data')$",
         "--precision=$('fp16' if '${exp.dtype}' == 'float16' else 'fp32')$",
         "--log_dir=/tmp/nvtfcnn",
         "--batch_size=${exp.replica_batch}",
