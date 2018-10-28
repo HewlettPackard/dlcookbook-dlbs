@@ -119,6 +119,25 @@ void hadoop_file_system::get_children(const std::string &dir, std::vector<std::s
     // Implement me. Return (not recursively) files and folders in the 'dir'.
     if (files) files->empty();
     if (dirs) dirs->empty();
+    if (!files && !dirs) return;
+    
+    int num_entries(0);
+    hdfsFileInfo *dir_info =  hdfsListDirectory(hdfs_, dir.c_str(), &num_entries);
+    if (dir_info) {
+        for (int i=0; i<num_entries; ++i) {
+            hdfsFileInfo *entry = &(dir_info[i]);
+            std::string entry_name(entry->mName);
+            if (entry->mKind == kObjectKindFile) {
+                if (files) files->push_back(entry_name);
+            } else if (entry->mKind == kObjectKindDirectory) {
+                if (dirs && entry_name != "." && entry_name != "..") {
+                    dirs->push_back(entry_name);
+                }
+            }
+        }
+        hdfsFreeFileInfo(dir_info, num_entries);
+        dir_info =nullptr;
+    }
 }
 //
 //
@@ -138,7 +157,30 @@ ssize_t hadoop_readable_file::read(host_dtype* dest, const size_t count) {
     // less bytes if there are no more data left.
     // Return 0 to indicate we are at the end of a file. The `dest` array will have
     // enough space to store `count` bytes.
-    return 0;
+#if defined HOST_DTYPE_FP32
+    throw std::invalid_argument("FP32 host data type is not supported yet.");
+#else
+    // I am going to assume data is stored using unsigned int8 data type.
+#endif
+    size_t num_bytes_read(0);
+    while (num_bytes_read < count) {
+        tSize num_bytes = hdfsRead(hdfs_, file_, dest+num_bytes_read, count-num_bytes_read);
+        if (num_bytes == 0) {
+            // End of file
+            break;
+        }
+        if (num_bytes < 0) {
+            if (errno == EINTR) {
+                // Data is temporarily unavailable, but we are not yet at the end of the file.
+                continue;
+            }
+            std::cerr << "HDFS file read error. ERRNO=" << errno << "." << std::endl;
+            num_bytes_read = 0;
+            break;
+        }
+        num_bytes_read += num_bytes;
+    }
+    return num_bytes_read;
 }
 
 
