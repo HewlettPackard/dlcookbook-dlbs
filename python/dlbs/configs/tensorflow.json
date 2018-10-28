@@ -26,8 +26,13 @@
       "type": "str",
       "desc": "For Docker containerized benchmarks, these are the docker parameters."
     },
+    "tensorflow.docker_image" : {
+      "val": "$('hpe/tensorflow:cuda9-cudnn7' if '${tensorflow.back_end}' == 'tf_cnn_benchmarks' else 'nvcr.io/nvidia/tensorflow:18.08-py3')$",
+      "type": "str",
+      "desc": "Path to the TensorFlow Singularity image."
+    },
     "tensorflow.singularity_image" : {
-      "val": "",
+      "val": "/var/lib/SingularityImages/tensorflow-1.10.0.img",
       "type": "str",
       "desc": "Path to the TensorFlow Singularity image."
     },
@@ -257,20 +262,6 @@
     }
   },
   "extensions": [
-    {
-      "condition": {"exp.backend": "tf_cnn_benchmarks"},
-      "parameters": {
-        "tensorflow.docker_image" : "hpe/tensorflow:cuda9-cudnn7",
-        "tensorflow.singularity_image" : "/var/lib/SingularityImages/tensorflow-1.8-cuda9.0-cudnn7.0-avx2.img"
-      }
-    },
-    {
-      "condition": {"exp.backend": ["nvcnn","nvcnn_hvd","nvtfcnn"]},
-      "parameters": {
-         "tensorflow.docker_image" : "nvcr.io/nvidia/tensorflow:18.08-py3",
-         "tensorflow.singularity_image" : "/var/lib/SingularityImages/tensorflow-1.10.0.img"
-      }
-    },
     {
       "condition": {
         "exp.docker": false,

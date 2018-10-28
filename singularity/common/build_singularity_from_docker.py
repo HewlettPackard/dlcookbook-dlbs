@@ -1,3 +1,4 @@
+#!/lvol/sfleisch/anaconda3/bin/python
 from __future__ import print_function
 import os, sys, re, argparse, subprocess, shlex, tempfile
 """
@@ -51,6 +52,7 @@ def main():
     print('>>Singularity image was created.<<')
     output=popen.communicate()[0]
     exitcode=popen.returncode
+    print(simage)
     if simage is not None and simage_new is not None:
         os.rename(simage,simage_new)
         print('renamed {} -> {}'.format(simage,simage_new))

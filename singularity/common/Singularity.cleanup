@@ -8,6 +8,8 @@ FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
 %labels
     Description Cleanup Singularity /tmp leftovers after build.
 %setup
+    pkill -9 -f dask
+    
 	ls /tmp
     rm -f /tmp/hpcx-v2.0.0-gcc-MLNX_OFED_LINUX-4.2-1.0.0.0-ubuntu16.04-x86_64.tbz
     rm -f /tmp/log
@@ -18,6 +20,8 @@ FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
     rm -f /tmp/tf.img.jup1.singularity-debug.ARIQ1I
     rm -f /tmp/tf.img.jup1.stderr.ysJ8UQ
     rm -f /tmp/cc*
+    rm -rf /dev/shm/cudacache_*
+    rm -rf /dev/shm/monitor*
     rm -f /tmp/tmpxft*
     rm -f /tmp/tf.img.jup1.stdout.f7BuYh
     rm -f /tmp/ofed.conf
@@ -28,7 +32,6 @@ FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
     rm -rf  /root/.singularity/docker
     rm -rf  /tmp/*tiff* /tmp/OFE*
     rm -rf  /tmp/bazel
-    rm -rf /tmp/.singularity-build.*
 
 %runscript
     echo "Cleanup Singularity /tmp leftovers after build."

@@ -37,7 +37,12 @@ def main():
     parser.add_argument('--recipe', '-r', type=str, required=True, help='Singularity recipe file or tempate file to process.')
     parser.add_argument('--macros','-m', dest='macros', type=str, action='store', default=None, help='Optional JSON file containing macro substitutions.')
     parser.add_argument('--image','-i', dest='image', type=str, action='store', default='image.img', help='Name of Singularity image to create.')
+    parser.add_argument('--token','-t', dest='token', type=str, action='store', default=None, help='Authentication token.')
+
     args = parser.parse_args()
+
+    if args.token is not None:
+        ret=subprocess.check_output(shlex.split('docker login -u="$oauthtoken" -p={} nvcr.io'.format(args.token)))
 
     if args.macros is not None:
         with open(args.recipe, 'r') as rf:

@@ -321,7 +321,7 @@
       ]
     },
     "exp.singularity_image": {
-      "val": "${${exp.framework}.singularity_image}",
+      "val": "$('${${exp.framework}_${exp.framework_fork}.singularity_image}' if '${exp.framework_fork}' != '' else '${${exp.framework}.singularity_image}')$",
       "type": "str",
       "desc": ["Singularity image to use for current benchmark. Must exist in the system."]
     },
