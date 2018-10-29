@@ -52,12 +52,13 @@ hadoop_file_system::hadoop_file_system(const url &the_url) : file_system() {
     hdfsBuilderSetNameNode(builder, namenode.c_str());
     hdfsBuilderSetNameNodePort(builder, port);
     
-    std::unordered_map<std::string, std::string> opts = {
-        {"dfs.client.read.shortcircuit", "false"},
-        {"dfs.domain.socket.path", "/tmp/dlbs_hdfs_socket"}
-    };
-    for (auto it=opts.begin(); it != opts.end(); ++it) {
-        hdfsBuilderConfSetStr(builder, it->first.c_str(), it->second.c_str());
+    const std::unordered_map<std::string, std::string> params = environment::hdfs_params();
+    if (!params.empty()) {
+        std::cout << "HDFS parameters: " << std::endl;
+        for (auto it=params.begin(); it != params.end(); ++it) {
+            std::cout << "\t" << it->first << "=" << it->second << std::endl;
+            hdfsBuilderConfSetStr(builder, it->first.c_str(), it->second.c_str());
+        }
     }
     
     hdfs_ = hdfsBuilderConnect(builder);
@@ -162,7 +163,7 @@ bool hadoop_readable_file::open(const std::string &path) {
     const int USE_DEFAULT = 0;
     file_ = hdfsOpenFile(hdfs_, path.c_str(), O_RDONLY, USE_DEFAULT, USE_DEFAULT, USE_DEFAULT);
     if (!file_) {
-        std::cerr << hdfs_failure::failure(fmt("Cannot open file '%s'", path.c_str())).what() << std::endl;
+        throw hdfs_failure::failure(fmt("Cannot open file '%s'", path.c_str()));
     }
     return is_open();
 }

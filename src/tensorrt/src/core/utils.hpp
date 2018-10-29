@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <chrono>
+#include <unordered_map>
 #include <sys/stat.h>
 #include <semaphore.h>
 
@@ -158,6 +159,9 @@ std::string rtrim(const std::string& s, const std::string &sep=" ");
  *   - @link environment#inference_impl_ver DLBS_TENSORRT_INFERENCE_IMPL_VER @endlink
  *     Implementation version of inference function. Version 1 is the original
  *     sequential implementation and is kept for historical reasons.
+ * 
+ *   - @link environment#hdfs_params DLBS_TENSORRT_HDFS_PARAMS @endlink
+ *     Additional HDFS parameters to use that do not include name node and port number.
  */
 class environment {
 public:
@@ -290,6 +294,27 @@ public:
      * phases. This implementation provides a better throughput when input requests arrive at high frequency.
      */
     static std::string inference_impl_ver();
+    
+    /**
+     * @brief Additional HDFS parameters to use when input data is stored in hadoop file system.
+     * 
+     * It is a comma-separated list of key-value pairs: "key1=value1,key2=value2,key3=value3", for instance:
+     * @code
+     *   DLBS_TENSORRT_HDFS_PARAMS=dfs.client.read.shortcircuit=true,dfs.domain.socket.path=/mnt/hdfs_cfg/sock
+     * @endcode
+     * Some HDFS parameters require additional changes in DLBS parameters. For instamce, if dfs.client.read.shortcircuit
+     * is set to true, then dfs.domain.socket.path must present and must define a "path to a UNIX domain socket that will
+     * be used for communication between the DataNode and local HDFS clients.":
+     *   https://hadoop.apache.org/docs/r2.9.0/hadoop-project-dist/hadoop-hdfs/hdfs-default.xml
+     * This will probably require to mount host folder that contains that file inside docker container what can be done
+     * with exp.docker_args parameters.
+     * The valid strings that can be used as values for DLBS_TENSORRT_HDFS_PARAMS:
+     * 
+     *   - dfs.client.read.shortcircuit=false,dfs.domain.socket.path=/tmp/dlbs_hdfs_socket
+     *   - dfs.client.read.shortcircuit=false,
+     *   - dfs.client.read.shortcircuit=false,,,,
+     */
+    static std::unordered_map<std::string, std::string> hdfs_params();
 private:
     /**
     * @brief Returns environmental variable.

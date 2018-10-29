@@ -112,6 +112,29 @@ std::string environment::inference_impl_ver() {
     return variable<std::string>("DLBS_TENSORRT_INFERENCE_IMPL_VER", "");
 }
 
+std::unordered_map<std::string, std::string> environment::hdfs_params() {
+    std::string unparsed = environment::variable<std::string>("DLBS_TENSORRT_HDFS_PARAMS", "");
+    std::unordered_map<std::string, std::string> params;
+    if (unparsed.empty()) return params;
+
+    auto _add_param = [&params](const std::string &param) {
+        std::size_t sep_idx = param.find_first_of("=");
+        if (sep_idx != std::string::npos) {
+            params[param.substr(0, sep_idx)] = param.substr(sep_idx+1);
+        }
+    };
+
+    std::size_t prev_idx = 0,
+                curr_idx = unparsed.find_first_of(",");
+    while (curr_idx != std::string::npos) {
+        _add_param(unparsed.substr(prev_idx, curr_idx-prev_idx));
+        prev_idx = curr_idx + 1;
+        curr_idx = unparsed.find_first_of(",", prev_idx);
+    }
+    _add_param(unparsed.substr(prev_idx, curr_idx-prev_idx));
+    return params;
+}
+
 
 /**
  *   We are going to use the following regexp:

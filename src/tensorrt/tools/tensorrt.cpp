@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     const std::string me = "[main                  ]: ";
-    logger.log_info(me + "File format for cached models changed. It was: `resnet50_engine_float16_128.bin`, it is now: `resnet50_float16_128_v${MAJOR}.bin`. Please, clean your cache folder.");
+    logger.log_info(me + "File format for cached models changed. It was: `resnet50_engine_float16_128.bin`, it is now: `resnet50_float16_128_v${MAJOR}.bin`. Please, clean your cache folder if you have not done so.");
     //
 #ifdef DEBUG_LOG
     logger.log_warning(me + "DEBUG logging is enabled. For real performance tests this should be disabled (recompile without -DDEBUG_LOG)");
@@ -156,7 +156,12 @@ int main(int argc, char **argv) {
             } else {
                 logger.log_error(me + "Invalid input dataset (" + data_opts.data_name_ + ")");
             }
-            print_file_reader_warnings(logger, me);
+            url _data_url(data_opts.data_dir_);
+            if (_data_url.scheme() == "posix") {
+                print_file_reader_warnings(logger, me);
+            } else {
+                // This can be a HDFS file system and there are no warnings for now.
+            }
             data = new tensor_dataset(data_opts, &infer_msg_pool, engine.request_queue(), logger);
         }
     }
