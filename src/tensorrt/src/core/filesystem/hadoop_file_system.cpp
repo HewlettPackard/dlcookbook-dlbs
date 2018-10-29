@@ -52,6 +52,14 @@ hadoop_file_system::hadoop_file_system(const url &the_url) : file_system() {
     hdfsBuilderSetNameNode(builder, namenode.c_str());
     hdfsBuilderSetNameNodePort(builder, port);
     
+    std::unordered_map<std::string, std::string> opts = {
+        {"dfs.client.read.shortcircuit", "false"},
+        {"dfs.domain.socket.path", "/tmp/dlbs_hdfs_socket"}
+    };
+    for (auto it=opts.begin(); it != opts.end(); ++it) {
+        hdfsBuilderConfSetStr(builder, it->first.c_str(), it->second.c_str());
+    }
+    
     hdfs_ = hdfsBuilderConnect(builder);
     if (!hdfs_ ) {
         throw hdfs_failure::failure(
@@ -127,6 +135,14 @@ void hadoop_file_system::get_children(const std::string &dir, std::vector<std::s
         for (int i=0; i<num_entries; ++i) {
             hdfsFileInfo *entry = &(dir_info[i]);
             std::string entry_name(entry->mName);
+            // This entry_name seems to be an absolute path
+            if (entry_name.size() >= dir.size() && entry_name.substr(0, dir.size()) == dir) {
+                entry_name = entry_name.substr(dir.size());
+                if (!entry_name.empty() && entry_name[0] == '/') {
+                    entry_name = entry_name.substr(1);
+                }
+            }
+            std::cout << "parent dir: " << dir << ", entry name: " << entry_name << std::endl;
             if (entry->mKind == kObjectKindFile) {
                 if (files) files->push_back(entry_name);
             } else if (entry->mKind == kObjectKindDirectory) {
