@@ -143,7 +143,7 @@ void hadoop_file_system::get_children(const std::string &dir, std::vector<std::s
                     entry_name = entry_name.substr(1);
                 }
             }
-            std::cout << "parent dir: " << dir << ", entry name: " << entry_name << std::endl;
+            //std::cout << "parent dir: " << dir << ", entry name: " << entry_name << std::endl;
             if (entry->mKind == kObjectKindFile) {
                 if (files) files->push_back(entry_name);
             } else if (entry->mKind == kObjectKindDirectory) {
@@ -163,7 +163,7 @@ bool hadoop_readable_file::open(const std::string &path) {
     const int USE_DEFAULT = 0;
     file_ = hdfsOpenFile(hdfs_, path.c_str(), O_RDONLY, USE_DEFAULT, USE_DEFAULT, USE_DEFAULT);
     if (!file_) {
-        throw hdfs_failure::failure(fmt("Cannot open file '%s'", path.c_str()));
+        std::cerr << hdfs_failure::failure(fmt("Cannot open file '%s'", path.c_str())).what() << std::endl;
     }
     return is_open();
 }
