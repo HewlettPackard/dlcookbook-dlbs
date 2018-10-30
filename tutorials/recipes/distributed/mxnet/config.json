@@ -1,0 +1,21 @@
+{
+  "parameters": {
+    "exp.framework": "mxnet",
+    "exp.docker_image": "dlbs/mxnet:18.11",
+    "exp.docker_args": "--rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host --net=host --pid=host --privileged",
+
+    "exp.num_nodes": 2,
+    "mxnet.rendezvous": "INTERFACE:IP_ADDRESS:29500",
+    "exp.gpus": "0,1,2,3,4,5,6,7",
+
+    "mxnet.kv_store": "dist_device_sync",
+
+    "exp.num_warmup_batches": 100,
+    "exp.num_batches": 400,
+    "exp.log_file": "${BENCH_ROOT}/logs/rank_${mxnet.rank}.log",
+
+    "exp.dtype": "float16",
+    "exp.model": "resnet50",
+    "exp.replica_batch": 128
+  }
+}

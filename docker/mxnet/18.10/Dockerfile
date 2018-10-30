@@ -4,6 +4,7 @@ MAINTAINER sergey.serebryakov@hpe.com
 # There's one issue with multithreaded OpenBLAS.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        wget \
         build-essential \
         cmake \
         automake \
@@ -41,7 +42,7 @@ RUN git clone https://github.com/apache/incubator-mxnet $MXNET_ROOT && \
     git reset --hard ${version} && git submodule update --init --recursive && \
     make USE_CUDNN=1 USE_BLAS=openblas USE_CUDA=1 USE_NCCL=1 \
          USE_OPERATOR_TUNING=1 USE_LAPACK=1 USE_JEMALLOC=1 \
-         USE_DIST_KVSTORE=0 USE_OPENMP=1 USE_OPENCV=1 USE_THREADED_ENGINE=1 \
+         USE_DIST_KVSTORE=1 USE_OPENMP=1 USE_OPENCV=1 USE_THREADED_ENGINE=1 \
          USE_CUDA_PATH=/usr/local/cuda \
          USE_LIBJPEG_TURBO=1 USE_LIBJPEG_TURBO_PATH=$JPEG_TURBO_ROOT -j$(nproc) && \
     cd ./python && python ./setup.py build && python ./setup.py install

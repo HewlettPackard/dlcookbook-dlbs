@@ -65,12 +65,12 @@ from mxnet_benchmarks.data_iterator import DataIteratorFactory
 from mxnet_benchmarks.model_factory import ModelFactory
 
 
-def get_effective_batch_size(opts):
-    """Returns effective batch size
+def get_local_batch_size(opts):
+    """Returns local batch size. This is an `effective` batch size for one node.
 
     :param dict opts: A dictionary containing benchmark parameters. Must contain
                       `batch_size`, `device` and optionally `num_gpus`.
-    :return: Effective batch size.
+    :return: Local batch size.
     :rtype: int
     """
     num_devices = 1 if opts['device'] == 'cpu' else opts['num_gpus']
@@ -328,8 +328,8 @@ def benchmark_training(model, opts):
     # Label tensor always have shape (N,)
     kv = mx.kvstore.create(opts['kv_store'])
     train_data = DataIteratorFactory.get(
-        (get_effective_batch_size(opts),) + model.input_shape,
-        (get_effective_batch_size(opts),) + model.labels_shape,
+        (get_local_batch_size(opts),) + model.input_shape,
+        (get_local_batch_size(opts),) + model.labels_shape,
         model.labels_range,
         opts,
         kv_store=kv
@@ -369,6 +369,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_batches', type=int, required=False, default=100, help='Number of benchmark iterations')
     parser.add_argument('--num_warmup_batches', type=int, required=False, default=1, help='Number of warmup iterations')
     parser.add_argument('--num_gpus', type=int, required=False, default=1, help='Number of gpus to use (per node?). Use CUDA_VISIBLE_DEVICES to select those devices.')
+    parser.add_argument('--num_workers', type=int, required=False, default=1, help='Number of workers participating in training.')
     parser.add_argument('--device', type=str, required=False, default='cpu', help='Comptue device, "cpu" or "gpu"')
     parser.add_argument('--kv_store', type=str, required=False, default='device', help='Type of gradient aggregation schema (local, device, dist_sync, dist_device_sync, dist_async).\
                                                                                         See https://mxnet.incubator.apache.org/how_to/multi_devices.html for more details.')
@@ -395,11 +396,15 @@ if __name__ == '__main__':
         traceback.print_exc(file=sys.stdout)
 
     if len(times) > 0:
-        mean_time = np.mean(times)                                   # seconds
-        mean_throughput = get_effective_batch_size(opts) / mean_time # images / sec
+        mean_time = np.mean(times)                                                      # seconds
+        mean_throughput = opts['num_workers'] * get_local_batch_size(opts) / mean_time  # images / sec
         print("__results.time__=%s" % (json.dumps(1000.0 * mean_time)))
         print("__results.throughput__=%s" % (json.dumps(int(mean_throughput))))
         print("__exp.model_title__=%s" % (json.dumps(model_title)))
         print("__results.time_data__=%s" % (json.dumps((1000.0*times).tolist())))
     else:
         print("__results.status__=%s" % (json.dumps("failure")))
+    # TODO: Without exit call mxnet seems to hang in distributed mode.
+    #    https://stackoverflow.com/questions/73663/terminating-a-python-script
+    #    https://stackoverflow.com/a/5120178/1278994
+    os._exit(os.EX_OK)

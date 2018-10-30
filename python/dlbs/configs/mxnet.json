@@ -53,6 +53,7 @@
         "--num_batches=${exp.num_batches}",
         "--num_warmup_batches=${exp.num_warmup_batches}",
         "--num_gpus=${exp.num_local_gpus}",
+        "--num_workers=${exp.num_nodes}",
         "--device=${exp.device_type}",
         "--kv_store=${mxnet.kv_store}",
         "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
@@ -64,7 +65,7 @@
       "desc": "Command line arguments that launcher will pass to a mxnet_benchmarks script."
     },
     "mxnet.docker_image": {
-      "val": "hpe/mxnet:cuda9-cudnn7",
+      "val": "dlbs/mxnet:18.11",
       "type": "str",
       "desc": "The name of a docker image to use for MXNet if containerized benchmark is requested."
     },
@@ -92,6 +93,20 @@
       "val": "",
       "type": "str",
       "desc": "Basically, it's a LD_LIBRARY_PATH for MXNet in case of a bare metal run."
+    },
+    "mxnet.rendezvous": {
+      "val": "127.0.0.1:4000",
+      "type": "str",
+      "desc": [
+        "Experimental support  for distributed PyTorch. This parameter defines a rendezvous point (scheduler).",
+        "Two formats are supported. It is either HOST:PORT or INTERFACE:HOST:PORT, for instance,",
+        "127.0.0.1:55555 and ib0:127.0.0.1:55555" 
+      ]
+    },
+    "mxnet.scheduler": {
+      "val": false,
+      "type": "bool",
+      "desc": "For distributed benchmarks, specifies that this process needs to run scheduler."
     }
   },
   "extensions": [

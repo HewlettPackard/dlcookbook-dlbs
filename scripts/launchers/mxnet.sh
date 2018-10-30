@@ -15,11 +15,19 @@ is_batch_good "${__batch_file__}" "${exp_replica_batch}" || {
 }
 # This script is to be executed inside docker container or on a host machine.
 # Thus, the environment must be initialized inside this scrip lazily.
+if [ "${exp_num_nodes}" == "1" ]; then
+  bench_launcher=""
+else
+  bench_launcher="${mxnet_bench_path}/mxnet_benchmarks/cluster_launcher.py"
+  bench_launcher="${bench_launcher} --rendezvous=${mxnet_rendezvous} --num_workers=${exp_num_nodes}"
+  bench_launcher="${bench_launcher} --scheduler=${mxnet_scheduler}"
+fi
+
 [ -z "${runtime_launcher}" ] && runtime_launcher=":;"
 script="\
     export ${mxnet_env};\
     echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-    ${runtime_launcher} ${runtime_python} ${mxnet_bench_path}/mxnet_benchmarks/benchmarks.py ${mxnet_args} &\
+    ${runtime_launcher} ${runtime_python} ${bench_launcher} ${mxnet_bench_path}/mxnet_benchmarks/benchmarks.py ${mxnet_args} &\
     proc_pid=\$!;\
     [ \"${monitor_frequency}\" != \"0\" ] && echo -e \"\${proc_pid}\" > ${monitor_backend_pid_folder}/proc.pid;\
     wait \${proc_pid};\
