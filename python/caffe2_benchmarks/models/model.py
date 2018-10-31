@@ -26,6 +26,8 @@ class Model(object):
 
         :param dict params: Dictionary with parameters. Must contain `name`, `batch_size`,
                             `input_shape`, `num_classes` and `phase`.
+
+        Batch size is a per-device (replica) batch size.
         """
         for param in ['name', 'batch_size', 'input_shape', 'num_classes', 'phase', 'dtype']:
             assert param in params, "Missing mandatory neural net parameter '%s'" % param
@@ -110,10 +112,12 @@ class Model(object):
         suffix = '_fp32' if self.dtype == 'float16' else ''
         # Input data tensor with name 'data' if it's float32 regime or 'data_fp32' if it's float16.
         # If it's float16, we will then convert 'data_fp32' to 'data' tensor with precision float16.
+        # Batch size used below is a per-device (replica) batch size.
+        replica_batch = self.batch_size
         model.param_init_net.GaussianFill(
             [],
             ['data' + suffix],
-            shape=(self.batch_size,) + self.input_shape
+            shape=(replica_batch,) + self.input_shape
         )
         if self.dtype == 'float16':
             print("[INFO] Using 'float16' data type (converting input tensor with synthetic data to float16 tensor).")
@@ -123,7 +127,7 @@ class Model(object):
             model.param_init_net.ConstantFill(
                 [],
                 ["softmax_label"],
-                shape=[self.batch_size],
+                shape=[replica_batch],
                 value=1,
                 dtype=core.DataType.INT32,
             )
@@ -142,11 +146,12 @@ class Model(object):
                                        throughput models such as AlexNetOWT a value of 6-8 for 4
                                        GPUs seems to be reasonable (Voltas, ~9k images/second)
         """
+        replica_batch = self.batch_size
         data, _ = brew.image_input(       # data, label
             model,
             [reader],
             ["data", "softmax_label"],
-            batch_size=self.batch_size,   # Per device batch size
+            batch_size=replica_batch,     # This is a per device (replica) batch size
             output_type=self.dtype,       # "float" or "float16"
             use_gpu_transform=use_gpu_transform,
             use_caffe_datum=True,

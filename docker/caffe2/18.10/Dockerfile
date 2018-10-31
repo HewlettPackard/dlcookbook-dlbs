@@ -1,4 +1,4 @@
-FROM nvidia/cuda:8.0-cudnn6-devel-ubuntu16.04
+FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
 MAINTAINER sergey.serebryakov@hpe.com
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -18,16 +18,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libsnappy-dev \
         protobuf-compiler \
         python-dev \
-        python-numpy \
         python-pip \
-        python-pydot \
-        python-setuptools \
-        python-scipy \
         wget \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+# --upgrade pip
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir --upgrade setuptools wheel  && \
     pip install --no-cache-dir \
         flask \
         future \
@@ -50,15 +48,19 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
 # This is where Caffe will be installed
 ENV CAFFE2_ROOT=/opt/caffe2
 
+# Eigen update: https://github.com/pytorch/pytorch/issues/7089
 ARG version=master
 RUN cd / && \
-    git clone --recursive https://github.com/caffe2/caffe2.git && cd caffe2 && \
-    git reset --hard $version && git submodule update && \
+    git clone https://github.com/caffe2/caffe2.git && cd caffe2 && \
+    git reset --hard $version && \
+    sed -i 's/RLovelett\/eigen/eigenteam\/eigen-git-mirror/g' .gitmodules && \
+    git submodule update --init --recursive && \
     mkdir ./build && cd ./build && \
     cmake -DUSE_CUDA=ON\
           -DUSE_NCCL=ON\
           -DBUILD_TEST=OFF\
           -DUSE_OPENMP=ON\
+          -DUSE_REDIS=ON\
           -DCMAKE_INSTALL_PREFIX=$CAFFE2_ROOT .. && \
     make -j"$(nproc)" && make install && \
     cd ../../ && rm -rf ./caffe2

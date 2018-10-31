@@ -79,7 +79,9 @@ def run_n_times(model, num_warmup_batches, num_batches):
     start_time = timeit.default_timer()
     if num_warmup_batches > 0:
         workspace.RunNet(net_name, num_iter=num_warmup_batches)
-        print("Average warmup batch time %f ms across %d batches" % (1000.0*(timeit.default_timer() - start_time)/num_warmup_batches, num_warmup_batches))
+        print("Average warmup batch time %f ms across %d batches" %\
+              (1000.0*(timeit.default_timer() - start_time)/num_warmup_batches,\
+               num_warmup_batches))
     else:
         print("Warning - no warmup iterations has been performed.")
 
@@ -131,6 +133,47 @@ def build_optimizer(model, float16_compute=False):
     return opt
 
 
+def setup_rendezvous(opts):
+    """ Setup rendezvous for a distributed training """
+    if opts['num_workers'] <= 1:
+        return None
+    for param in ('rendezvous', 'run_id', 'rank', 'transport', 'interface'):
+        if opts[param] is None:
+            raise ValueError("Missing mandatory parameter %s." % param)
+        else:
+            print("Found parameter for distributed caffe2 '%s' = '%s'" % (param, opts[param]))
+
+    rurl = opts['rendezvous']
+    store_handler = "store_handler"
+    if rurl.startswith('redis://'):
+        redis = rurl[8:].split(':')
+        if len(redis) != 2:
+            raise ValueError("Invalid REDIS rendezvous specifier (%s). "\
+                             "Must be HOST:POST." % (rurl))
+        workspace.RunOperatorOnce(core.CreateOperator(
+            "RedisStoreHandlerCreate", [], [store_handler],
+            host=redis[0],
+            port=int(redis[1]),
+            prefix=opts['run_id']))
+    elif rurl.startswith('file://'):
+        workspace.RunOperatorOnce(core.CreateOperator(
+            "FileStoreHandlerCreate", [], [store_handler],
+            path=rurl[7:],
+            prefix=opts['run_id']))
+    else:
+        raise ValueError("Invalid rendezvous protocol (%s)" % rurl)
+
+    return dict(
+        kv_handler=store_handler,
+        shard_id=opts['rank'],
+        num_shards=opts['num_workers'],
+        engine="GLOO",
+        transport=opts['transport'],
+        interface=opts['interface'],
+        exit_nets=None
+    )
+
+
 def benchmark(opts):
     """Runs inference or training benchmarks depending on **opts['phase']** value.
 
@@ -153,7 +196,9 @@ def benchmark(opts):
     """
     assert 'model' in opts, "Missing 'model' in options."
     assert 'phase' in opts, "Missing 'phase' in options."
-    assert opts['phase'] in ['inference', 'training'], "Invalid value for 'phase' (%s). Must be 'inference' or 'training'." % (opts['phase'])
+    assert opts['phase'] in ['inference', 'training'],\
+           "Invalid value for 'phase' (%s). Must be 'inference' or 'training'." %\
+           (opts['phase'])
 
     opts['batch_size'] = opts.get('batch_size', 16)
     opts['num_warmup_batches'] = opts.get('num_warmup_batches', 10)
@@ -175,12 +220,12 @@ def benchmark(opts):
         }
         model = model_helper.ModelHelper(name=opts['model'], arg_scope=arg_scope)
     else:
-        print("[WARNING] Creating ModelHelper for CPU. TODO: Apply similar optimziations as for GPUs.")
+        print("[WARNING] Creating ModelHelper for CPU. TODO: Apply similar "\
+              "optimziations as for GPUs.")
         model = model_helper.ModelHelper(name=opts['model'])
     if opts['phase'] == 'inference':
         return benchmark_inference(model, opts)
-    else:
-        return benchmark_training(model, opts)
+    return benchmark_training(model, opts)
 
 def benchmark_inference(model, opts):
     """ Runs N inferences and returns array of batch times in seconds.
@@ -214,7 +259,8 @@ def benchmark_inference(model, opts):
             print("[INFO] Adding synthetic data input for Caffe2 inference benchmarks")
             model_builder.add_synthetic_inputs(model, add_labels=False)
         else:
-            print("[INFO] Adding real data inputs (%s) for Caffe2 inference benchmarks" % (opts['data_dir']))
+            print("[INFO] Adding real data inputs (%s) for Caffe2 inference benchmarks" %\
+                  (opts['data_dir']))
             model_builder.add_data_inputs(
                 model, reader, use_gpu_transform=(opts['device'] == 'gpu'),
                 num_decode_threads=opts['num_decode_threads']
@@ -259,7 +305,8 @@ def benchmark_training(model, opts):
             print("[INFO] Adding synthetic data input for Caffe2 training benchmarks")
             model_builder.add_synthetic_inputs(model, add_labels=True)
         else:
-            print("[INFO] Adding real data inputs (%s) for Caffe2 training benchmarks" % (opts['data_dir']))
+            print("[INFO] Adding real data inputs (%s) for Caffe2 training benchmarks" %\
+                  (opts['data_dir']))
             model_builder.add_data_inputs(
                 model, reader, use_gpu_transform=(opts['device'] == 'gpu'),
                 num_decode_threads=opts['num_decode_threads']
@@ -281,6 +328,8 @@ def benchmark_training(model, opts):
         return build_optimizer(model, float16_compute=opts['float16_compute'])
 
     if opts['device'] == 'gpu':
+        rendezvous = setup_rendezvous(opts)
+        print("rendezvous: %s" % str(rendezvous))
         dpm.Parallelize(
             model,
             input_builder_fun=add_inputs,
@@ -289,6 +338,7 @@ def benchmark_training(model, opts):
             #param_update_builder_fun=Model.add_parameter_update_ops,
             post_sync_builder_fun=add_post_sync_ops,
             devices=range(opts['num_gpus']),
+            rendezvous=rendezvous,
             optimize_gradient_memory=True,
             cpu_device=(opts['device'] == 'cpu'),
             shared_model=(opts['device'] == 'cpu')
@@ -306,30 +356,74 @@ def benchmark_training(model, opts):
     return (model_builder.name, run_n_times(model, opts['num_warmup_batches'], opts['num_batches']))
 
 
-if __name__ == '__main__':
-    # --model, --forward_only, -batch_size, --num_batches, --num_warmup_batches,
-    # --num_gpus, --device, --data_dir, --kv_store
-    def str2bool(v):
-        return v.lower() in ('true', 'on', 't', '1')
+def parse_args():
+    """ Parse command line arguments. """
+    def str2bool(val):
+        """Convert string 'val' to boolean variable. """
+        return val.lower() in ('true', 'on', 't', '1')
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', type=str, required=True, default='', help='A model to benchmark ("alexnet", "googlenet" ...)')
-    parser.add_argument('--forward_only', nargs='?', const=True, default=False, type=str2bool, help='Benchmark inference (if true) else benchmark training.')
-    parser.add_argument('--batch_size', type=int, required=True, default=None, help='Per device batch size')
-    parser.add_argument('--num_batches', type=int, required=False, default=100, help='Number of benchmark iterations')
-    parser.add_argument('--num_warmup_batches', type=int, required=False, default=1, help='Number of warmup iterations')
-    parser.add_argument('--num_gpus', type=int, required=False, default=1, help='Number of gpus to use (per node?). Use CUDA_VISIBLE_DEVICES to select those devices.')
-    parser.add_argument('--device', type=str, required=False, default='cpu', help='Comptue device, "cpu" or "gpu"')
-    parser.add_argument('--data_dir', type=str, required=False, default='', help='Path to the LMDB or LEVELDB data base.')
-    parser.add_argument('--data_backend', required=False, default='lmdb', choices=['lmdb', 'leveldb'], help='Database backend. One of "lmdb" or "leveldb".')
-    parser.add_argument('--dtype', required=False, default='float', choices=['float', 'float32', 'float16'], help='Precision of data variables: float(same as float32), float32 or float16.')
-    parser.add_argument('--enable_tensor_core', action='store_true', help='Enable volta\'s tensor ops (requires CUDA >= 9, cuDNN >= 7 and NVIDIA Volta GPU)')
-    parser.add_argument('--num_decode_threads', type=int, required=False, default=1, help='Number of image decode threads. For high throughput models such as AlexNetOWT set to 6-8 for 4 Voltas.')
-    parser.add_argument('--float16_compute', nargs='?', const=True, default=False, type=str2bool, help='If true, use FP16 SGD optimizer else use multi-precision SGD optimizer')
+    parser.add_argument('--model', type=str, required=True, default='',
+                        help="A model to benchmark ('alexnet', 'googlenet' ...)")
+    parser.add_argument('--forward_only', nargs='?', const=True, default=False, type=str2bool,
+                        help="Benchmark inference (if true) else benchmark training.")
+    parser.add_argument('--batch_size', type=int, required=True, default=None,
+                        help="Per device (replica) batch size")
+    parser.add_argument('--num_batches', type=int, required=False, default=100,
+                        help="Number of benchmark iterations")
+    parser.add_argument('--num_warmup_batches', type=int, required=False, default=1,
+                        help="Number of warmup iterations")
+    parser.add_argument('--num_gpus', type=int, required=False, default=1,
+                        help="Number of gpus to use (per node?). Use CUDA_VISIBLE_DEVICES "\
+                             "to select those devices.")
+    parser.add_argument('--device', type=str, required=False, default='cpu',
+                        help="Comptue device, 'cpu' or 'gpu'")
+    parser.add_argument('--data_dir', type=str, required=False, default='',
+                        help="Path to the LMDB or LEVELDB data base.")
+    parser.add_argument('--data_backend', required=False, default='lmdb',
+                        choices=['lmdb', 'leveldb'],
+                        help="Database backend. One of 'lmdb' or 'leveldb'.")
+    parser.add_argument('--dtype', required=False, default='float',
+                        choices=['float', 'float32', 'float16'],
+                        help="Precision of data variables: float(same as float32), "\
+                             "float32 or float16.")
+    parser.add_argument('--enable_tensor_core', action='store_true',
+                        help="Enable volta's tensor ops (requires CUDA >= 9, cuDNN >= 7 "\
+                             "and NVIDIA Volta GPU)")
+    parser.add_argument('--num_decode_threads', type=int, required=False, default=1,
+                        help="Number of image decode threads. For high throughput models such as "\
+                             "AlexNetOWT set to 6-8 for 4 Voltas.")
+    parser.add_argument('--float16_compute', nargs='?', const=True, default=False, type=str2bool,
+                        help="If true, use FP16 SGD optimizer else use multi-precision SGD "\
+                             "optimizer")
     # These parameters affect the ModelHelper behaviour and are now applied for GPU benchmarks
-    parser.add_argument('--cudnn_workspace_limit_mb', type=int, required=False, default=64, help='CuDNN workspace limit in MBs')
-    parser.add_argument('--use_cudnn', nargs='?', const=True, default=True, type=str2bool, help='Use NVIDIA cuDNN library.')
-    parser.add_argument('--cudnn_exhaustive_search', nargs='?', const=True, default=True, type=str2bool, help='Benchmark inference (if true) else benchmark training.')
-    args = parser.parse_args()
+    parser.add_argument('--cudnn_workspace_limit_mb', type=int, required=False, default=64,
+                        help="CuDNN workspace limit in MBs")
+    parser.add_argument('--use_cudnn', nargs='?', const=True, default=True, type=str2bool,
+                        help="Use NVIDIA cuDNN library.")
+    parser.add_argument('--cudnn_exhaustive_search', nargs='?', const=True, default=True,
+                        type=str2bool,
+                        help="Benchmark inference (if true) else benchmark training.")
+    # Parameters related to distributed Caffe2 benchmarks
+    parser.add_argument('--num_workers', type=int, required=False, default=1,
+                        help="Number of workers participating in training.")
+    parser.add_argument('--rendezvous', type=str, default=None,
+                        help="A rendezvous specifier for a distributed training. Multiple options "\
+                             "are supported. Redis database: --rendezvous=redis://HOST:PORT. "\
+                             "Shared File system: --rendezvous=file:///path/to/shared/folder")
+    parser.add_argument('--run_id', type=str, default=None,
+                        help="A unique identifier of a benchmark. Only used for distributed runs. "\
+                             "Is required for rendezvous.")
+    parser.add_argument('--rank', type=int, default=None,
+                        help="My rank. Is only used for distributed benchmarks.")
+    parser.add_argument('--transport', type=str, default='tcp',
+                        help="Transport to use for distributed benchmarks [tcp|ibverbs]")
+    parser.add_argument('--interface', type=str, default='',
+                        help="Network interface to use for distributed benchmarks.")
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
 
     if args.dtype == 'float32':
         args.dtype = 'float'
@@ -353,13 +447,20 @@ if __name__ == '__main__':
         traceback.print_exc(file=sys.stdout)
 
     if len(times) > 0:
-        mean_time = np.mean(times)                        # seconds
-        mean_throughput = args.batch_size / mean_time     # images / sec
-        if args.device == 'gpu':
-            mean_throughput = mean_throughput * args.num_gpus
+        mean_time = np.mean(times) # seconds
+        # Compute mean throughput
+        num_local_devices = 1 if args.device == 'cpu' else args.num_gpus  #Number of compute devices per node
+        num_devices = num_local_devices * args.num_workers                #Global number of devices
+        replica_batch = args.batch_size                                   #Input is a replica batch
+        mean_throughput = num_devices * replica_batch / mean_time         #images / sec
+        #
         print("__results.time__=%s" % (json.dumps(1000.0 * mean_time)))
         print("__results.throughput__=%s" % (json.dumps(int(mean_throughput))))
         print("__exp.model_title__=%s" % (json.dumps(model_title)))
         print("__results.time_data__=%s" % (json.dumps((1000.0*times).tolist())))
     else:
         print("__results.status__=%s" % (json.dumps("failure")))
+
+
+if __name__ == '__main__':
+    main()

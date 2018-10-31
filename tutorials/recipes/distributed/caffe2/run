@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Run this script on every machine to benchmark distributed Caffe2. It is assumed
+# that this folder is a shared folder and is mounted on each node.
+# First, edit config.json file. In particular, change the following parameters:
+#   exp.num_nodes       Number of nodes (which is same as number of workers).
+#   caffe2.rendezvous   A folder accesible from every node for hand shaking.
+#   caffe2.interface    Network interface to use (run ifconfig, prefer InfiniBand).
+#   exp.gpus            List of GPUs to use on each machine.
+# There are several usage scenarios of this script:
+#   1. Execute the following on each machine starting from rank 0:
+#      ./run RANK where RANK = [0,1,2,3,...,exp.num_nodes-1]
+#      Rank 0 will generate UUID and will write it to .runid which will be used
+#      as identifier of this run. Other ranks will read it from this file. UUID,
+#      run identifier, is requried by Caffe2.
+#   2. On node 0 execute `run 0 RUNID`. On other nodes execute `run RANK`. Node 0
+#      will use RUNID identifier and will write it into a file. Other nodes will
+#      read it.
+#   3. On all nodes execute `run RANK RUNID` where RUNID must be the same for all
+#      nodes.
+
+export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
+. ${BENCH_ROOT}/../../../../scripts/environment.sh
+
+rank=$1
+[ "$rank" == "0" ] && { create_dirs "./logs"; rm -f ./logs/*; }
+if [ "$#" == "2" ]; then
+    runid=$2
+    [ "$rank" == "0" ] && echo $runid > ./.runid
+elif [ "$rank" == "0" ]; then
+    runid=$(python -c "import uuid; print(uuid.uuid4().__str__())")
+    echo $runid > ./.runid
+else
+    runid=$(cat ./.runid)
+fi
+
+python $experimenter run --config=./config.json -Pcaffe2.rank=$rank -Pcaffe2.run_id='"'"${runid}"'"'

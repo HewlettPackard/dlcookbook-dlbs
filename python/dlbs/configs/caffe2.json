@@ -42,13 +42,19 @@
         "--dtype=${exp.dtype}",
         "$('--enable_tensor_core' if ${exp.use_tensor_core} is True else '')$",
         "--num_decode_threads=${caffe2.num_decode_threads}",
-        "--float16_compute=$('true' if ${caffe2.float16_compute} else 'false')$"
+        "--float16_compute=$('true' if ${caffe2.float16_compute} else 'false')$",
+        "--num_workers=${exp.num_nodes}",
+        "--rendezvous=$('file:///workspace/rendezvous' if '${caffe2.rendezvous}'.startswith('file://') and ${exp.docker} else '${caffe2.rendezvous}')$",
+        "--run_id=${caffe2.run_id}",
+        "--rank=${caffe2.rank}",
+        "--transport=${caffe2.transport}",
+        "--interface=${caffe2.interface}"
       ],
       "type": "str",
       "desc": "Command line arguments that launcher uses to launch caffe2_benchmark script."
     },
     "caffe2.docker_image": {
-      "val": "hpe/caffe2:cuda9-cudnn7",
+      "val": "nvcr.io/nvidia/caffe2:18.05-py2",
       "type": "str",
       "desc": "The name of a docker image for Caffe2 if containerized benchmark is requested."
     },
@@ -61,6 +67,7 @@
         "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
         "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
         "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
+        "$('--volume=%s:/workspace/rendezvous' % '${caffe2.rendezvous}'[7:] if '${caffe2.rendezvous}'.startswith('file://') and ${exp.docker} else '')$",
         "${exp.docker_args}",
         "${exp.docker_image}"
       ],
@@ -81,6 +88,31 @@
       "val": "${HOME}/projects/caffe2/build/caffe2",
       "type": "str",
       "desc": "Basically, it's a LD_LIBRARY_PATH for Caffe2 in case of a bare metal run."
+    },
+    "caffe2.rendezvous": {
+      "val": "file:///tmp/caffe2_rendezvous",
+      "type": "str",
+      "desc": "A randezvous for distributed training. redis://HOST:PORT or file:///path/to/. Path must exist."
+    },
+    "caffe2.run_id": {
+      "val": "0001",
+      "type": "str",
+      "desc": "An ID for a distributed benchmark. Must be the same for all workers."
+    },
+    "caffe2.rank": {
+      "val": 0,
+      "type": "int",
+      "desc": "Rank for this worker."
+    },
+    "caffe2.transport": {
+      "val": "tcp",
+      "type": "str",
+      "desc": "Distributed transport (tcp|ibverbs)."
+    },
+    "caffe2.interface": {
+      "val": "",
+      "type": "str",
+      "desc": "Network interface to use (ib0,...)."
     }
   },
   "extensions": [

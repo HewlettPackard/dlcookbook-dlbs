@@ -1,0 +1,21 @@
+{
+  "parameters": {
+    "exp.framework": "caffe2",
+    "exp.docker_image": "nvcr.io/nvidia/caffe2:18.05-py2",
+    "exp.docker_args": "--rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host --net=host --pid=host --privileged",
+
+    "exp.num_warmup_batches": 100,
+    "exp.num_batches": 400,
+    "exp.log_file": "${BENCH_ROOT}/logs/rank_${caffe2.rank}.log",
+
+    "exp.num_nodes": 2,
+    "caffe2.rendezvous": "file:///some/shared/path",
+    "caffe2.transport": "tcp",
+    "caffe2.interface": "ib0",
+    "exp.gpus": "0,1,2,3,4,5,6,7",
+
+    "exp.dtype": "float16",
+    "exp.model": "resnet50",
+    "exp.replica_batch": 256
+  }
+}
