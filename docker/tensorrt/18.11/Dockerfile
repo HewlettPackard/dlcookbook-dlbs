@@ -26,13 +26,14 @@ RUN dpkg -i /${TENSORRT_PACKAGE} && \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-COPY /tensorrt /tensorrt
-
-RUN cd /tensorrt && rm -rf -- ./build && \
-    mkdir build && cd ./build/ && \
+COPY /tensorrt /tmp/tensorrt
+# Why do not I remove /tmp/tensorrt folder?
+# Explanation is here: https://github.com/moby/moby/issues/27214
+RUN cd /tmp/tensorrt && rm -rf -- ./docker_build && \
+    mkdir ./docker_build && cd ./docker_build && \
     cmake -DHOST_DTYPE=INT8 -DCMAKE_INSTALL_PREFIX=/opt/tensorrt .. && \
     make -j$(nproc) && make build_docs && make install && \
-    cd / && rm -rf /tensorrt
+    cd /tmp/tensorrt && rm -rf ./docker_build
 
 
 ENV PATH /opt/tensorrt/bin:$PATH
