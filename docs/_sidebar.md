@@ -21,7 +21,3 @@
 - [Resource monitor](/monitor/monitor.md?id=resource-monitor)
 - [System information](/sysinfo/sysinfo.md?id=system-information)
 - [Extending DLBS](/extend/dlbs.md?id=extending-deep-learning-benchmarking-suite)
-- [API Documentation](/apidoc/apidoc.md)
-[//]: # (  - [DLBS](http://fastsim-demo.ad.labs.hpecorp.net:8080/dlbs/apidoc/dlbs/dlbs.html))
-[//]: # (  - [Caffe2 Benchmarks](http://fastsim-demo.ad.labs.hpecorp.net:8080/dlbs/apidoc/caffe2_benchmarks/caffe2_benchmarks.html))
-[//]: # (  - [MXNet Benchmarks](http://fastsim-demo.ad.labs.hpecorp.net:8080/dlbs/apidoc/mxnet_benchmarks/mxnet_benchmarks.html))

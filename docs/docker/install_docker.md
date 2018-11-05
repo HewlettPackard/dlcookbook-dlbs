@@ -62,7 +62,7 @@ Add yourself to a docker group to be able to run containers as a non-root user
 sudo groupadd docker             # Add the docker group if it doesn't already exist.
 sudo gpasswd -a ${USER} docker   # Add the connected user "${USER}" to the docker group. Change the user name to match your preferred user.
 sudo service docker restart      # Restart the Docker daemon.
-newgrp docker                    # Either do a newgrp docker or log out/in to activate the changes to groups.
+newgrp docker                    # Either do aÂ newgrp dockerÂ or log out/in to activate the changes to groups.
 ```
 
 ## Setting up proxy server
@@ -130,7 +130,7 @@ This relates to known limitations (see above). If it is the first time you insta
 
 1. Stop docker daemon: `sudo service docker stop`
 2. Remove folder /var/lib/docker: `rm -rf /var/lib/docker`
-3. Create new folder on a appropriate drive, for instance, `sudo mkdir -o /opt/docker`
+3. Create new folder on a appropriate drive, for instance, `sudo mkdir -p /opt/docker`
 4. Create a symlink from /opt/docker to /var/lib/docker
 5. Start docker daemon: `sudo service docker start`
 
@@ -151,6 +151,20 @@ In theory, this should not be a problem since base images provided by NVIDIA def
 folder containing stub libraries (/usr/local/cuda/lib64/stubs). See, for instance, this [Dockerfile](https://gitlab.com/nvidia/cuda/blob/ubuntu16.04/8.0/devel/Dockerfile). GCC should be able to use `LIBRARY_PATH` variable. If this
 error occurs, edit the corresponding docker file. NVIDIA Caffe Dockerfile contains example command line that you can use to fix this
 error.
+
+### Issue 3: docker image build fail (rm: cannot remove 'DIR': Directory not empty).
+When you build a custom docker image, for instance, one of the reference DLBS images, you may get this error message. This most likely is caused by the fact that docker cannot remove files (even with `-rf` flags) created in other layers when overlay storage driver is used in some situations. Several solutions are discussed [here](https://github.com/moby/moby/issues/27214). 
+
+### Issue 4: docker image build fail (docker cannot access Internet).
+DLBS uses environmental variables `http_proxy` and `https_proxy` and passes them to docker during build phase. Even with this variables set, sometimes docker is unable to access Internet. If you see the following error message: `WARNING: IPv4 forwarding is disabled` (try running `docker info`), you'll need to enable [IPv4 forwarding](https://success.docker.com/article/ipv4-forwarding).
+
+If you use a shared system with SLURM to submit jobs, you can enable this by creating a file, for instance, in your home folder named `sysctl.conf` with the following content: `net.ipv4.conf.all.forwarding=1`:
+```bash
+cd ~
+echo "net.ipv4.conf.all.forwarding=1" > ./sysctl.conf
+srun -w NODE_NAME --pty -p short --comment="no collectl;disable cpus=ht;sysctl file=$(pwd)/sysctl.conf" /bin/bash -l
+```
+
 
 ## Docker networking
 Every host can run docker containers and they can communicate with each other. We provide a short overview of how we implement multi-host Docker networking [here](/docker/docker_network.md). That document also presents the tool `test_bandwidth.sh` that measures Ethernet and InfiniBand bandwidth achievable between two processes running on host or inside docker containers (spoiler: it demonstrates that certain docker networking mechanisms do not introduce overhead and demonstrate similar performance as in a non-containerized environment, it also demonstrates how to use InfiniBand inside Docker containers).
