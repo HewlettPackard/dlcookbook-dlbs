@@ -19,6 +19,7 @@
         "NCCL_VERSION" : "2.3.5-2",
         "COMMON" : "../../common",
         "TF_VERSION" : "1.11.0",
+        "TF_NEED_TENSORRT" : "1",
         "TRT_REPO" : "nv-tensorrt-repo-ubuntu1604-cuda10.0-trt5.0.0.10-rc-20180906_1-1_amd64.deb",
         "BAZEL_VERSION" : "0.17.2"
     },

@@ -1,5 +1,5 @@
 Bootstrap: localimage
-FROM: tensorflow-!{TF_VERSION}-prelim.img
+FROM: tensorflow-!{TF_VERSION}-!{CUDA_VERSION}-!{CUDNN_VERSION}-prelim.img
 %labels
 	Maintainer Stephen Fleischman
     Framework TensorFlow
@@ -14,7 +14,9 @@ FROM: tensorflow-!{TF_VERSION}-prelim.img
 
 %setup
     #TensorRT version
-    cp !{COMMON}/upload/!{TRT_REPO} $SINGULARITY_ROOTFS
+    if [ "!{TF_NEED_TENSORRT}" = "1" ];then
+        cp !{COMMON}/upload/!{TRT_REPO} $SINGULARITY_ROOTFS
+    fi
 
 
 %post
@@ -35,7 +37,7 @@ FROM: tensorflow-!{TF_VERSION}-prelim.img
     export NCCL_INSTALL_PATH=/usr/local/nccl_!{NCCL_VERSION}+!{NCCL_ARCH}
     export TF_CUDNN_VERSION=!{CUDNN_VERSION}
     export TF_ENABLE_XLA=1 
-    export TF_NEED_TENSORRT=1
+    export TF_NEED_TENSORRT=!{TF_NEED_TENSORRT}
     export TF_NEED_VERBS=0 
     export TF_NEED_JEMALLOC=1 
 
@@ -45,7 +47,7 @@ FROM: tensorflow-!{TF_VERSION}-prelim.img
 
     ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
 
-    if [ "$TF_NEED_TENSORRT"==1 ];then
+    if [ "$TF_NEED_TENSORRT" = "1" ];then
         #Probably goes away with the next version
         #Install tensorrt and move to Anaconda Python !{PYTHON_VERSION}
         dpkg -i /!{TRT_REPO}
@@ -75,7 +77,7 @@ FROM: tensorflow-!{TF_VERSION}-prelim.img
     tar xvzf tensorflow.tgz && rm tensorflow.tgz
     mv tensorflow* tensorflow
     cd tensorflow
-    LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:${LD_LIBRARY_PATH}:/usr/lib/x86_64-linux-gnu \
+    LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:${NCCL_INSTALL_PATH}/lib:${LD_LIBRARY_PATH}:/usr/lib/x86_64-linux-gnu \
         tensorflow/tools/ci_build/builds/configured GPU \
         /usr/local/bin/bazel build -c opt --copt=-march="broadwell" --config=cuda //tensorflow/tools/pip_package:build_pip_package \
                    --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" \
@@ -97,8 +99,8 @@ FROM: tensorflow-!{TF_VERSION}-prelim.img
     export PATH=$HPCX_MPI_DIR/bin:$PATH
     export OLD_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64/stubs
-    export HOROVOD_NCCL_INCLUDE=/usr/include/nccl.h
-    export HOROVOD_NCCL_LIB=/usr/lib/x86_64-linux-gnu
+    export HOROVOD_NCCL_INCLUDE=${NCCL_INSTALL_PATH}/include
+    export HOROVOD_NCCL_LIB=${NCCL_INSTALL_PATH}/lib
     HOROVOD_GPU_ALLREDUCE=NCCL /opt/anaconda3/bin/pip install horovod
     rm  /scrap/jenkins/workspace/hpc-power-pack/label/r-vmb-ubuntu16-u4-x86-64-MOFED-CHECKER/hpcx_root
     rm -rf /scrap/jenkins/workspace/hpc-power-pack/label/r-vmb-ubuntu16-u4-x86-64-MOFED-CHECKER

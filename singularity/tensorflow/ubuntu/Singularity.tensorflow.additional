@@ -1,5 +1,5 @@
 Bootstrap: localimage
-FROM: tensorflow-!{TF_VERSION}-base.img
+FROM: tensorflow-!{TF_VERSION}-!{CUDA_VERSION}-!{CUDNN_VERSION}-base.img
 
 %labels
 	Maintainer Stephen Fleischman
