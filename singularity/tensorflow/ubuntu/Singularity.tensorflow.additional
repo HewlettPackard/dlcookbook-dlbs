@@ -39,6 +39,15 @@ FROM: tensorflow-!{TF_VERSION}-!{CUDA_VERSION}-!{CUDNN_VERSION}-base.img
     # tensor2tensor
     pip install tensor2tensor
 
+    #Mask-RCNN
+    pip install --no-cache-dir imgaug pycocotools
+    cd /
+    git clone https://github.com/matterport/Mask_RCNN.git
+    cd Mask_RCNN
+    python setup.py install
+    # You will need to bind a directory with the repo.
+    rm -rf Mask_RCNN
+
     ldconfig -v
 
 %runscript

@@ -1,0 +1,27 @@
+{
+    "macros" : {
+        "ANACONDA3_VERSION" : "5.2.0",
+        "ANACONDA3_ARCH" : "Linux-x86_64",
+        "PYTHON_VERSION" : "3.6",
+        "CUDA_VERSION" : "9.2",
+        "CUDNN_VERSION" : "7.1",
+        "CUDNN_MAJOR_VERSION" : "7",
+        "CUDNN_MINOR_VERSION" : "1",
+        "UBUNTU_VERSION" : "16.04",
+        "HPCX_VERSION" : "v2.0.0",
+        "HPCX_ARCH" : "gcc",
+        "OFED_VERSION" : "4.2-1.2.0.0",
+        "OFED_ARCH" : "ubuntu16.04-x86_64",
+        "PYCUDA_VERSION" : "2018.1",
+        "OMPI_VERSION" : "v3.0.x",
+        "IPM_VERSION" : "2.0.6",
+        "NCCL_ARCH" : "cuda9.2_x86_64",
+        "NCCL_VERSION" : "2.3.5-2",
+        "COMMON" : "../../common",
+        "TF_VERSION" : "1.11.0",
+        "TF_NEED_TENSORRT" : "F",
+        "TRT_REPO" : "",
+        "BAZEL_VERSION" : "0.17.2"
+    },
+    "description" : "Macro substitutions for the Singularity build file.  Substitute !{ident}."
+}
