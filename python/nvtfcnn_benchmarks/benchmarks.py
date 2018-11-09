@@ -19,6 +19,7 @@ from __future__ import print_function
 import argparse
 import pathlib
 import sys
+import re
 
 from subprocess import call
 
@@ -38,6 +39,10 @@ def main():
                          default='', choices=models,
                          help="A model to benchmark ({})".format(', '.join(models)))
     args, passthru = parser.parse_known_args()
+    m=re.match("(resnet|vgg)_(\d+)",args.model)
+    if m:
+        args.model=m.group(1)
+        passthru+=" --layers {}".format(m.group(2))
 
     prog=pathlib.Path(__file__).parent.joinpath('cnn').joinpath(args.model+".py")
     cmd=['python',str(prog)] + passthru

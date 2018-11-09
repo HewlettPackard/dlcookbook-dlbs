@@ -7,9 +7,13 @@ import os
 import traceback
 import subprocess
 import fnmatch
+import importlib
 from functools import partialmethod
-from shutil import copyfile
+from shutil import copyfile, which
 import enum
+
+class LauncherException(Exception):
+    pass
 
 class launcherutils(object):
     def __init__(self,cmd_args):
@@ -103,15 +107,49 @@ class launcherutils(object):
 
     def setup_mpirun(self):
         try:
-             self.mpirun_cmd=self.vdict['exp_mpirun']
-        except Exception:
-             self.logfatal('exp.mpirun is missing or empty and MPI was specified.')
-             raise ValueError()
+            err_msg="MPI was specified but exp.mpirun is missing."
+            mpirun_cmd=self.vdict['exp_mpirun']
+            if which(mpirun_cmd) is None:
+                err_msg="MPI was specified but the mpirun command, {}, was not found or was not executable by the user.".\
+                        format(self.vdict['exp_mpirun'])
+                raise LauncherException
+        except (KeyError, LauncherException) as e:
+             err_msg+=type(e)+"\n"+err_msg
+             raise ValueError(err_msg)
+        else:
+            self.mpirun_cmd=mpirun_cmd
 
         if self.check_key('exp_mpirun_hosts'):
-            self.mpirun_cmd += self.vdict['exp_mpirun_args'] + " -H {} ".format(self.vdict['exp_mpirun_hosts'])
+            try:
+                psh=importlib.import_module('psh')
+            except ModuleNotFoundError as me:
+                err_msg='''
+                   The psh module was not found so will skip checking host list.
+                   To enable this check install the module with pip install psh.
+                   '''
+                print(err_msg)
+                psh=None
+            # Make sure that we can contact the hosts
+            if psh is not None:
+                hostnames=[ht.split(':')[0].strip() for ht in self.vdict['exp_mpirun_hosts'].split(',')]
+                success=True
+                for hostname in hostnames:
+                    try:
+                        with psh.sh.ssh(hostname, psh.sh.hostname(), _shell = True) as ssh:
+                            for line in ssh:
+                                msg='Can connect to {}'.format(line.strip())
+                                self.loginfo(msg)
+                    except psh.exceptions.ExecutionError as pe:
+                        msg='Could not connect to {}'.format(hostname)
+                        self.logerror(msg)
+                        success=False
+                    if not success:
+                        self.logerror('One or more host connection failures. Cannot continue.')
+                        raise ValueError()
+   
+            self.mpirun_cmd += " {} -H {} ".format( self.vdict['exp_mpirun_args'], self.vdict['exp_mpirun_hosts'])
         else:
-            self.mpirun_cmd += " "+self.vdict['exp_mpirun_args']
+            self.mpirun_cmd += " {}".format(self.vdict['exp_mpirun_args'])
         if not self.check_key('exp_mpirun_num_tasks'): num_tasks=1
         else: num_tasks=self.vdict['exp_mpirun_num_tasks']
         self.mpirun_cmd += " -np {} ".format(self.vdict['exp_mpirun_num_tasks'])
@@ -174,7 +212,7 @@ class launcherutils(object):
         env=self.vdict['{}_env'.format(self.vdict['exp_framework'])]
         script=\
                 r'{run_command} /bin/bash -c " {env} {runtime_python} {benchmark_command}"'.format(\
-						run_command=run_command,env=env,runtime_python=self.vdict['runtime_python'],benchmark_command=benchmark_command)
+                        run_command=run_command,env=env,runtime_python=self.vdict['runtime_python'],benchmark_command=benchmark_command)
         if self.vdict['exp_status']=='simulate':
             print(script)
             sys.exit(0)

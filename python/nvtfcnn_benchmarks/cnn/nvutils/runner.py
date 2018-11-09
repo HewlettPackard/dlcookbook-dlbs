@@ -341,7 +341,7 @@ def validate(infer_func, params):
     if data_dir is None:
         raise ValueError("data_dir must be specified")
     #if log_dir is None:
-    #   raise ValueError("log_dir must be specified")
+    #    raise ValueError("log_dir must be specified")
 
     filename_pattern = os.path.join(data_dir, '%s-*')
     eval_filenames  = sorted(tf.gfile.Glob(filename_pattern % 'validation'))
