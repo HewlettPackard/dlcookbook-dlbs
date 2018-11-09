@@ -146,10 +146,9 @@ class launcherutils(object):
                     if not success:
                         self.logerror('One or more host connection failures. Cannot continue.')
                         raise ValueError()
-   
             self.mpirun_cmd += " {} -H {} ".format( self.vdict['exp_mpirun_args'], self.vdict['exp_mpirun_hosts'])
         else:
-            self.mpirun_cmd += " {}".format(self.vdict['exp_mpirun_args'])
+            self.mpirun_cmd += " {} ".format(self.vdict['exp_mpirun_args'])
         if not self.check_key('exp_mpirun_num_tasks'): num_tasks=1
         else: num_tasks=self.vdict['exp_mpirun_num_tasks']
         self.mpirun_cmd += " -np {} ".format(self.vdict['exp_mpirun_num_tasks'])
