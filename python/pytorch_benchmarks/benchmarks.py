@@ -158,7 +158,7 @@ def benchmark_inference(model, opts):
     if opts['dtype'] == 'float16':
         data = data.half()
         model = model.half()
-    model.evaluate()
+    model.eval()
     # Do warmup round
     for i in range(opts['num_warmup_batches']):
         model(data)
