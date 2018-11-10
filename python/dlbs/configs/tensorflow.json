@@ -255,7 +255,7 @@
         "--iter_unit=${nvtfcnn.iter_unit}",
         "--display_every=${nvtfcnn.display_every}",
         "--log_dir=${tensorflow.log_dir}",
-        "$('--precision fp16' if '${exp.dtype}' == 'float16' or '${exp.dtype}' == 'fp16' else '--precision fp32')$"
+        "$('--precision=fp16' if '${exp.dtype}' == 'float16' or '${exp.dtype}' == 'fp16' else '--precision=fp32')$"
       ],
       "type": "str",
       "desc": "These are a command line arguments passed to nvtfcnn script."

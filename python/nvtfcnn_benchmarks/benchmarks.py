@@ -20,10 +20,10 @@ import argparse
 import pathlib
 import sys
 import re
-
 from subprocess import call
-models_re=['alexnet$','inception_resnet_v2$','inception_v4$',r'resnet_\d+$',r'vgg_\d+$',
-            'googlenet$','inception_v3$','overfeat$','trivial$','xception$']
+
+models_re= [r"alexnet$",r"googlenet$",r"inception_resnet_v2$",r"inception_v[34]$",r"overfeat$",r"resnet_\d+$",r"trivial$",r"vgg_\d+$",r"xception$"]
+
 def allowed_models(v):
     v=v.strip()
     for model_re in models_re:
@@ -34,27 +34,32 @@ def allowed_models(v):
 
 def main():
     """Main worker function."""
-    parser = argparse.ArgumentParser(add_help=False)
-    #Update here if list of available models change.
-    parser.add_argument( '--model', type=allowed_models, required=True,
-                         default='', 
-                         help="A model to benchmark - must match one of the patterns: {}".format(' | '.join(models_re)))
-    args, passthru = parser.parse_known_args()
-    m=re.match("(resnet|vgg)_(\d+)",args.model)
-    if m:
-        args.model=m.group(1)
-        passthru+=["--layers {}".format(m.group(2))]
-
-    prog=pathlib.Path(__file__).parent.joinpath('cnn').joinpath(args.model+".py")
-    cmd=['python',str(prog)] + passthru
     try:
-        retcode = call(cmd)
-        if retcode < 0:
-            print("Child was terminated by signal", -retcode, file=sys.stderr)
-    except OSError as e:
-        print("Execution failed:", e, file=sys.stderr)
-    print('done')
+        parser = argparse.ArgumentParser(add_help=False)
+        #Update here if list of available models change.
+        parser.add_argument( '--model', type=allowed_models, required=True,
+                             default='', 
+                             help="A model to benchmark - must match one of the patterns: {}".format(' | '.join(models_re)))
+        args, passthru = parser.parse_known_args()
+        m=re.match("(resnet|vgg)_(\d+)",args.model)
+        if m:
+            args.model=m.group(1)
+            passthru+=["--layers={}".format(m.group(2))]
     
+        prog=pathlib.Path(__file__).parent.joinpath('cnn').joinpath(args.model+".py")
+        cmd=['python',str(prog)] + passthru
+        print(cmd)
+        try:
+            retcode = call(cmd)
+            if retcode < 0:
+                print("Child was terminated by signal", -retcode, file=sys.stderr)
+        except OSError as e:
+            print("Execution failed:", e)
+        print('done')
+    except Exception as e:
+        print('nvtfcnn_benchmarks/benchmark.py: Something failed.')
+        print('cmd: {}'.format(' '.join(cmd)))
+        sys.exit(-1)
 
 if __name__ == '__main__':
     main()
