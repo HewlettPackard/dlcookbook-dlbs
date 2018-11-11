@@ -1,0 +1,28 @@
+{
+  "parameters": {
+    "exp.num_warmup_batches": 10,
+    "exp.num_batches": 10,
+    "exp.replica_batch": 1,
+    "exp.node_id":"NODE",
+
+    "exp.framework": "tensorrt",
+    "exp.docker": true,
+    "exp.docker_image": "dlbs/tensorrt:18.10",
+    "exp.log_file": "${BENCH_ROOT}/logs/${exp.node_id}/${exp.gpu_id}/${exp.dtype}/${exp.model}_${exp.num_gpus}.log",
+    "exp.gpus": "1",
+    "exp.gpu_id": "p4",
+    "exp.phase": "inference",
+
+    "openvino.env": [""]
+  },
+  "variables":{
+    "exp.model": [
+      "densenet121", "densenet161", "densenet169", "densenet201",
+      "squeezenet1.0", "squeezenet1.1",
+      "mtcnn_r", "mtcnn_o", "mtcnn_p",
+      "mobilenet_ssd", "vgg19","vgg16","cityscapes",
+      "googlenet", "googlenet_bn", "alexnet"
+    ],
+    "exp.dtype": ["float32"]
+  }
+}
