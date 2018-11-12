@@ -3,5 +3,23 @@
 export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
 . ${BENCH_ROOT}/../../../scripts/environment.sh
 
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
+
 # Run benchmarks.
-python $experimenter run --config=./p4.json
+python $experimenter validate --config=./p4.json
+
+# Create folder that will contain benchmark results.
+remove_files ./reports/results8.json ./reports/results16.json ./reports/results32.json
+create_dirs "${BENCH_ROOT}/reports"
+
+# Parse log files
+params="exp.effective_batch,exp.replica_batch,results.time,results.throughput,exp.model_title,exp.gpus,exp.num_gpus,exp.model"
+
+python $logparser ./logs/m510/p4/float32 --recursive --output_params ${params} --output_file ./reports/results32.json
+python $reporter --summary_file ./reports/results32.json --type 'exploration' --target_variable 'results.time' > ./reports/results32.txt
+
+python $logparser ./logs/m510/p4/int8 --recursive --output_params ${params} --output_file ./reports/results8.json
+python $reporter --summary_file ./reports/results8.json --type 'exploration' --target_variable 'results.time' > ./reports/results8.txt
+
+python $logparser ./logs/m510/p4/float16 --recursive --output_params ${params} --output_file ./reports/results16.json
+python $reporter --summary_file ./reports/results16.json --type 'exploration' --target_variable 'results.time' > ./reports/results16.txt

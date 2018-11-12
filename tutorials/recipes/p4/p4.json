@@ -1,28 +1,36 @@
 {
   "parameters": {
-    "exp.num_warmup_batches": 10,
-    "exp.num_batches": 10,
-    "exp.replica_batch": 1,
-    "exp.node_id":"NODE",
+    "tensorrt.host_libpath": "/usr/local/cuda/lib64:${LD_LIBRARY_PATH}",
+    "exp.num_warmup_batches": 50,
+    "exp.num_batches": 1000,
+    "exp.node_id":"m510",
 
     "exp.framework": "tensorrt",
-    "exp.docker": true,
-    "exp.docker_image": "dlbs/tensorrt:18.10",
-    "exp.log_file": "${BENCH_ROOT}/logs/${exp.node_id}/${exp.gpu_id}/${exp.dtype}/${exp.model}_${exp.num_gpus}.log",
+    "exp.docker": false,
+    "exp.log_file": "${BENCH_ROOT}/logs/${exp.node_id}/${exp.gpu_id}/${exp.dtype}/${exp.model}_${exp.replica_batch}.log",
     "exp.gpus": "1",
     "exp.gpu_id": "p4",
     "exp.phase": "inference",
 
-    "openvino.env": [""]
+    "openvino.env": [""],
+    "eexp.model": [
+      "densenet121", "densenet161", "densenet169", "densenet201",
+      "squeezenet1.0", "squeezenet1.1",
+      "mobilenet_ssd", "vgg19","vgg16","cityscapes",
+      "googlenet", "googlenet_bn", "alexnet"
+    ]
   },
   "variables":{
     "exp.model": [
       "densenet121", "densenet161", "densenet169", "densenet201",
       "squeezenet1.0", "squeezenet1.1",
-      "mtcnn_r", "mtcnn_o", "mtcnn_p",
       "mobilenet_ssd", "vgg19","vgg16","cityscapes",
       "googlenet", "googlenet_bn", "alexnet"
     ],
-    "exp.dtype": ["float32"]
-  }
+    "exp.dtype": ["int8", "float16", "float32"],
+    "exp.replica_batch": [1, 2, 4, 8, 16, 32, 64, 128]
+  },
+  "extensions": [
+    {"condition": {"exp.model": "cityscapes"}, "parameters": {"exp.num_batches":200}}
+  ]
 }
