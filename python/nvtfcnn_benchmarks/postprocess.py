@@ -4,10 +4,12 @@ import re
 import sys
 
 
-model_titles = {
-    "alexnet_owt": "AlexNetOWT", "googlenet": "GoogleNet", "inception_resnet_v2": "InceptionResNetV2",
+MODEL_TITLES = {
+    "alexnet_owt": "AlexNetOWT", "googlenet": "GoogleNet",
+    "inception_resnet_v2": "InceptionResNetV2",
     "inception3": "InceptionV3", "inception4": "InceptionV4", "overfeat": "Overfeat",
-    "resnet18": "ResNet18", "resnet34": "ResNet34", "resnet50": "ResNet50", "resnet101": "ResNet101", "resnet152": "ResNet152",
+    "resnet18": "ResNet18", "resnet34": "ResNet34", "resnet50": "ResNet50",
+    "resnet101": "ResNet101", "resnet152": "ResNet152",
     "vgg11": "VGG11", "vgg13": "VGG13", "vgg16": "VGG16", "vgg19": "VGG19",
     "xception": "Xception"
 }
@@ -32,9 +34,9 @@ def main():
         if parser_state == state.SEARCH:
             parser_state = state.PROCESS if re.match(header, line) else state.SEARCH
             continue
-        # 
+        #
         if 'tensorflow' in line:
-            # This can be warning mesasges related to recoverable OOM errors:
+            # This can be warning messages related to recoverable OOM errors:
             #    2018-10-12 02:14:08.982901: W tensorflow/stream_executor/cuda/cuda_dnn.cc:3797]
             #    2018-10-12 02:34:28.983848: W tensorflow/core/common_runtime/bfc_allocator.cc:219] Allocator  ...
             continue
@@ -52,19 +54,19 @@ def main():
             break
     # Find average speed/processing time
     if len(speeds) < 20:
-	# It's better to remove first two points even if number of iterations was small.
-	if len(speeds) >= 5:
-	    speeds = speeds[2:]
-	print(
-	    "[WARNING] Number of performance points is too low (%d). "\
-	    "I will use almost all points to compute average. Better algorithm "\
-	    "exists."  % len(speeds)
-	)
+        # It's better to remove first two points even if number of iterations was small.
+        if len(speeds) >= 5:
+            speeds = speeds[2:]
+            print(
+                "[WARNING] Number of performance points is too low (%d). "\
+                "I will use almost all points to compute average. Better algorithm "\
+                "exists."  % len(speeds)
+            )
     else:
-	speeds = speeds[10:]
+        speeds = speeds[10:]
     # Do some logging
-    if model in model_titles:
-	print("__exp.model_title__=\"%s\"" % model_titles[model])
+    if model in MODEL_TITLES:
+        print("__exp.model_title__=\"%s\"" % MODEL_TITLES[model])
     if len(speeds) > 0:
         speed = sum(speeds) / len(speeds)
         batch_time = 1000.0 / (speed / effective_batch)

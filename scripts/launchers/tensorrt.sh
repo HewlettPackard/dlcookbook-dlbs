@@ -8,6 +8,8 @@ if [ "$exp_status" = "simulate" ]; then
     echo "${tensorrt_env} ${runtime_launcher} tensorrt ${tensorrt_args}"
     exit 0
 fi
+[ "${exp_phase}" == "training" ] && \
+    report_and_exit "failure" "TensorRT benchmark backend does not support 'training' phase (exp.phase=training)." "${exp_log_file}"
 # Do model checking and preparation only if not fake inference.
 if [ "${tensorrt_fake_inference}" == "false" ]; then
     # Check batch is small enough for this experiment
@@ -18,7 +20,8 @@ if [ "${tensorrt_fake_inference}" == "false" ]; then
     # Make sure model exists
     host_model_dir=$DLBS_ROOT/models/${exp_model}
     model_file=$(find ${host_model_dir}/ -name "*.${exp_phase}.prototxt")
-    file_exists "$model_file" || report_and_exit "failure" "A model file ($model_file) does not exist." "${exp_log_file}"
+    file_exists "$model_file" || \
+        report_and_exit "failure" "A model file (${host_model_dir}/*.${exp_phase}.prototxt) does not exist." "${exp_log_file}"
 
     # Copy model file and replace batch size there.
     remove_files "${host_model_dir}/${caffe_model_file}"
