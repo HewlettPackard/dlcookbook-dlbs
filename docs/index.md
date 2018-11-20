@@ -63,19 +63,19 @@ This configuration will run 6 benchmarks (2 models times 3 GPU configurations). 
 The [introduction](https://hewlettpackard.github.io/dlcookbook-dlbs/#/intro/intro?id=introduction-to-benchmarking-suite) contains more examples of what DLBS can do.
 
 ## Documentation
-
 We host documentation [here](https://hewlettpackard.github.io/dlcookbook-dlbs/#/).
 
 ## More information
-
 * [Why we created Benchmarking Suite](https://developer.hpe.com/blog/why-we-created-hpe-deep-learning-cookbook)
 * GTC 2018 [presentation](http://on-demand.gputechconf.com/gtc/2018/video/S8555) / [slides](http://on-demand.gputechconf.com/gtc/2018/presentation/s8555-hpe-deep-learning-cookbook-recipes-to-run-deep-learning-workloads.pdf)
 * [HPE Developer Portal](https://www.hpe.com/software/dl-cookbook)
 * [HPE Deep Learning Performance Guide](http://dlpg.labs.hpe.com/)
 
 ## License
-
 Deep Learning Benchmarking Suite is licensed under [Apache 2.0](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/LICENSE) license.
+
+## Contributing
+All contributors must include acceptance of the DCO (Developer Certificate of Origin). Please, read this [document](https://github.com/HewlettPackard/dlcookbook-dlbs/blob/master/CONTRIBUTING.md) for more details.
 
 ## Contact us
 * Natalia Vassilieva <nvassilieva@hpe.com>

@@ -58,3 +58,6 @@ Some of the components of this project are derived/inspired from/by the followin
 
 15. A large number of optimization tricks have been borrowed from NVIDIA's docker containers from
     NGC.
+
+16. Contributing guidelines are based on guidelines from POSH-HPOneView project:
+    https://github.com/HewlettPackard/POSH-HPOneView
