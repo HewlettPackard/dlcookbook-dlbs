@@ -93,13 +93,13 @@ def get_devices(opts):
 
 
 class BenchmarkingModule(mx.mod.Module):
-    """This is a copy past from mxnet project. 
-    
+    """This is a copy past from mxnet project.
+
     I think, the source file is https://github.com/apache/incubator-mxnet/blob/master/python/mxnet/module/base_module.py
-    The reason to have it here is to be able to perform predefined number of iterations 
-    that include warmup and benchmark iterations. There are two major differences 
+    The reason to have it here is to be able to perform predefined number of iterations
+    that include warmup and benchmark iterations. There are two major differences
     compared to mxnet implementation:
-    
+
     1. Numer of epochs is ignored
     2. BatchEndCallback returns False indicating that training must be stopped.
     """
@@ -158,7 +158,7 @@ class BenchmarkingModule(mx.mod.Module):
                     self.prepare(next_data_batch)
                 except StopIteration:
                     end_of_batch = True
-                #print(self._exec_group.labels_.dtype)  
+                #print(self._exec_group.labels_.dtype)
                 self.update_metric(eval_metric, data_batch.label)
 
                 if monitor is not None:
@@ -343,8 +343,8 @@ def benchmark_training(model, opts):
         train_data,
         kvstore=kv,
         optimizer='sgd',
-        optimizer_params = {'multi_precision': True},
-        eval_metric = model.eval_metric,
+        optimizer_params={'multi_precision': True},
+        eval_metric=model.eval_metric,
         initializer=mx.init.Normal(),
         batch_end_callback=[batch_end_callback]
     )
@@ -352,7 +352,7 @@ def benchmark_training(model, opts):
     return (model.name, batch_end_callback.batch_times)
 
 
-if __name__ == '__main__':
+def main():
     if 'DLBS_DEBUG' in os.environ and os.environ['DLBS_DEBUG'] == '1':
         logging.getLogger().setLevel(logging.DEBUG)
     # --model, --forward_only, -batch_size, --num_batches, --num_warmup_batches, --num_gpus, --device, --data_dir
@@ -404,7 +404,14 @@ if __name__ == '__main__':
         print("__results.time_data__=%s" % (json.dumps((1000.0*times).tolist())))
     else:
         print("__results.status__=%s" % (json.dumps("failure")))
+    # Need this because of os._exit below to make sure that all gets printed.
+    sys.stdout.flush()
+    sys.stderr.flush()
     # TODO: Without exit call mxnet seems to hang in distributed mode.
     #    https://stackoverflow.com/questions/73663/terminating-a-python-script
     #    https://stackoverflow.com/a/5120178/1278994
     os._exit(os.EX_OK)
+
+
+if __name__ == '__main__':
+    main()
