@@ -24,7 +24,7 @@
       "desc": "The name of a docker image to use for PyTorch if containerized benchmark is requested."
     },
     "nvtfcnn.mpi_args": {
-      "val": "--allow-run-as-root --bind-to socket -np ${exp.num_gpus}",
+      "val": "--allow-run-as-root --bind-to socket -np $(${exp.num_gpus} if '${exp.device_type}' == 'gpu' else 1)$",
       "type": "str",
       "desc": "In case if containerized benchmarks, this are the docker parameters."
     },
@@ -73,6 +73,10 @@
     }
   },
   "extensions": [
+    {
+      "condition": {"exp.framework": "nvtfcnn"},
+      "parameters": {"exp.docker_launcher": "nvidia-docker"}
+    },
     {
       "condition":{"exp.framework": "nvtfcnn", "exp.model": "alexnet_owt"},
       "parameters": {"nvtfcnn.model_file": "alexnet"}

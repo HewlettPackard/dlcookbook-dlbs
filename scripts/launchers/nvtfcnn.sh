@@ -14,7 +14,13 @@ is_batch_good "${__batch_file__}" "${exp_replica_batch}" || {
   report_and_exit "skipped" "The replica batch size (${exp_replica_batch}) is too large for given SW/HW configuration." "${exp_log_file}";
 }
 [ "${exp_docker}" = "false" ] && logfatal "NVTFCNN only runs in docker container"
-
+# A hack to make it work with CPUs
+update_cmd=":;"
+if [ "${exp_device_type}" = "cpu" ]; then
+    update_cmd="sed -i '224s/config/#config/' ./nvutils/runner.py && sed -i '225s/config/#config/' ./nvutils/runner.py"
+    update_cmd="${update_cmd} && sed -i '90s/gpu/cpu/' ./nvutils/runner.py"
+    update_cmd="${update_cmd} && sed -i 's/channels_first/channels_last/' ./${nvtfcnn_model_file}.py"
+fi
 # This script is to be executed inside docker container or on a host machine.
 # Thus, the environment must be initialized inside this scrip lazily.
 [ -z "${runtime_launcher}" ] && runtime_launcher=":;"
@@ -23,6 +29,7 @@ script="\
     echo -e \"__exp.framework_ver__= \x22\$(python -c 'import tensorflow as tf; print (tf.__version__);')\x22\";\
     echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
     cd /workspace/nvidia-examples/cnn && \
+    ${update_cmd} && \
     mpiexec ${nvtfcnn_mpi_args} python ${nvtfcnn_model_file}.py ${nvtfcnn_args} &\
     proc_pid=\$!;\
     [ \"${monitor_frequency}\" != \"0\" ] && echo -e \"\${proc_pid}\" > ${monitor_backend_pid_folder}/proc.pid;\
