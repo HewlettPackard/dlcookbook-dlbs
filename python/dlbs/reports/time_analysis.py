@@ -31,6 +31,8 @@ from dlbs.utils import IOUtils
 from dlbs.utils import Modules
 
 if Modules.HAVE_MATPLOTLIB:
+    import matplotlib
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 if Modules.HAVE_NUMPY:
     import numpy as np
@@ -63,6 +65,8 @@ if __name__ == "__main__":
     parser.add_argument('--log_dir', '--log-dir', type=str, required=False, default=None,
                         help="Scan this folder for *.log files. "\
                              "Scan recursively if --recursive is set.")
+    parser.add_argument('--save_file', '--save-file', type=str, required=False, default=None,
+                        help="Save to file. ")
     parser.add_argument('--log_file', '--log-file', type=str, required=False, default=None,
                         help="Get batch statistics from this experiment.")
     parser.add_argument('--recursive', required=False, default=False, action='store_true',
@@ -75,6 +79,10 @@ if __name__ == "__main__":
         files = []
     if args.log_file is not None:
         files.append(args.log_file)
+
+    save_file = None
+    if args.save_file is not None:
+        save_file = args.save_file
 
     exps = LogParser.parse_log_files(files)
     for exp in exps:
@@ -100,5 +108,10 @@ if __name__ == "__main__":
             line, = plt.plot(xs, ys)
             labels.append('Window=%d' % (window_size))
         legend = plt.legend(labels)
-        plt.show()
+        if save_file is not None:
+            print("save file to ", save_file)
+            plt.savefig(save_file)
+        else:
+            plt.show()
+
         plt.clf()
