@@ -46,15 +46,21 @@ def import_models():
         for item in dir(module):
             model_cls = getattr(module, item)
             if not model_cls or not inspect.isclass(model_cls) or not hasattr(model_cls, 'implements'):
-                continue
+                continue	    
             implements = getattr(model_cls, 'implements')
-            if isinstance(implements, basestring):
+	    # Quick fix to make it compatible with Python3. Needs to be re-written.
+            #if isinstance(implements, basestring):
+            if isinstance(implements, ("".__class__, u"".__class__)):
                 implements = [implements]
             assert isinstance(implements, list), "The 'implements' static member must be either a string or a list of strings"\
                                                  "Error in %s:%s class definition" % (fname, model_cls.__name__)
             for model_id in implements:
-                assert isinstance(model_id, basestring), "The 'implements' static member must be either a string or a list of strings"\
-                                                         "Error in %s:%s class definition" % (fname, model_cls.__name__)
+		# Quick fix to make it compatible with Python3. Needs to be re-written.
+                #assert isinstance(model_id, basestring), "The 'implements' static member must be either a string or a list of strings"\
+                #                                         "Error in %s:%s class definition" % (fname, model_cls.__name__)
+                assert isinstance(model_id, ("".__class__, u"".__class__)), \
+		                  "The 'implements' static member must be either a string or a list of strings"\
+		                  "Error in %s:%s class definition" % (fname, model_cls.__name__)
                 assert model_id not in models, "Model %s implements same model as %s (%s)" % (model_cls.__name__, models[model_id].__name__, model_id)
                 models[model_id] = model_cls
     return models

@@ -387,7 +387,7 @@ def main():
         opts = vars(args)
         opts['phase'] = 'inference' if args.forward_only else 'training'
         model_title, times = benchmark(opts)
-    except Exception, e:
+    except Exception as e:
         #TODO: this is not happenning, program terminates earlier.
         # For now, do not rely on __results.status__=...
         times = np.zeros(0)
