@@ -52,6 +52,7 @@ class Validator(object):
         self.frameworks = {}               # Frameworks stats excluding disabled experiments
         self.need_docker = False           # Does the plan need docker (CPU experiments)?
         self.need_nvidia_docker = False    # Does the plan need nvidia docker (GPU experiments)?
+        self.need_nvidia_docker2 = False   # Does the plan need nvidia docker 2 (GPU experiments)?
         self.cpu_docker_imgs = {}          # The mapping "framework -> set of docker images" for CPU experiments
         self.gpu_docker_imgs = {}          # The mapping "framework -> set of docker images" for GPU experiments
         self.errors = []                   # All the errors found in this plan.
@@ -95,12 +96,14 @@ class Validator(object):
 
         # Check docker and nvidia docker installed
         if self.need_docker:
-            self.check_can_run_docker(nvidia_docker=False)
+            self.check_can_run_docker(runtime='docker')
         if self.need_nvidia_docker:
-            self.check_can_run_docker(nvidia_docker=True)
+            self.check_can_run_docker(runtime='nvidia-docker')
+        if self.need_nvidia_docker2:
+            self.check_can_run_docker(runtime='nvidia-docker2')
 
         # Check images exist
-        if self.need_docker or self.need_nvidia_docker:
+        if any([self.need_docker, self.need_nvidia_docker, self.need_nvidia_docker2]):
             for framework in self.frameworks:
                 for docker_img in self.frameworks[framework]['docker_images']:
                     self.check_docker_image_exists(docker_img)
@@ -186,7 +189,9 @@ class Validator(object):
             if exp['exp.device_type'] == 'gpu':
                 stats['num_gpu_exps'] += 1
                 if exp['exp.docker'] is True:
-                    self.need_nvidia_docker = True
+                    self.need_nvidia_docker = 'exp.docker_launcher' not in exp or \
+                                              exp['exp.docker_launcher'] == 'nvidia-docker'
+                    self.need_nvidia_docker2 = not self.need_nvidia_docker
                     self.add_docker_image(exp['exp.framework'], 'gpu', exp[docker_img_key])
             elif exp['exp.device_type'] == 'cpu':
                 stats['num_cpu_exps'] += 1
@@ -259,17 +264,39 @@ class Validator(object):
             retcode, output = Validator.run_process(cmd, env=variables)
             self.add_check_result('CheckHostFramework', cmd, retcode, output, env=variables)
 
-    def check_can_run_docker(self, nvidia_docker=False):
-        """Checks it can run docker/nvidia-docker.
+    def check_can_run_docker(self, runtime='docker'):
+        """Checks if DLBS can run docker/nvidia-docker/nvidia-docker2.
 
-        :param bool nvidia_docker: If True, `nvidia-docker` should be used. Else `docker`.
+        :param str runtime: The docker runtime to test. Valid values are:
+             - 'docker' or 'runc' for CPU workloads
+             - 'nvidia-docker' for GPU workloads with nvidia-docker1
+             - 'nvidia-docker2' or 'nvidia' for GPU workloads with nvidia-docker2 (using
+               --runtime=nvidia)
         """
+        def _get_docker_runtimes(info):
+            for line in info:
+                line = line.strip()
+                if line.startswith('Runtimes:'):
+                    return line[9:].strip().split()
+            return []
+
         try:
-            if nvidia_docker:
-                cmd = ["nvidia-docker", "--version"]
-            else:
+            if runtime in ['nvidia', 'nvidia-docker2', 'nvidia_docker2']:
+                cmd = ["docker", "info"]
+                retcode, output = Validator.run_process(cmd)
+                if retcode == 0:
+                    runtimes = _get_docker_runtimes(output)
+                    if 'nvidia' in runtimes:
+                        output = ["Supported docker runtimes '%s'" % str(runtimes)]
+                    else:
+                        retcode, output = -1, "Docker does not support NVIDIA runtime '%s'" % str(runtimes)
+            elif runtime in ['docker', 'runc', 'nvidia-docker', 'nvidia_docker']:
                 cmd = ["docker", "--version"]
-            retcode, output = Validator.run_process(cmd)
+                if runtime in ['nvidia-docker', 'nvidia_docker']:
+                    cmd = ["nvidia-docker", "--version"]
+                retcode, output = Validator.run_process(cmd)
+            else:
+                cmd, retcode, output = '', -1, ["Invalid docker runtime '%s'" % runtime]
             self.add_check_result('CanRunDocker', cmd, retcode, output)
         except OSError as error:
             self.add_check_result('CanRunDocker', cmd, retcode, output, error=error)

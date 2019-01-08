@@ -9,6 +9,7 @@
 - [Models](/models/models.md?id=models)
 - [Parameters](/parameters/parameters.md?id=parameters)
 - [Validating benchmarks](/validation/validation.md?id=validating-benchmarks)
+- [Runtimes](/runtimes/runtimes.md?id=runtimes)
 - [Frameworks](/frameworks/frameworks.md?id=frameworks)
   - [Caffe](/frameworks/caffe.md?id=caffe)
   - [Caffe2](/frameworks/caffe2.md?id=caffe2)
