@@ -280,6 +280,7 @@ class Validator(object):
                     return line[9:].strip().split()
             return []
 
+        cmd, retcode, output = '<none>', 0, ['<none>']
         try:
             if runtime in ['nvidia', 'nvidia-docker2', 'nvidia_docker2']:
                 cmd = ["docker", "info"]
@@ -299,7 +300,7 @@ class Validator(object):
                 cmd, retcode, output = '', -1, ["Invalid docker runtime '%s'" % runtime]
             self.add_check_result('CanRunDocker', cmd, retcode, output)
         except OSError as error:
-            self.add_check_result('CanRunDocker', cmd, retcode, output, error=error)
+            self.add_check_result('CanRunDocker', cmd, retcode, output, error=str(error))
             #self.errors.append("CanRunDocker (nvidia_docker=%s) check failed with message: '%s'" % (nvidia_docker, str(error)))
 
     def check_docker_image_exists(self, docker_img):
