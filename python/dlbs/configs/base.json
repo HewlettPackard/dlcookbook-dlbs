@@ -269,9 +269,11 @@
     "exp.docker_launcher": {
       "val": "$('nvidia-docker' if '${exp.device_type}' == 'gpu' else 'docker')$",
       "type": "str",
-      "val_domain": ["nvidia-docker", "docker"],
       "desc": [
-        "A launcher for docker containers - 'nvidia-docker' for GPU workloads and 'docker' for CPU ones."
+        "A launcher for docker containers - 'nvidia-docker' for GPU workloads and 'docker' for CPU ones.",
+        "If user does not belong to a 'docker' group, the value needs to be 'sudo docker' or 'sudo nvidia-docker'.",
+        "In general, this may be any shell script (a wrapper) that does some system-specific actions before invoking",
+        "docker or nvidia-docker."
       ]
     },
     "exp.docker_image": {
@@ -370,6 +372,19 @@
         "In case if benchmark is a python based benchmark as most of backend implementations, this points to a particular python to use.",
         "By default, it equals to python version that was used to launch the experimenter script for bare metal runs. In docker containers,",
         "by default, we use standard python."
+      ]
+    },
+    "exp.ignore_past_errors": {
+      "val": false,
+      "type": "bool",
+      "desc": [
+        "By default (false) DLBS will check special file for each benchmark for errors found in previous benchmarks. Mostly",
+        "these errors are associated with large input batch size causing Out-Of-Memory errors. In this, depending on batch size",
+        "DLBS does not run benchmarks with batch size equal or greater to the batch size known to cause these errors. However,",
+        "sometimes, found errors are not caused by OOM exceptions and may safely be ignored. Mostly due to the absence of good",
+        "post processing modules, DLBS can skip checking for such errors if this value is true. This parameter was introduced",
+        "while adding support for AMD GPUs. With 'tensorflow' benchmark backend, on exit, segfault errors happen that do not",
+        "affect benchmark results. Maybe, this is a temporary solution."
       ]
     },
     "exp.sys_info": {

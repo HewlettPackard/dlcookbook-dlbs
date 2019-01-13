@@ -51,7 +51,7 @@ script="\
 "
 
 if [ "${exp_docker}" = "true" ]; then
-    assert_docker_img_exists ${exp_docker_image}
+    assert_docker_img_exists "${exp_docker_image}" "${exp_docker_launcher}"
     ${exp_docker_launcher} run ${tensorrt_docker_args} /bin/bash -c "eval $script" >> ${exp_log_file} 2>&1
 else
     eval $script >> ${exp_log_file} 2>&1

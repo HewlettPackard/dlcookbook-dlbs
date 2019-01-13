@@ -3,10 +3,13 @@
 #-------------------------------------------------------------------------------
 
 assert_docker_img_exists() {
-  [ "$#" -ne 1 ] && logfatal "assert_docker_img_exists: one arguments expected";
-  [ -z "$(docker images -q $1)" ] && \
-   logfatal "docker image \"$1\" does not exist locally, \
-             pull it from hub or build it manually" || return 0;
+  docker="docker"
+  [ "$#" -ge "1" ] && docker_img="$1"
+  [ "$#" -ge "2" ] && docker="$2"
+  [ -z "${docker_img}" ] && logfatal "assert_docker_img_exists: one or two argument(s) expected"
+  [ -z "$(${docker} images -q $1)" ] && \
+  logfatal "docker image \"$docker_img\" does not exist locally, \
+            pull it from hub or build it manually" || return 0;
 }
 export -f assert_docker_img_exists
 

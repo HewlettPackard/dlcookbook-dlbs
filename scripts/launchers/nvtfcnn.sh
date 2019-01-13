@@ -10,9 +10,11 @@ fi
 echo "__exp.framework_title__=\"TensorFlow-nvtfcnn\"" >> ${exp_log_file}
 # Check batch is small enough for this experiment
 __batch_file__="$(dirname ${exp_log_file})/${exp_framework}_nvtfcnn_${exp_device_type}_${exp_model}.batch"
-is_batch_good "${__batch_file__}" "${exp_replica_batch}" || {
-  report_and_exit "skipped" "The replica batch size (${exp_replica_batch}) is too large for given SW/HW configuration." "${exp_log_file}";
-}
+if [ "${exp_ignore_past_errors}" != "true" ]; then
+  is_batch_good "${__batch_file__}" "${exp_replica_batch}" || {
+    report_and_exit "skipped" "The replica batch size (${exp_replica_batch}) is too large for given SW/HW configuration." "${exp_log_file}";
+  }
+fi
 [ "${exp_docker}" = "false" ] && logfatal "NVTFCNN only runs in docker container"
 # A hack to make it work with CPUs
 update_cmd=":;"
@@ -26,11 +28,11 @@ fi
 [ -z "${runtime_launcher}" ] && runtime_launcher=":;"
 script="\
     export ${nvtfcnn_env};\
-    echo -e \"__exp.framework_ver__= \x22\$(python -c 'import tensorflow as tf; print (tf.__version__);')\x22\";\
+    echo -e \"__exp.framework_ver__= \x22\$(${runtime_python} -c 'import tensorflow as tf; print (tf.__version__);')\x22\";\
     echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
     cd /workspace/nvidia-examples/cnn && \
     ${update_cmd} && \
-    mpiexec ${nvtfcnn_mpi_args} python ${nvtfcnn_model_file}.py ${nvtfcnn_args} &\
+    mpiexec ${nvtfcnn_mpi_args} ${runtime_python} ${nvtfcnn_model_file}.py ${nvtfcnn_args} &\
     proc_pid=\$!;\
     [ \"${monitor_frequency}\" != \"0\" ] && echo -e \"\${proc_pid}\" > ${monitor_backend_pid_folder}/proc.pid;\
     wait \${proc_pid};\
@@ -38,7 +40,7 @@ script="\
     echo -e \"__results.proc_pid__= \${proc_pid}\";\
 "
 
-assert_docker_img_exists ${exp_docker_image}
+assert_docker_img_exists "${exp_docker_image}" "${exp_docker_launcher}"
 ${exp_docker_launcher} run ${nvtfcnn_docker_args} /bin/bash -c "eval $script" >> ${exp_log_file} 2>&1
 
 

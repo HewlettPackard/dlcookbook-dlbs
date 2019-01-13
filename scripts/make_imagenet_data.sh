@@ -14,8 +14,10 @@ print_help() {
   echo "                                   should contain JPEG files. This folder should be writable."
   echo "--output DIR                       Output directory. This directory must not exist."
   echo "--docker_image IMAGE               A docker image to use. The script can only work in docker containers."
-  echo "--docker (docker | nvidia-docker)  How to run docker containers - with 'docker' or 'nvidia-docker'. LMDB dataset"
-  echo "                                   can be generated with both while others require nvidia-docker. [default: docker]"
+  echo "--docker ([sudo] docker |          How to run docker containers - with 'docker' or 'nvidia-docker'. LMDB dataset"
+  echo "                 nvidia-docker)    can be generated with both while others require nvidia-docker. [default: docker]."
+  echo "                                   If user does not belong to a 'docker' group, docker executable needs to be prefixed"
+  echo "                                   with sudo: 'sudo docker' or 'sudo nvidia-docker'."
   if [ ! "$format" == "tfrecord" ]; then
     echo "--img_size SIZE                    The size of images in dataset (SIZExSIZE). All images will be resized/cropped to"
     echo "                                   this size. [default: 300]"

@@ -24,17 +24,21 @@
 
 prefix=                             # Name prefix for all containers i.e. hpe/tensorflow:cuda8-cudnn7
 version=                            # Version or SHA commit to fetch. Must be defined in ./versions
+docker="docker"                     # Docker executable.
 help_message="Usage: $0 [OPTION]... [IMAGE]...\n\
 Build docker IMAGE that is located in one of the subfolders.\n\
 If no IMAGEs are specified, list available images. IMAGE format is 'framework/tag' e.g:\n\
     bvlc_caffe/cuda8-cudnn7\n\
     intel_caffe/cpu\n\
-    tensorrt/cuda8-cudnn6\n\
+    tensorrt/18.11\n\
 The 'framework' is a folder in this directory. The 'tag' is a subfolder in a particular\n\
 framework's folder.
 \n\
 Optional arguments:\n\
   --help                   Print his help.\n\
+  --docker DOCKER_EXEC     An executable for docker. Most common value is 'docker', but also can be\n\
+                           'nvidia-docker'. In certain cases, when current user does not belong\n\
+                           to a 'docker' group, it should be 'sudo docker'. Default value is 'docker'.\n\
   --prefix PREFIX          Set image prefix 'prefix/..'. Default is 'hpe' or 'dlbs'. By default,\n\
                            all images have the following name: 'prefix/framework:tag' where\n\
                            framework is a folder in this directory and tag is a subfolder in\n\
@@ -168,7 +172,7 @@ for dockerfile_dir in "$@"; do
         cp -r ../src/tensorrt  $dockerfile_dir   # Copy project
     fi
 
-    exec="docker build -t $img_name $args $dockerfile_dir"
+    exec="${docker} build -t $img_name $args $dockerfile_dir"
 
     loginfo "new docker image build started"
     loginfo "framework version: '${version}' [if provided externally or defined in 'versions' file]"
@@ -178,6 +182,7 @@ for dockerfile_dir in "$@"; do
     loginfo "exec: $exec"
 
     ${exec}
+
     ret_code=$?
     loginfo "docker image $img_name build finished with code $ret_code"
     [ "$ret_code" -ne "0" ] && status=$ret_code
