@@ -17,7 +17,7 @@ if [ "${exp_ignore_past_errors}" != "true" ]; then
 fi
 [ "${exp_docker}" = "false" ] && logfatal "NVTFCNN only runs in docker container"
 # A hack to make it work with CPUs
-update_cmd=":;"
+update_cmd=":"
 if [ "${exp_device_type}" = "cpu" ]; then
     update_cmd="sed -i '224s/config/#config/' ./nvutils/runner.py && sed -i '225s/config/#config/' ./nvutils/runner.py"
     update_cmd="${update_cmd} && sed -i '90s/gpu/cpu/' ./nvutils/runner.py"
