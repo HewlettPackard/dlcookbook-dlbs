@@ -1,12 +1,24 @@
 {
   "parameters": {
+    "tensorflow.git_hashtag": {
+      "val": "",
+      "type": "str",
+      "desc": [
+        "A GitHub hash tag for tf_cnn_benchmark (https://github.com/tensorflow/benchmarks) i.e. for this benchmark backend.",
+        "If empty, default is used that is the part of DLBS and that may be outdated. Newer versions can work faster, and you",
+        "may want to try different versions. With specific versions, not all functionality may be available such as specific",
+        "custom neural network models or advanced logging. I hope to fix this in the future.",
+        "THIS IS NOT A HASH TAG for TensorFlow, this is a hash tag for TF_CNN_BENCHMARKS. In the upcoming update, this backend",
+        "will be renamed to tfcnn and it will not be that confusing as it is now."
+      ]
+    },
     "tensorflow.launcher": {
       "val": "${DLBS_ROOT}/scripts/launchers/tensorflow_hpm.sh",
       "type": "str",
       "desc": "Path to a script that launches TensorFlow benchmarks."
     },
     "tensorflow.python_path": {
-      "val": "$('${DLBS_ROOT}/python/tf_cnn_benchmarks' if ${exp.docker} is False else '/workspace/tf_cnn_benchmarks')$",
+      "val": "$('${DLBS_ROOT}/python/tf_cnn_benchmarks${tensorflow.git_hashtag}' if ${exp.docker} is False else '/workspace/tf_cnn_benchmarks')$",
       "type": "str",
       "desc": "Path to a TensorFlow benchmarks python folder. Depends on if bare metal/docker based benchmark is requested."
     },
@@ -112,7 +124,7 @@
         "-i",
         "--security-opt seccomp=unconfined",
         "--pid=host",
-        "--volume=${DLBS_ROOT}/python/tf_cnn_benchmarks:/workspace/tf_cnn_benchmarks",
+        "--volume=${DLBS_ROOT}/python/tf_cnn_benchmarks${tensorflow.git_hashtag}:/workspace/tf_cnn_benchmarks",
         "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
         "$('--volume=${exp.data_dir}:/workspace/data' if '${exp.data_dir}' else '')$",
         "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",

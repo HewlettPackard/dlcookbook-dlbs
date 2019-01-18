@@ -15,6 +15,18 @@ if [ "${exp_ignore_past_errors}" != "true" ]; then
     report_and_exit "skipped" "The replica batch size (${exp_replica_batch}) is too large for given SW/HW configuration." "${exp_log_file}";
   }
 fi
+# Check if we have a required TF_CNN_BENCHMARK version. This is a temporary solution for now.
+if [ "${tensorflow_git_hashtag}xxx" != "xxx" ]; then
+    proj_dir="${DLBS_ROOT}/python/tf_cnn_benchmarks${tensorflow_git_hashtag}"
+    if [ ! -d "${proj_dir}" ]; then
+        # There's no directory, so, I assume DLBS never cloned it.
+        mkdir -p "${proj_dir}"
+        tmp_dir=${proj_dir}/tmpd7a7052a
+        git clone https://github.com/tensorflow/benchmarks.git ${tmp_dir}
+        cp -R ${tmp_dir}/scripts/tf_cnn_benchmarks/* ${proj_dir}
+        rm -rf ${tmp_dir}
+    fi
+fi
 # This script is to be executed inside docker container or on a host machine.
 # Thus, the environment must be initialized inside this scrip lazily.
 [ -z "${runtime_launcher}" ] && runtime_launcher=":;"
