@@ -389,6 +389,7 @@ def main():
         print("[PyTorch benchmakrs] torch.cuda.is_available()=%s" % torch.cuda.is_available())
         print("[PyTorch benchmakrs] torch.version.cuda=%s" % torch.version.cuda)
         print("[PyTorch benchmakrs] torch.backends.cudnn.version()=%s" % torch.backends.cudnn.version())
+        print("[PyTorch benchmarks] torch.distributed.is_available()=%s" % torch.distributed.is_available())
         ver = torch.version.__version__.split('.')
         if len(ver) >= 2 and ver[0] == '0' and int(ver[1]) < 4:
             print("[WARNING] Expecting PyTorch version 0.4 or above. Most likely something will fail.")
