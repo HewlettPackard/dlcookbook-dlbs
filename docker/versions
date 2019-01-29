@@ -14,3 +14,4 @@ tensorrt/cuda9-cudnn7: "nv-tensorrt-repo-ubuntu1604-ga-cuda9.0-trt3.0.4-20180208
 tensorrt/18.08: "nv-tensorrt-repo-ubuntu1604-ga-cuda9.0-trt3.0.4-20180208_1-1_amd64.deb"
 tensorrt/18.10: "nv-tensorrt-repo-ubuntu1604-ga-cuda9.0-trt3.0.4-20180208_1-1_amd64.deb"
 tensorrt/18.11: "nv-tensorrt-repo-ubuntu1604-cuda9.0-trt5.0.0.10-rc-20180906_1-1_amd64.deb"
+tensorrt/18.12: ""

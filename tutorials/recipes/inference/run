@@ -1,0 +1,7 @@
+#!/bin/bash
+
+export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
+. ${BENCH_ROOT}/../../../scripts/environment.sh
+
+# Run benchmarks.
+python $experimenter run --config=./config.json

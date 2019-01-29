@@ -1,0 +1,30 @@
+{
+    "parameters": {
+        "exp.gpu_id": "tesla_t4",
+        "exp.gpu_title": "Tesla T4",
+
+
+        "exp.num_warmup_batches": 50,
+        "exp.num_batches": 500,
+        "monitor.frequency": 0,
+        "exp.log_file": "${BENCH_ROOT}/logs/tensorrt/${exp.gpu_id}/${exp.dtype}/$(\"${exp.gpus}\".replace(\",\",\".\"))$_${exp.model}_${exp.effective_batch}.log",
+        "exp.docker": true,
+        "exp.docker_image": "dlbs/tensorrt:18.12",
+        "exp.framework": "tensorrt",
+        "exp.phase": "inference",
+
+        "exp.trial": 0,
+
+        "exp.sys_info": "cpuinfo,meminfo,lscpu,nvidiasmi,dmi",
+        "exp.dlbs_hashtag": "latest",
+
+        "exp.device_type": "gpu"
+    },
+    "variables": {
+        "exp.gpus": ["0"],
+        "exp.model": ["alexnet_owt", "resnet152", "resnet50", "inception4", "vgg16", "googlenet", "vgg19", "resnet34", "resnet18", "acoustic_model", "deep_mnist"],
+        "exp.replica_batch": [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024],
+        "exp.dtype": ["float32", "float16", "int8"]
+    }
+}
+

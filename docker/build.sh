@@ -154,19 +154,24 @@ for dockerfile_dir in "$@"; do
     # If we are building tensorrt docker, we need to copy source of benchmark
     # project to docker context folder
     if [ "$name" == "tensorrt" ]; then
-        # One special thing about building TensorRT images is that we need to have
-        # a TensorRT package in a docker file folder. The name of that file must be
-        # specified in a 'versions' file - so we need verify user has copied this
-        # file there.
-        if [ "${version}XXX" == "XXX" ]; then
-            logwarn "Will not build TensorRT ($dockerfile_dir) because name of a package is missing in 'versions' file."
-            continue
-        fi
-        if [ ! -f "$dockerfile_dir/$version" ]; then
-            logwarn "Will not build TensorRT ($dockerfile_dir) because TensorRT package ($dockerfile_dir/$version) not found."
-            logwarn "You must copy corresponding package (most likely, *.deb file) into that folder."
-            logwarn "You can get it from NVIDIA developer site."
-            continue
+        # Old versions of docker files used external TensorRT packages and base CUDA images
+        # because at that time NGC did not exist or did not provide TensorRT images.
+        # Starting December 2018, DLBS can use TensorRT images from NGC.
+        if [ ! "$tag" == "18.12" ]; then
+            # One special thing about building TensorRT images is that we need to have
+            # a TensorRT package in a docker file folder. The name of that file must be
+            # specified in a 'versions' file - so we need verify user has copied this
+            # file there.
+            if [ "${version}XXX" == "XXX" ]; then
+                logwarn "Will not build TensorRT ($dockerfile_dir) because name of a package is missing in 'versions' file."
+                continue
+            fi
+            if [ ! -f "$dockerfile_dir/$version" ]; then
+                logwarn "Will not build TensorRT ($dockerfile_dir) because TensorRT package ($dockerfile_dir/$version) not found."
+                logwarn "You must copy corresponding package (most likely, *.deb file) into that folder."
+                logwarn "You can get it from NVIDIA developer site."
+                continue
+            fi
         fi
         rm -rf -- $dockerfile_dir/tensorrt       # Delete if old version exists
         cp -r ../src/tensorrt  $dockerfile_dir   # Copy project
