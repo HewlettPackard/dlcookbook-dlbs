@@ -1,0 +1,18 @@
+{
+    "macros" : {
+        "ANACONDA3_VERSION" : "5.2.0",
+        "ANACONDA3_ARCH" : "Linux-x86_64",
+        "PYTHON_VERSION" : "3.6",
+        "CUDA_VERSION" : "10.0",
+        "CUDNN_VERSION" : "7.3",
+        "CUDNN_MAJOR_VERSION" : "7",
+        "CUDNN_MINOR_VERSION" : "3",
+        "UBUNTU_VERSION" : "16.04",
+        "NCCL_ARCH" : "cuda10.0_x86_64",
+        "NCCL_VERSION" : "2.3.5-2",
+        "COMMON" : "../../common",
+        "CAFFE_VERSION" : "0.17.1",
+        "COMMIT_TAG" : "f7801e974f883b97e1b99e9dd23457a6d6cb4b68"
+    },
+    "description" : "Macro substitutions for the Singularity build file.  Substitute !{ident}."
+}

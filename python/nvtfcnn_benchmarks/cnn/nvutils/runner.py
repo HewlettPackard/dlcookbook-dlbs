@@ -48,10 +48,12 @@ class _PrefillStagingAreasHook(tf.train.SessionRunHook):
             session.run(enqueue_ops[:i+1])
 
 class _LogSessionRunHook(tf.train.SessionRunHook):
-    def __init__(self, global_batch_size, num_records, display_every=10):
+    def __init__(self, global_batch_size, num_records, display_every=10, nstep_burnin=0, nstep_finish=0):
         self.global_batch_size = global_batch_size
         self.num_records = num_records
         self.display_every = display_every
+        self.nstep_burnin=nstep_burnin
+        self.nstep_finish=nstep_finish
     def after_create_session(self, session, coord):
         print('  Step Epoch Img/sec   Loss  LR')
         self.elapsed_secs = 0.
@@ -78,8 +80,19 @@ class _LogSessionRunHook(tf.train.SessionRunHook):
             self.count = 0
     def end(self,session):
         self.batch_times=np.array(self.batch_times)
+        if self.nstep_burnin>0:
+           self.batch_times_burnin=self.batch_times[:self.nstep_burnin]
+        else:
+           self.batch_times_burnin=np.array([])
+        if self.nstep_finish>0:
+           self.batch_times_finish=self.batch_times[-self.nstep_finish:]
+        else:
+           self.batch_times_finish=np.array([])
+        self.batch_times=self.batch_times[self.nstep_burnin:len(self.batch_times)-self.nstep_finish]
         speeds=self.global_batch_size/self.batch_times
         speed_hmean = scipy.stats.hmean(speeds)
+        speed_mean = speeds.mean()
+        speed_std=speeds.std()
         #Estimator of variance
         if len(speeds)>2:
             # https://stats.stackexchange.com/questions/7471/can-the-standard-deviation-be-calculated-for-harmonic-mean
@@ -92,16 +105,19 @@ class _LogSessionRunHook(tf.train.SessionRunHook):
         speed_madstd = 1.4826*np.median(np.abs(speeds - np.median(speeds)))
         speed_jitter = speed_madstd
         print('-' * 64)
-        print('Images/sec: {:0.1f} +/- {:0.1f} (jitter = {:0.1f})'.format(speed_hmean, stdh, speed_jitter))
+        print('Images/sec: {:0.1f} +/- {:0.1f} (jitter = {:0.1f})'.format(speed_mean, speed_std, speed_jitter))
         print('-' * 64)
         # Sergey
-        print("__exp.framework_ver__={}".format(tf.__version__))
-        print("__results.throughput__={}".format(json.dumps(speed_hmean)))
-        print("__results.throughput_uncertainty__={}".format(json.dumps(stdh)))
+        print("__results.throughput__={}".format(json.dumps(speed_mean)))
+        print("__results.throughput_uncertainty__={}".format(json.dumps(speed_std)))
+        print("__results.throughput_hmean__={}".format(json.dumps(speed_hmean)))
+        print("__results.throughput_uncertainty_hmean__={}".format(json.dumps(stdh)))
         print("__results.throughput_jitter__={}".format(json.dumps(speed_jitter)))
         #milliseconds
-        print("__results.time__={}".format(json.dumps(1000.0*self.batch_times.sum())))
+        print("__results.time__={}".format(json.dumps(1000.0*self.batch_times.mean())))
+        print("__results.time_nstep_burnin_data__={}".format(json.dumps((1000.0 * self.batch_times_burnin).tolist())))
         print("__results.time_data__={}".format(json.dumps((1000.0 * self.batch_times).tolist())))
+        print("__results.time_nstep_finish_data__={}".format(json.dumps((1000.0 * self.batch_times_finish).tolist())))
 
 def _cnn_model_function(features, labels, mode, params):
     model_func    = params['model']
@@ -220,6 +236,8 @@ def train(infer_func, params):
     checkpoint_secs = params['checkpoint_secs']
     display_every = params['display_every']
     iter_unit = params['iter_unit']
+    nstep_burnin = params['nstep_burnin']
+    nstep_finish = params['nstep_finish']
 
     # Determinism is not fully supported by all TF ops.
     # Disabling until remaining wrinkles can be ironed out.
@@ -290,8 +308,9 @@ def train(infer_func, params):
         training_hooks.append(
             _LogSessionRunHook(global_batch_size,
                                num_training_samples,
-                               display_every))
-
+                               display_every,
+                               nstep_burnin,
+                               nstep_finish))
     if data_dir is not None:
         input_func = lambda: nvutils.image_set(
             train_filenames, batch_size, image_height, image_width,

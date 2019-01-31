@@ -1,6 +1,7 @@
 {
     "macros" : {
         "ANACONDA3_VERSION" : "5.2.0",
+        "PYTHON_BIN" : "/opt/anaconda3/bin",
         "ANACONDA3_ARCH" : "Linux-x86_64",
         "PYTHON_VERSION" : "3.6",
         "CUDA_VERSION" : "10.0",

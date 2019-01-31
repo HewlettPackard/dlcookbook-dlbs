@@ -1,0 +1,48 @@
+Bootstrap: localimage
+#Change this to reflect your location
+FROM: /var/lib/SingularityImages/nvidia_cuda_!{CUDA_VERSION}_cudnn_!{CUDNN_MAJOR_VERSION}_ubuntu!{UBUNTU_VERSION}_common.img
+%labels
+	Maintainer Stephen Fleischman
+    Framework TensorFlow
+    Version  !{TF_VERSION}
+    Build  CUDA !{CUDA_VERSION} cuDNN !{CUDNN_VERSION} x86_64 AVX2 (Broadwell), OFED IB.
+    Installed Horovod, OpenNMT
+
+%help
+    TensorFlow !{TF_VERSION} GPU Singularity Container
+    Maintainer: Stephen Fleischman
+
+%environment
+    export PATH=/opt/anaconda3/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH
+
+%post
+    export BAZEL_VERSION=!{BAZEL_VERSION}
+    ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1 
+    export LD_LIBRARY_PATH=/host-libs:/usr/local/cuda/extras/CUPTI/lib64:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs
+    export PATH=/opt/anaconda3/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH
+
+    which python
+    pip --no-cache-dir install --upgrade absl-py
+    pip3 install google-apputils protobuf
+
+    #Install Bazel
+
+    # Set up Bazel.
+    # Running bazel inside a `docker build` command causes trouble, cf: https://github.com/bazelbuild/bazel/issues/134
+    # The easiest solution is to set up a bazelrc file forcing --batch.
+    # echo "startup --batch" >>/etc/bazel.bazelrc
+    # Similarly, we need to workaround sandboxing issues:
+    # https://github.com/bazelbuild/bazel/issues/418
+    #echo "build --spawn_strategy=standalone --genrule_strategy=standalone" >> /etc/bazel.bazelrc
+
+    mkdir -p /bazel
+    cd /bazel
+    curl -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36" -fSsL -O https://github.com/bazelbuild/bazel/releases/download/$BAZEL_VERSION/bazel-$BAZEL_VERSION-installer-linux-x86_64.sh
+    curl -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36" -fSsL -o /bazel/LICENSE.txt https://raw.githubusercontent.com/bazelbuild/bazel/master/LICENSE
+    chmod +x bazel-*.sh
+    ./bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh
+    rm -f /bazel/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh
+    ldconfig -v
+
+%runscript
+    echo "This Singularity image contains preliminary installation for TensorFlow. Through installing Bazel."

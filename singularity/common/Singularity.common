@@ -1,9 +1,5 @@
-Bootstrap: docker
-FROM: docker://nvidia/cuda:!{CUDA_VERSION}-cudnn!{CUDNN_MAJOR_VERSION}-devel-ubuntu!{UBUNTU_VERSION}
-#You can save some time if you have to run this build script more than once by building an NVidia/Ubuntu base image once from the Docker image, with
-#Singularity.nv and commenting the first two lines above and uncommenting the next two lines.
-#Bootstrap: localimage
-#FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04.img
+Bootstrap: localimage
+FROM: /var/lib/SingularityImages/nvidia_cuda_!{CUDA_VERSION}_cudnn!{CUDNN_MAJOR_VERSION}_devel_ubuntu!{UBUNTU_VERSION}.img
 %labels
     Maintainer Stephen Fleischman
     Common packages
@@ -45,11 +41,9 @@ FROM: docker://nvidia/cuda:!{CUDA_VERSION}-cudnn!{CUDNN_MAJOR_VERSION}-devel-ubu
     export LD_LIBRARY_PATH=${HPCX_DIR}/mxm/lib:${HPCX_UCX_DIR}/lib:${HPCX_SHARP_DIR}/lib:${HPCX_HCOLL_DIR}/lib:${HPCX_MPI_DIR}/lib
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${CUDA_DIR}/lib64:${CUDA_DIR}/extras/CUPTI/lib64
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/.singularity.d/libs:/usr/lib/x86_64-linux-gnu:/usr/local/lib
-    export PATH=/opt/anaconda3/bin:${HPCX_DIR}/bupc/bin:${HPCX_DIR}/hcoll/bin:${HPCX_DIR}/ucx/bin:${HPCX_DIR}/mxm/bin
+    export PATH=!{PYTHON_BIN}:${HPCX_DIR}/bupc/bin:${HPCX_DIR}/hcoll/bin:${HPCX_DIR}/ucx/bin:${HPCX_DIR}/mxm/bin
     export PATH=${PATH}:${HPCX_MPI_DIR}/bin:${CUDA_DIR}/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
     export CPATH=${HPCX_MPI_DIR}/include:${HPCX_UCX_DIR}/include:${HPCX_SHARP_DIR}/include:${HPCX_MXM_DIR}/include:${HPCX_HCOLL_DIR}/include
-    export JUPYTER_CONFIG_DIR=/.jupyter
-    #export export LC_ALL=en_US.UTF-8
 
 %post
     echo "LC_ALL=en_US.UTF-8" >> /etc/environment
@@ -73,9 +67,9 @@ FROM: docker://nvidia/cuda:!{CUDA_VERSION}-cudnn!{CUDNN_MAJOR_VERSION}-devel-ubu
     mkdir -p /.jupyter && mv /jupyter_notebook_config.py /.jupyter && chmod 777 /.jupyter && echo $(ls /.jupyter)
     # We will use Anaconda Python for python3
     bash $ANACONDA_INSTALLER -bfp /opt/anaconda3 && rm $ANACONDA_INSTALLER
-    export PATH=/opt/anaconda3/bin:$PATH
+    export PATH=!{PYTHON_BIN}:$PATH
     python3 -m pip install --upgrade pip
-    python3 -m pip --no-cache-dir install pydot birdseye parallel-ssh mock
+    python3 -m pip --no-cache-dir install pydot birdseye parallel-ssh mock scikit-image==0.14.1 graphviz
     # Cool stuff
     conda install -c conda-forge jupyterlab
 
@@ -138,6 +132,8 @@ FROM: docker://nvidia/cuda:!{CUDA_VERSION}-cudnn!{CUDNN_MAJOR_VERSION}-devel-ubu
     apt-get clean
     rm -rf /var/lib/apt/lists/*
 
+
+
     ########## Mellanox OFED INSTALLATION STEPS ###################
     tar -xzvf ${MOFED_IMAGE}
     ${MOFED_DIR}/mlnxofedinstall --user-space-only --without-fw-update --all -q && cd /
@@ -154,7 +150,25 @@ FROM: docker://nvidia/cuda:!{CUDA_VERSION}-cudnn!{CUDNN_MAJOR_VERSION}-devel-ubu
     cd /opt
     tar xvzf $PYCUDA_TGZ && rm $PYCUDA_TGZ
     cd $PYCUDA && python setup.py install && cd .. && rm -rf $PYCUDA
-    
+    ########## Jupyter Lab Extensions ###################
+    export PATH=!{PYTHON_BIN}:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    export LD_LIBRARY_PATH=/usr/local/cuda/extras/CUPTI/lib64:/usr/local/lib:$LD_LIBRARY_PATH
+    curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash
+    curl -sL https://deb.nodesource.com/setup_11.x | bash -
+    apt-get install -y nodejs
+    apt-get autoremove -y
+    npm install webpack -g
+    npm install webpack-cli -g
+    echo path to webpack $(which webpack)
+    echo "node: $(which node) $(node --version)"
+    echo "JUPYTER 0 $(jupyter --version)"
+    pip install nodejs ipywidgets ipympl
+    jupyter labextension install @jupyter-widgets/jupyterlab-manager
+    #Can't stand this
+    #jupyter labextension install jupyterlab_vim
+    jupyter labextension install jupyter-matplotlib
+    jupyter lab build
+    echo "JUPYTER DONE"
 
     ldconfig
 

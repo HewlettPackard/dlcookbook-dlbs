@@ -10,7 +10,6 @@
     },
     "tensorflow.docker_args": {
       "val": [
-        "-ti",
         "--security-opt seccomp=unconfined",
         "--pid=host",
         "--shm-size=1g",
@@ -236,7 +235,7 @@
       "desc": "Path to a script that launches a nvtfcnn backend script."
     },
     "nvtfcnn.display_every": {
-      "val": 1000,
+      "val": 10,
       "type": "int",
       "desc": "How often (in iterations) to print out running information."
     },
@@ -246,13 +245,25 @@
       "type": "str",
       "desc": "Unit for num_iters."
     },
+    "nvtfcnn.nstep_burnin": {
+      "val": 0,
+      "type": "int",
+      "desc": "Will discard the first nstep_burnin iters from averages."
+    },
+    "nvtfcnn.nstep_finish": {
+      "val": 0,
+      "type": "int",
+      "desc": "Will discard the last nstep_finish iters from averages."
+    },
     "nvtfcnn.args": {
       "val": [
         "--model ${exp.model}",
-        "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.singularity} is False else '--data_dir=/workspace/data')$",
+        "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if not( '${exp.singularity}' or '${exp.docker}' ) else '--data_dir=/workspace/data')$",
         "--batch_size=${exp.replica_batch}",
-        "--num_iter=${exp.num_batches}",
+        "--num_iter=$(${nvtfcnn.nstep_burnin}+${exp.num_batches}+${nvtfcnn.nstep_finish})$",
         "--iter_unit=${nvtfcnn.iter_unit}",
+        "--nstep_burnin=${nvtfcnn.nstep_burnin}",
+        "--nstep_finish=${nvtfcnn.nstep_finish}",
         "--display_every=${nvtfcnn.display_every}",
         "--log_dir=${tensorflow.log_dir}",
         "$('--precision=fp16' if '${exp.dtype}' == 'float16' or '${exp.dtype}' == 'fp16' else '--precision=fp32')$"

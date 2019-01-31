@@ -1,0 +1,95 @@
+Bootstrap: localimage
+#Change this to reflect your location
+FROM: /var/lib/SingularityImages/nvidia_cuda_!{CUDA_VERSION}_cudnn_!{CUDNN_MAJOR_VERSION}_ubuntu!{UBUNTU_VERSION}_common.img
+%labels
+	Maintainer Stephen Fleischman
+    Framework TensorFlow
+    Version  !{CAFFE_VERSION}
+    Build  CUDA !{CUDA_VERSION} cuDNN !{CUDNN_VERSION} x86_64 AVX2 (Broadwell), OFED IB.
+    Installed Horovod, OpenNMT
+
+%help
+    TensorFlow !{CAFFE_VERSION} GPU Singularity Container
+    Maintainer: Stephen Fleischman
+
+%environment
+    export PATH=/opt/anaconda3/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH
+    CAFFE_ROOT=/opt/caffe
+    PYCAFFE_ROOT=$CAFFE_ROOT/python
+    PYTHONPATH=$PYCAFFE_ROOT:$PYTHONPATH
+    PATH=$CAFFE_ROOT/bin:$PYCAFFE_ROOT:$PATH
+
+%post
+    export PATH=/opt/anaconda3/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH
+    export nproc=8
+
+    apt-get update && apt-get install -y --no-install-recommends \
+            build-essential \
+            numactl \
+            cmake \
+            git \
+            wget \
+            libboost-all-dev \
+            libgflags-dev \
+            libgoogle-glog-dev \
+            libhdf5-serial-dev \
+            libleveldb-dev \
+            liblmdb-dev \
+            libopencv-dev \
+            libprotobuf-dev \
+            libsnappy-dev \
+            protobuf-compiler
+    apt-get install libturbojpeg
+    ln -s /usr/lib/x86_64-linux-gnu/libturbojpeg.so.0.1.0 /usr/lib/x86_64-linux-gnu/libturbojpeg.so
+    rm -rf /var/lib/apt/lists/*
+    
+    git clone https://github.com/xianyi/OpenBLAS.git && \
+        cd ./OpenBLAS && \
+        make -j"$(nproc)" && make install PREFIX=/opt/OpenBLAS && \
+        cd .. && rm -rf ./OpenBLAS
+    
+    # --upgrade pip
+    pip install --no-cache-dir --upgrade setuptools wheel && pip install --no-cache-dir numpy scipy
+    
+    # This is where Caffe will be installed
+    
+    export cuda_arch_bin="50 60 61 70"
+    export cuda_arch_ptx="50"
+    
+    # Sergey: I did not have time to figure this out, on some systems I need to specify paths to NVML library manually.
+    #         You will need this if you get bunch of errors saying nvml* functions are not resolved.
+    cd /tmp
+    rm -rf nvidia_caffe
+    git clone https://github.com/NVIDIA/caffe nvidia_caffe 
+    cd ./nvidia_caffe
+    git reset --hard !{COMMIT_TAG}
+    cd python 
+    for req in $(cat requirements.txt) pydot; do pip install $req; done
+    pip install scikit-image
+    cd ..
+    mkdir build
+    cd build
+    cmake -DCUDA_ARCH_NAME="Manual"\
+              -DCUDA_ARCH_BIN="${cuda_arch_bin}"\
+              -DCUDA_ARCH_PTX="${cuda_arch_ptx}"\
+              -DUSE_CUDNN=1\
+              -DUSE_NCCL=1\
+              -DNDEBUG=1\
+              -DNVML_FOUND=1\
+              -DNVML_LIBRARY=/usr/local/cuda/lib64/stubs/libnvidia-ml.so\
+              -DNVML_INCLUDE_DIR=/usr/local/cuda/include\
+              -DBLAS=open\
+              -DBLAS_INCLUDE=/opt/OpenBLAS/include\
+              -DBLAS_LIB=/opt/OpenBLAS/lib\
+             -DCMAKE_INSTALL_PREFIX=$CAFFE_ROOT ..
+    make -j"$(nproc)"
+    make install
+    cd ../../
+    rm -rf ./nvidia_caffe
+    
+    echo "$CAFFE_ROOT/lib" >> /etc/ld.so.conf.d/caffe.conf
+    echo "/opt/OpenBLAS/lib" >> /etc/ld.so.conf.d/caffe.conf
+    ldconfig -v
+    
+%runscript
+    echo "This Singularity image contains preliminary installation for TensorFlow. Through installing Bazel."

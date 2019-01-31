@@ -38,6 +38,8 @@ default_args = {
     'larc_eta' : None,
     'larc_mode' : None,
     'num_iter' : 500,
+    'nstep_burnin' : 0,
+    'nstep_finish' : 0,
     'checkpoint_secs' : None,
     'display_every' : 10,
     'iter_unit' : 'batch'

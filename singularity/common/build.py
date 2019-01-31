@@ -59,6 +59,7 @@ def main():
                 sys.exit(-1)
     else: recipe_file=args.recipe
     cmd="sudo /opt/singularity/bin/singularity build {} {}".format(args.image,recipe_file)
+    #cmd="sudo /usr/local/singularity3.0/bin/singularity build {} {}".format(args.image,recipe_file)
     process = subprocess.Popen(shlex.split(cmd), shell=False, bufsize=1,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=os.environ)
     while True:

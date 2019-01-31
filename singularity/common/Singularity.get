@@ -1,0 +1,10 @@
+Bootstrap: docker
+FROM: docker://nvidia/cuda:9.2-cudnn7-devel-ubuntu16.04
+%setup
+    cd /lvol/sfleisch/dlbs/singularity/common
+    apt-get install -d --no-install-recommends build-essential
+    apt-get install -d --no-install-recommends vim
+    chown sfleisch:hpcd *
+%runscript
+	/bin/bash
+

@@ -1,0 +1,26 @@
+Bootstrap: localimage
+FROM: /var/lib/SingularityImages/tensorflow-!{TF_VERSION}-!{CUDA_VERSION}-!{CUDNN_VERSION}.img
+
+%labels
+	Maintainer Stephen Fleischman
+    Framework TensorFlow
+    Version  !{TF_VERSION}
+    Build  CUDA !{CUDA_VERSION} cuDNN ${CUDNN_VERSION} x86_64 AVX2 (Broadwell), OFED IB.
+    Installed Horovod, OpenNMT and Tensor2Tensor
+
+%help
+    TensorFlow !{TF_VERSION} GPU Singularity Container
+    Maintainer: Stephen Fleischman
+
+%environment
+    export PATH=!{PYTHON_BIN}:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    export LD_LIBRARY_PATH=/usr/local/cuda/extras/CUPTI/lib64:/usr/local/lib:$LD_LIBRARY_PATH
+
+%post
+    export PATH=!{PYTHON_BIN}:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    export LD_LIBRARY_PATH=/usr/local/cuda/extras/CUPTI/lib64:/usr/local/lib:$LD_LIBRARY_PATH
+    #pip install scikit-image==0.14.1
+    pip install graphviz
+
+%runscript
+    echo "Singularity Container: TensorFlow !{TF_VERSION}, Ubuntu !{UBUNTU_VERSION}, CUDA !{CUDA_VERSION}, cuDNN ${CUDNN_VERSION}, Anaconda Python !{PYTHON_VERSION}, AVX2 instructions."

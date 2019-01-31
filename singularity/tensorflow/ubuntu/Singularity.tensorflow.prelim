@@ -23,7 +23,7 @@ FROM: /var/lib/SingularityImages/nvidia_cuda_!{CUDA_VERSION}_cudnn_!{CUDNN_MAJOR
 
     which python
     pip --no-cache-dir install --upgrade absl-py
-    pip3 install google-apputils protobuf
+    pip --no-cache-dir install google-apputils protobuf
 
     #Install Bazel
 

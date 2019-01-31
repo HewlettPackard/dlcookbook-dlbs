@@ -78,6 +78,9 @@ from dlbs.processor import Processor
 if sys.version_info[0] == 3:
     basestring=str
     long=int
+    wgzipbin="wt"
+else:
+    wgzipbin="wb"
 
 class LogParser(object):
     """Parser for log files produced by Deep Learning Benchmarking Suite."""
@@ -287,7 +290,7 @@ def main():
     succeeded, failed = LogParser.parse_log_files(files, opts)
 
     def _dump_data(file_name, opts, data):
-        with gzip.open(file_name, 'wb') if opts['_gz'] is True else open(file_name, 'w') as file_obj:
+        with gzip.open(file_name, wgzipbin) if opts['_gz'] is True else open(file_name, 'w') as file_obj:
             json.dump({'data': data}, file_obj, indent=4)
 
     if opts['output_file'] is None:

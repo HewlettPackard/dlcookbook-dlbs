@@ -76,7 +76,6 @@
     },
     "mxnet.docker_args": {
       "val": [
-        "-ti",
         "--security-opt seccomp=unconfined",
         "--pid=host",
         "--shm-size=1g",

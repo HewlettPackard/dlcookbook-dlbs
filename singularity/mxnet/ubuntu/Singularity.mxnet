@@ -1,0 +1,51 @@
+Bootstrap: localimage
+FROM: /var/lib/SingularityImages/nvidia_cuda_9.2_cudnn_7_ubuntu16.04_common.img
+
+%labels
+    Maintainer Stephen Fleischman
+    Framework mxnet
+    Build  CUDA 9.2 cuDNN 7.2.1 x86_64 AVX2 (Broadwell), OFED IB.
+
+%help
+    mxnet GPU Singularity Container
+    Maintainer: Stephen Fleischman
+
+%setup
+    cp ../../common/common_env.sh ${SINGULARITY_ROOTFS}
+	. ${SINGULARITY_ROOTFS}/common_env.sh
+%post
+    . /common_env.sh
+    export PATH=/opt/anaconda3/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    export OFED=MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}
+    export HPCX=hpcx-${HPCX_VERSION}-${HPCX_ARCH}-MLNX_OFED_LINUX-${OFED_VERSION}-${OFED_ARCH}
+    export HPCX_MPI_DIR=/opt/${HPCX}/ompi-${OMPI_VERSION}
+
+    export JPEG_TURBO_ROOT=/opt/libjpeg-turbo
+    cd /tmp && git clone https://github.com/libjpeg-turbo/libjpeg-turbo.git ./libjpeg-turbo
+    cd ./libjpeg-turbo && mkdir ./build && cd ./build
+    cmake -DENABLE_SHARED=true -DENABLE_STATIC=false -DCMAKE_C_FLAGS="-O3 -march=native -fPIC" -DCMAKE_INSTALL_PREFIX=$JPEG_TURBO_ROOT ..
+    make -j"$(nproc)" && make install && ln -s $JPEG_TURBO_ROOT/lib64 $JPEG_TURBO_ROOT/lib 
+    echo "$JPEG_TURBO_ROOT/lib64" >> /etc/ld.so.conf.d/libjpeg-turbo.conf 
+    echo "$JPEG_TURBO_ROOT/lib" >> /etc/ld.so.conf.d/libjpeg-turbo.conf 
+    ldconfig 
+    cd /tmp && rm -rf ./libjpeg-turbo
+
+    pip install pygal
+
+    export MXNET_ROOT=/opt/mxnet
+    git clone https://github.com/apache/incubator-mxnet $MXNET_ROOT 
+    cd $MXNET_ROOT 
+    git reset --hard master && git submodule update --init --recursive 
+    sed -i 's/CFLAGS += -O3/CFLAGS += -O3 -march=native/' Makefile
+    make USE_CUDNN=1 USE_BLAS=openblas USE_CUDA=1 USE_NCCL=1 \
+         USE_OPERATOR_TUNING=1 USE_LAPACK=1 USE_JEMALLOC=1 \
+         USE_DIST_KVSTORE=0 USE_OPENMP=1 USE_OPENCV=1 USE_THREADED_ENGINE=1 \
+         USE_CUDA_PATH=/usr/local/cuda \
+         USE_LIBJPEG_TURBO=1 USE_LIBJPEG_TURBO_PATH=$JPEG_TURBO_ROOT -j$(nproc) 
+    cd ./python && python ./setup.py build && python ./setup.py install
+
+    ldconfig -v
+
+%runscript
+    echo "Singularity Container: mxnet"
+    echo "The image contains: Jupyter"

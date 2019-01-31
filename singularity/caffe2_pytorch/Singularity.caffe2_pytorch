@@ -1,0 +1,65 @@
+Bootstrap: localimage
+FROM: ../common/nvidia-common-cuda9.0-cudnn7.1.img
+# caffe2 and pytorch installation with gpu support
+
+%labels
+    Maintainer Stephen Fleischman
+    Framework caffe2
+    Build  CUDA 9.0 cuDNN 7.1 x86_64 AVX2 (Broadwell), OFED IB.
+
+%files
+    ../common/nvidia-caffe2-examples.tgz /
+    ../common/nvidia-pytorch-examples.tgz /
+
+%help
+    caffe2 and Pytorch GPU Singularity Container
+    Maintainer: Stephen Fleischman
+%environment
+    export PYTORCH_ROOT=/opt/pytorch 
+    export PATH=$PYTORCH_ROOT/binaries:$PATH
+    export PYTHONPATH=/usr/local/lib/python3.5/dist-packages:$PYTORCH_ROOT
+
+%post
+	export PYTORCH_ROOT=/opt/pytorch
+	export PYTORCHVISION_ROOT=/opt/pytorchvision
+    export PYTHONPATH=/usr/local/lib/python3.5/
+	ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
+	export LD_LIBRARY_PATH=/host-libs:/usr/local/cuda/extras/CUPTI/lib64:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs
+	export PATH=/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+
+	tar xvzf /nvidia-caffe2-examples.tgz
+	rm -f /nvidia-caffe2-examples.tgz
+	tar xvzf /nvidia-pytorch-examples.tgz
+	rm -f /nvidia-pytorch-examples.tgz
+
+	rm -rf ${PYTORCH_ROOT}
+
+    # Get the current github repo for pytorch and caffe2
+	git clone --branch master --recursive https://github.com/pytorch/pytorch.git ${PYTORCH_ROOT}
+	cd ${PYTORCH_ROOT}
+	git reset --hard 3749c581b79cba49f511b19fa02c0f50fa05b250
+	git submodule update --init
+
+    # Install Caffe2
+	cd ${PYTORCH_ROOT}
+	rm -rf build
+	sed -i '223s/$/;/' ${PYTORCH_ROOT}/binaries/core_overhead_benchmark.cc
+    CMAKE_ARGS="-DCUDA_ARCH_NAME=Manual -DCUDA_ARCH_BIN=52 60 61 70 -DCUDA_ARCH_PTX=70 -DUSE_REDIS=ON -DUSE_IBVERBS=ON -DUSE_GLOO=ON -DUSE_MPI=OFF -DUSE_OPENMP=ON -DUSE_NNPACK=OFF -DUSE_ROCKSDB=OFF -DCMAKE_CXX_FLAGS=\"-O3 -march=native\" -DUSE_NCCL=ON"
+    python setup_caffe2.py install
+	ldconfig -v
+
+    # Install pytorch
+	python setup.py install
+
+    # Install pytorchvision
+	git clone https://github.com/pytorch/vision.git $PYTORCHVISION_ROOT
+	cd $PYTORCHVISION_ROOT
+	python setup.py install
+
+
+%runscript
+    echo "Singularity Container: Pytorch and Caffe2, Ubuntu 16.04, CUDA 9.0, cuDNN 7.1, python 3.5, AVX2 instructions."
+    echo "The image contains: Jupyter IBverbs support"
+
+WORKDIR /workspace
+

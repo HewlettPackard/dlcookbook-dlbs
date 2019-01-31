@@ -38,6 +38,8 @@ default_args = {
     'larc_eta' : 0.003,
     'larc_mode' : 'clip',
     'num_iter' : 90,
+    'nstep_burnin' : 0,
+    'nstep_finish' : 0,
     'checkpoint_secs' : None,
     'display_every' : 10,
     'iter_unit' : 'epoch'

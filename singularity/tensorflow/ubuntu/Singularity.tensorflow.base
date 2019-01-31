@@ -20,7 +20,7 @@ FROM: tensorflow-!{TF_VERSION}-!{CUDA_VERSION}-!{CUDNN_VERSION}-prelim.img
 
 
 %post
-    export PATH=/opt/anaconda3/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    export PATH=!{PYTHON_BIN}:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
     apt-get install libibverbs-dev
     # Update when hardware changes - not sure if this should be hardwired here.
     export TF_CUDA_COMPUTE_CAPABILITIES=3.0,3.5,3.7,5.2,6.0,6.1,7.0 
@@ -28,8 +28,8 @@ FROM: tensorflow-!{TF_VERSION}-!{CUDA_VERSION}-!{CUDNN_VERSION}-prelim.img
     export HPCX=hpcx-!{HPCX_VERSION}-!{HPCX_ARCH}-MLNX_OFED_LINUX-!{OFED_VERSION}-!{OFED_ARCH}
     export HPCX_MPI_DIR=/opt/${HPCX}/ompi-!{OMPI_VERSION}
     # Configure the build for our CUDA configuration.
-    export CI_BUILD_PYTHON=/opt/anaconda3/bin/python
-    export PYTHON_BIN_PATH=/opt/anaconda3/bin/python 
+    export CI_BUILD_PYTHON=!{PYTHON_BIN}/python
+    export PYTHON_BIN_PATH=!{PYTHON_BIN}/python 
     export LD_LIBRARY_PATH=/usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH 
     export TF_NEED_CUDA=1 
     export TF_CUDA_VERSION=!{CUDA_VERSION}
@@ -40,10 +40,33 @@ FROM: tensorflow-!{TF_VERSION}-!{CUDA_VERSION}-!{CUDNN_VERSION}-prelim.img
     export TF_NEED_TENSORRT=!{TF_NEED_TENSORRT}
     export TF_NEED_VERBS=0 
     export TF_NEED_JEMALLOC=1 
+    export PYTHON_VER=$(echo !{PYTHON_VERSION} | sed 's/\.//')
+    export TF_WHL="tensorflow-!{TF_VERSION}-cp${PYTHON_VER}-cp${PYTHON_VER}m-!{ANACONDA3_ARCH}.whl"
+    echo $PYTHON_VER
+    echo $TF_WHL
 
-    pip install h5py
-    pip install keras_applications --no-deps
-    pip install keras_preprocessing --no-deps
+
+    #Gutenberg
+    # requires BSD-DB
+    apt-get install -y libdb-dev 
+    pip install --no-cache-dir bsddb3
+
+    git clone https://github.com/c-w/Gutenberg.git gutenberg
+    cd gutenberg
+    pip install -r requirements.pip
+    echo "BEFORE SED"
+    sed -i -e '54c\ \ \ \ long_description=open("README.rst","r",encoding="utf-8").read(),' setup.py
+    echo "AFTER SED"
+
+    echo "INSTALL GUTENBERG"
+    python ./setup.py install
+    echo "AFTER GUTENBERG"
+
+    python -m pip install --no-cache-dir \
+          h5py opencv-python statsmodels seaborn imgaug pycocotools gensim nltk gym tqdm pyrouge aiohttp cleverhans patchify
+          
+
+    # TensorFlow Hub
 
     ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
 
@@ -71,41 +94,51 @@ FROM: tensorflow-!{TF_VERSION}-!{CUDA_VERSION}-!{CUDNN_VERSION}-prelim.img
 
     # Download and build TensorFlow.
     # Install the latest TensorFlow release
-    cd /opt
-    tarball_url=`wget -qO- https://api.github.com/repos/tensorflow/tensorflow/releases/latest |grep '"tarball_url"'|awk '{print $2}'|sed -e "s/,$//" -e 's/"//g'`
-    wget $tarball_url -O tensorflow.tgz
-    tar xvzf tensorflow.tgz && rm tensorflow.tgz
-    mv tensorflow* tensorflow
-    cd tensorflow
-    LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:${NCCL_INSTALL_PATH}/lib:${LD_LIBRARY_PATH}:/usr/lib/x86_64-linux-gnu \
-        tensorflow/tools/ci_build/builds/configured GPU \
-        /usr/local/bin/bazel build -c opt --copt=-march="broadwell" --config=cuda //tensorflow/tools/pip_package:build_pip_package \
-                   --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" \
-                   --copt="-O3" --copt=-mavx --copt=-mavx2 \
-                   tensorflow/tools/pip_package:build_pip_package 
-    rm /usr/local/cuda/lib64/stubs/libcuda.so.1 
-    export CI_BUILD_PYTHON=/opt/anaconda3/bin/python
-    export PYTHON_BIN_PATH=/opt/anaconda3/bin/python
-    export LD_LIBRARY_PATH=/usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH 
-    bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/pip 
-    /opt/anaconda3/bin/pip --no-cache-dir install --upgrade /tmp/pip/tensorflow-*.whl 
-    rm -rf /tmp/pip  ~/.cache/bazel
+    if [ !{not} -f /tmp/tensorflow_pkg/${TF_WHL} ];then
+        cd /opt
+        tarball_url=`wget -qO- https://api.github.com/repos/tensorflow/tensorflow/releases/latest |grep '"tarball_url"'|awk '{print $2}'|sed -e "s/,$//" -e 's/"//g'`
+        wget $tarball_url -O tensorflow.tgz
+        tar xvzf tensorflow.tgz && rm tensorflow.tgz
+        if [ !{not} -d tensorflow ];then
+            mv tensorflow* tensorflow
+        fi
+        # The not macro is a kludge since I'm using the exclamation point as a macro indicator.
+        cd /opt/tensorflow
+        LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:${NCCL_INSTALL_PATH}/lib:${LD_LIBRARY_PATH}:/usr/lib/x86_64-linux-gnu \
+            tensorflow/tools/ci_build/builds/configured GPU \
+            /usr/local/bin/bazel build -c opt --copt=-march="broadwell" --config=cuda //tensorflow/tools/pip_package:build_pip_package \
+                       --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" \
+                       --copt="-O3" --copt=-mavx --copt=-mavx2 \
+                       tensorflow/tools/pip_package:build_pip_package 
+        rm /usr/local/cuda/lib64/stubs/libcuda.so.1 
+        export CI_BUILD_PYTHON=!{PYTHON_BIN}/python
+        export PYTHON_BIN_PATH=!{PYTHON_BIN}/python
+        export LD_LIBRARY_PATH=/usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH 
+        bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
+        rm -rf tensorflow/
+    fi
+    !{PYTHON_BIN}/pip --no-cache-dir install --upgrade /tmp/tensorflow_pkg/${TF_WHL}
+    rm -rf ~/.cache/bazel
 
     # Uber Horvod
     mkdir -p /scrap/jenkins/workspace/hpc-power-pack/label/r-vmb-ubuntu16-u4-x86-64-MOFED-CHECKER
     ln -sf  /opt /scrap/jenkins/workspace/hpc-power-pack/label/r-vmb-ubuntu16-u4-x86-64-MOFED-CHECKER/hpcx_root
     ln -sf /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
 
+    pip install --no-cache-dir tensorflow_hub tensornets tensorflow_probability  mesh-tensorflow tensorflow-serving-api-python3
+    pip install tensor2tensor
+
     export PATH=$HPCX_MPI_DIR/bin:$PATH
     export OLD_LD_LIBRARY_PATH=$LD_LIBRARY_PATH
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64/stubs
     export HOROVOD_NCCL_INCLUDE=${NCCL_INSTALL_PATH}/include
     export HOROVOD_NCCL_LIB=${NCCL_INSTALL_PATH}/lib
-    HOROVOD_GPU_ALLREDUCE=NCCL /opt/anaconda3/bin/pip install horovod
+    HOROVOD_GPU_ALLREDUCE=NCCL !{PYTHON_BIN}/pip install horovod
     rm  /scrap/jenkins/workspace/hpc-power-pack/label/r-vmb-ubuntu16-u4-x86-64-MOFED-CHECKER/hpcx_root
     rm -rf /scrap/jenkins/workspace/hpc-power-pack/label/r-vmb-ubuntu16-u4-x86-64-MOFED-CHECKER
     rm /usr/local/cuda/lib64/stubs/libcuda.so.1
     export LD_LIBRARY_PATH=OLD_LD_LIBRARY_PATH
+    jupyter lab build
 
     ldconfig -v
 

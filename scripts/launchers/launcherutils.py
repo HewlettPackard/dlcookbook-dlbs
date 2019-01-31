@@ -184,16 +184,21 @@ class launcherutils(object):
     def _error(self):
         fn=self.logfile.name
         self.logfile.close()
+        nccl_error=False
         with open(fn,'r') as r:
             for l in r:
                 l=l.strip()
+                if re.search('nccl.* failed',l):
+                    nccl_error=True
+                    break
                 if re.search('^__results.time__=[\d\.]',l):
                     found=True
                     break
             else:
+                nccl_error=False
                 found=False
         self.logfile=open(fn,'a')
-        return not found
+        return (not found) or nccl_error
 
     # All of the scripts had the same code except for the error function which only differed by the pattern to search for. SO
     # I encapsulated it here.
@@ -215,10 +220,12 @@ class launcherutils(object):
         if self.vdict['exp_status']=='simulate':
             print(script)
             sys.exit(0)
-        proc=subprocess.Popen(script,executable="/bin/bash",shell=True,stdout=self.logfile,stderr=self.logfile,bufsize=1,universal_newlines=False)
-        proc.communicate()
-
-
+        print("launcherutil script {}".format(script),file=self.logfile)
+        try:
+            subprocess.run(shlex.split(script),check=True,universal_newlines=None,stdout=self.logfile, stderr=self.logfile)
+        except subprocess.CalledProcessError as se:
+            traceback.print_exc(file=self.logfile)
+            raise
         ## Do some post-processing
         self.check_for_failed_run()
         if close_log: self.logfile.close()

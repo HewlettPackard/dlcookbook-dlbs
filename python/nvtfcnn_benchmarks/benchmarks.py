@@ -16,13 +16,38 @@
 """
 from __future__ import absolute_import
 from __future__ import print_function
+import os
+from os import stat
+from pwd import getpwuid
+from glob import glob
+from shutil import rmtree
 import argparse
 import pathlib
 import sys
 import re
-from subprocess import call
+import subprocess
+import traceback
 
-models_re= [r"alexnet$",r"googlenet$",r"inception_resnet_v2$",r"inception_v[34]$",r"overfeat$",r"resnet_\d+$",r"trivial$",r"vgg_\d+$",r"xception$"]
+class RE():
+    # Use re in if tests with side effect.
+    def search(self,*args,**kwargs):
+        self.s=re.search(*args,*kwargs)
+        return self.s
+    def match(self,*args,**kwargs):
+        self.m=re.match(*args,*kwargs)
+        return self.m
+
+def cleanup_tmp():
+    user=getpwuid(os.getuid()).pw_name
+    for t in glob('/tmp/tmp*'):
+        try:
+            st=os.stat(t)
+            userinfo = getpwuid(st.st_uid).pw_name
+            if userinfo==user: rmtree(t)
+        except IOException:
+            pass
+
+models_re= [r"alexnet$",r"googlenet$",r"inception_resnet2$",r"inception[34]$",r"overfeat$",r"resnet\d+$",r"trivial$",r"vgg\d+$",r"xception$"]
 
 def allowed_models(v):
     v=v.strip()
@@ -40,26 +65,36 @@ def main():
         parser.add_argument( '--model', type=allowed_models, required=True,
                              default='', 
                              help="A model to benchmark - must match one of the patterns: {}".format(' | '.join(models_re)))
+        #parser.add_argument('--cleanup', action='store_const', default = True, const = True, dest='cleanup')
+        #parser.add_argument('--no-cleanup', action='store_const', const = False, dest='cleanup')
+
         args, passthru = parser.parse_known_args()
-        m=re.match("(resnet|vgg)_(\d+)",args.model)
-        if m:
-            args.model=m.group(1)
-            passthru+=["--layers={}".format(m.group(2))]
-    
+        # Transform model names from DLBS conventions to nvtfcnn.
+        reobj=RE()
+        if reobj.match("(resnet|vgg)(\d+)",args.model):
+            args.model=reobj.m.group(1)
+            passthru+=["--layers={}".format(reobj.m.group(2))]
+        elif reobj.match("inception([34])",args.model):
+            args.model="inception_v{}".format(reobj.m.group(1))
+        elif reobj.match("inception_resnet2",args.model):
+            args.model="inception_resnet_v2"
         prog=pathlib.Path(__file__).parent.joinpath('cnn').joinpath(args.model+".py")
         cmd=['python',str(prog)] + passthru
         print(cmd)
         try:
-            retcode = call(cmd)
-            if retcode < 0:
-                print("Child was terminated by signal", -retcode, file=sys.stderr)
-        except OSError as e:
+            subprocess.run(cmd,check=True,universal_newlines=True,stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
             print("Execution failed:", e)
+        #finally:
+            #if args.cleanup: cleanup_tmp()
         print('done')
     except Exception as e:
         print('nvtfcnn_benchmarks/benchmark.py: Something failed.')
         print('cmd: {}'.format(' '.join(cmd)))
+        traceback.print_exc()
         sys.exit(-1)
+    #finally:
+    #    if args.cleanup: cleanup_tmp()
 
 if __name__ == '__main__':
     main()

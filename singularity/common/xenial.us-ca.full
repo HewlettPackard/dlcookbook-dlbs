@@ -1,0 +1,4 @@
+deb http://neurodeb.pirsquared.org data main contrib non-free
+#deb-src http://neurodeb.pirsquared.org data main contrib non-free
+deb http://neurodeb.pirsquared.org xenial main contrib non-free
+#deb-src http://neurodeb.pirsquared.org xenial main contrib non-free

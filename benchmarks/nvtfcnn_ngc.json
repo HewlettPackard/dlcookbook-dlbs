@@ -1,0 +1,126 @@
+{
+    "parameters" : {
+        "exp.framework" : "tensorflow",
+        "exp.backend" : "nvtfcnn",
+        "exp.framework_title" : "TensorFlow",
+        "exp.framework_ver" : "1.12.0",
+        "exp.cudnn" : "7.4",
+        "exp.cuda" : "10.0",
+        "exp.status" : "disabled",
+        "exp.mpirun_args": "-allow-run-as-root -bind-to none -map-by slot -x NCCL_DEBUG=INFO",
+        "exp.device_type" : "gpu",
+        "exp.proj_parent_name": "",
+        "exp.proj_name": "${exp.node_title}_${exp.framework_title} Singularity Test",
+        "exp.proj_description": "${exp.framework_title}'s deep learning benchmarks on ${exp.node_title}",
+        "exp.experimenter_name": "Stephen Fleischman <stephen.fleischman@hpe.com>",
+        "exp.experiment_name": "${exp.node_title}_${exp.framework_title}_Trial_${exp.trial}",
+        "exp.experiment_description": "${exp.framework_title}'s deep learning benchmarks on ${exp.node_title} for DLPG (trial ${exp.trial})",
+        "exp.node_nic": "",
+        "exp.node_id": "apollo_6500_xl_gen10",
+        "exp.node_title": "Apollo 6500 XL Gen10",
+        "exp.gpu_title": "Tesla V100-SXM2-32GB",
+		"exp.docker" : true,
+        "exp.singularity" : false,
+        "exp.log_file" : "${BENCH_ROOT}/${exp.framework}/${exp.backend}/v100_sxm2_XL270d_gen10/${exp.gpufreq}/19.01/${exp.data}/${exp.dtype}/${exp.model}_${exp.replica_batch}_$(\"${exp.gpus}\".replace(\",\",\".\"))$_1N_${exp.test}_T${exp.trial}.log",
+        "exp.phase" : "training",
+        "monitor.frequency" : 5 ,
+        "exp.num_batches" : 1000,
+        "nvtfcnn.display_every" : 10,
+        "nvtfcnn.nstep_burnin" : 20,
+        "nvtfcnn.nstep_finish" : 1,
+		"runtime.env.PATH" :  "/lvol/sfleisch/anaconda3/bin:$(os.environ['PATH'])$",
+        "tensorflow.docker_image" : "nvcr.io/nvidia/tensorflow:19.01-py3",
+        "tensorflow.singularity_image" : "",
+        "exp.sys_info" : ""
+    },
+    "variables" : {
+        "exp.replica_batch" : [8,16,32,64,128,192,256,512,1024,2048,256000],
+        "exp.dtype" : ["float16"],
+        "exp.model" : ["resnet152","vgg16","googlenet","inception3","resnet50"],
+        "exp.test" : ["test1","test2","test3","test4"],
+        "exp.trial" :[0,1,2],
+        "exp.data" : ["real","synthetic"],
+        "exp.num_nodes": 1,
+        "exp.mpirun_num_tasks" : "${exp.num_gpus}"
+    },
+    "extensions": [
+        {
+           "condition":  { "exp.model":["resnet152"], "exp.replica_batch":[32,64,128]},
+           "parameters": {"exp.status": ""}
+        },
+        {
+           "condition":  { "exp.model":["googlenet", "inception3", "inception4", "xception", "resnet50", "vgg16"], "exp.replica_batch":[64, 128,256,512]},
+           "parameters": {"exp.status": ""}
+        },
+        {
+           "condition":  { "exp.model":["alexnet"], "exp.replica_batch":[256,512]},
+           "parameters": {"exp.status": ""}
+        },
+
+        {
+           "condition":  {"exp.test":"test1"},
+           "parameters": { "exp.gpus" : "0" }
+        },
+        {
+           "condition":  {"exp.test":"test2"},
+           "parameters": {
+                            "exp.gpus" : "0,1" }
+        },
+        {
+           "condition":  {"exp.test":"test3"},
+           "parameters": { "exp.gpus" : "0,1,2,3" }
+        },
+        {
+           "condition":  {"exp.test":"test4"},
+           "parameters": { "exp.gpus" : "0,1,2,3,4,5,6,7" }
+        },
+        {
+           "condition":{"exp.data"  : "real"}, 
+           "parameters":
+                    {"tensorflow.data_dir" : "/lvol/sfleisch/imagenet_data"}
+
+        },
+        {
+           "condition":  { "exp.model":["alexnet"]},
+           "parameters": {"exp.model_title": "AlexNet"}
+        },
+        {
+           "condition":  { "exp.model":["googlenet"]},
+           "parameters": {"exp.model_title": "GoogleNet"}
+        },
+        {
+           "condition":  { "exp.model":["inception3"]},
+           "parameters": {"exp.model_title": "InceptionV3"}
+        },
+        {
+           "condition":  { "exp.model":["inception4"]},
+           "parameters": {"exp.model_title": "InceptionV4"}
+        },
+        {
+           "condition":  { "exp.model":["resnet50"]},
+           "parameters": {"exp.model_title": "ResNet50"}
+        },
+        {
+           "condition":  { "exp.model":["resnet152"]},
+           "parameters": {"exp.model_title": "ResNet152"}
+        },
+        {
+           "condition":  { "exp.model":["inception_resnet2"]},
+           "parameters": {"exp.model_title": "InceptionResNetV2"}
+        },
+        {
+           "condition":  { "exp.model":["vgg16"]},
+           "parameters": {"exp.model_title": "VGG16"}
+        },
+        {
+           "condition":  { "exp.model":["vgg16"]},
+           "parameters": {"exp.model_title": "VGG16"}
+        },
+        {
+           "condition":  { "exp.model":["xception"]},
+           "parameters": {"exp.model_title": "Xception"}
+        }
+
+    ]
+
+}

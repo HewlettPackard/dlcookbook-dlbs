@@ -83,6 +83,16 @@ def parse_cmdline(init_vals, custom_parser=None):
                    default=_default(init_vals, 'precision'),
                    required=_required(init_vals, 'precision'),
                    help="""Select single or half precision arithmetic.""")
+    p.add_argument('--nstep_burnin', type=int,
+                   default=_default(init_vals, 'nstep_burnin'),
+                   required=_required(init_vals, 'nstep_burnin'),
+                   help="""Do not count the first nstep_burnin iterations in
+                   final statistics.""")
+    p.add_argument('--nstep_finish', type=int,
+                   default=_default(init_vals, 'nstep_finish'),
+                   required=_required(init_vals, 'nstep_finish'),
+                   help="""Do not count the final nstep_finish iterations in
+                   final statistics.""")
 
     FLAGS, unknown_args = p.parse_known_args()
     if len(unknown_args) > 0:
@@ -111,6 +121,10 @@ def parse_cmdline(init_vals, custom_parser=None):
     del FLAGS.display_every
     vals['precision'] = FLAGS.precision
     del FLAGS.precision
+    vals['nstep_burnin'] = FLAGS.nstep_burnin
+    del FLAGS.nstep_burnin
+    vals['nstep_finish'] = FLAGS.nstep_finish
+    del FLAGS.nstep_finish
 
     return vals, FLAGS
 
