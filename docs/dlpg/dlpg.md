@@ -1,6 +1,6 @@
 # Deep Learning Performance Guide
 ## Terminology
-<p align="center"><img src="https://raw.githubusercontent.com/HewlettPackard/dlcookbook-dlbs/master/docs/dlbs/imgs/terminology.png"/></p>
+<p align="center"><img src="https://raw.githubusercontent.com/HewlettPackard/dlcookbook-dlbs/master/docs/dlpg/imgs/terminology.png"/></p>
 
 1. `Neural network`. Composite differentiable function `y=f(x)` that learns to compute
    a desired output `y` given a particular input `x`.
@@ -39,10 +39,10 @@
 ## Deep Learning Performance Guide
 ### Chart Axes
 First step to explore data that DLPG has is to specify chart's X- and Y- axes.
-<p align="center"><img src="https://raw.githubusercontent.com/HewlettPackard/dlcookbook-dlbs/master/docs/dlbs/imgs/axes.png"/></p>
+<p align="center"><img src="https://raw.githubusercontent.com/HewlettPackard/dlcookbook-dlbs/master/docs/dlpg/imgs/axes.png"/></p>
 
 ##### Vertical Axis
-<p align="center"><img src="https://raw.githubusercontent.com/HewlettPackard/dlcookbook-dlbs/master/docs/dlbs/imgs/axis_y.png"/></p>
+<p align="center"><img src="https://raw.githubusercontent.com/HewlettPackard/dlcookbook-dlbs/master/docs/dlpg/imgs/axis_y.png"/></p>
 Vertical, or Y-axis, corresponds to target variable we are interested in. Think about it as comparison criteria. Currently, DLPG provides two options:
 
 1. `Batch time (ms)` An average time in milliseconds of one `iteration` (time to process one batch). Two things to keep in mind:
@@ -54,7 +54,7 @@ Vertical, or Y-axis, corresponds to target variable we are interested in. Think 
    - The bigger this number is the better. So, think about __maximizing__ this variable.
 
 ##### Horizontal Axis
-<p align="center"><img src="https://raw.githubusercontent.com/HewlettPackard/dlcookbook-dlbs/master/docs/dlbs/imgs/axis_x.png"/></p>
+<p align="center"><img src="https://raw.githubusercontent.com/HewlettPackard/dlcookbook-dlbs/master/docs/dlpg/imgs/axis_x.png"/></p>
 Horizontal, or X-axis, specifies what aspect of benchmarks we want to compare. Currently, we have the following variables:
 
 1. `Data Type` Specifies what and where `training dataset` is located. It can be a `synthetic data` or some real input dataset (for instance, a bunch of images). Possible values of this variable are:
@@ -87,7 +87,7 @@ Horizontal, or X-axis, specifies what aspect of benchmarks we want to compare. C
 ### Filtering benchmarks
 Once axes have been selected, DLPG opens `filter` dialog where users narrow down what configurations they are interested in.
 
-<p align="center"><img src="https://raw.githubusercontent.com/HewlettPackard/dlcookbook-dlbs/master/docs/dlbs/imgs/filters.png"/></p>
+<p align="center"><img src="https://raw.githubusercontent.com/HewlettPackard/dlcookbook-dlbs/master/docs/dlpg/imgs/filters.png"/></p>
 
 Most of the filters on this page are the same as variables defined for horizontal axis described above: `Phase`, `Precision`, `Data` (`Data Type`), `Server`, `Processing unit`, `Count` (`Num processing units`), `Framework`. One comment here is that the `Count` filter corresponds to `Processing unit` within one node e.g. number of selected compute devices inside one node. Other filters are the following:
 
