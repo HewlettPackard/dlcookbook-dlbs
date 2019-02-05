@@ -22,3 +22,4 @@
 - [Resource monitor](/monitor/monitor.md?id=resource-monitor)
 - [System information](/sysinfo/sysinfo.md?id=system-information)
 - [Extending DLBS](/extend/dlbs.md?id=extending-deep-learning-benchmarking-suite)
+- [Deep Learning Performance Guide](/dlpg/dlpg.md)
