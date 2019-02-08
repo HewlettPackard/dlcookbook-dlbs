@@ -31,10 +31,10 @@ import traceback
 class RE():
     # Use re in if tests with side effect.
     def search(self,*args,**kwargs):
-        self.s=re.search(*args,*kwargs)
+        self.s=re.search(*args,**kwargs)
         return self.s
     def match(self,*args,**kwargs):
-        self.m=re.match(*args,*kwargs)
+        self.m=re.match(*args,**kwargs)
         return self.m
 
 def cleanup_tmp():
@@ -79,7 +79,7 @@ def main():
         elif reobj.match("inception_resnet2",args.model):
             args.model="inception_resnet_v2"
         prog=pathlib.Path(__file__).parent.joinpath('cnn').joinpath(args.model+".py")
-        cmd=['python',str(prog)] + passthru
+        cmd=['python3',str(prog)] + passthru
         print(cmd)
         try:
             subprocess.run(cmd,check=True,universal_newlines=True,stderr=subprocess.STDOUT)
