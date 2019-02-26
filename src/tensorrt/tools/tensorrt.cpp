@@ -48,17 +48,29 @@ void parse_command_line(int argc, char **argv,
                         logger_impl& logger);
 void print_file_reader_warnings(logger_impl& logger, const std::string& me);
 
-void segfault_sigaction(int signal, siginfo_t *si, void *arg) {
+void segfault_sigaction(int signal, siginfo_t* /*si*/, void* /*arg*/) {
     void *array[10];
-  size_t size;
+    size_t size;
 
-  // get void*'s for all entries on the stack
-  size = backtrace(array, 10);
+    // get void*'s for all entries on the stack
+    size = backtrace(array, 10);
 
-  // print out all the frames to stderr
-  fprintf(stderr, "Error: signal %d:\n", signal);
-  backtrace_symbols_fd(array, size, STDERR_FILENO);
-  exit(1);
+    // Print out all the frames to stderr
+    fprintf(stderr, "--------------------------------------------------------\n");
+    fprintf(stderr, "---------------- DLBS segmentation fault ---------------\n");
+    fprintf(stderr, "Error: signal %d:\n", signal);
+    backtrace_symbols_fd(array, size, STDERR_FILENO);
+    fprintf(stderr, "--------------------------------------------------------\n");
+    fprintf(stderr, "You can debug this in the following way:\n");
+    fprintf(stderr, "    - compile the application in debug mode (cmake -DCMAKE_BUILD_TYPE=Debug ..)\n");
+    fprintf(stderr, "    - enable core dump generation in your system\n");
+    fprintf(stderr, "    - run app and get dump\n");
+    fprintf(stderr, "    - analyze it, for instance: kdbg ./tensorrt ./core\n");
+    fprintf(stderr, "--------------------------------------------------------\n");
+    fprintf(stderr, "PS:\n");
+    fprintf(stderr, "    - If you use multiple docker images with different TensorRT versions, single tensorrt\n");
+    fprintf(stderr, "      cache may result in segmentation faults. Try disabling it: -Ptensorrt.cache='\"\"'.\n");
+    exit(1);
 }
 
 int main(int argc, char **argv) {
@@ -79,13 +91,14 @@ int main(int argc, char **argv) {
         po::variables_map var_map;
         parse_command_line(argc, argv, opt_desc, var_map, engine_opts, data_opts, logger);
         if (var_map.count("version")) {
-            std::cout << get_tensorrt_version() << std::endl;
+            std::cout << tensorrt_utils::tensorrt_version() << std::endl;
             return 0;
         }
         if (var_map.count("help")) { 
             std::cout << "HPE Deep Learning Benchmarking Suite - TensorRT backend" << std::endl
                       << opt_desc << std::endl
-                      << "TensorRT version " << get_tensorrt_version() << std::endl;
+                      << "TensorRT version " << tensorrt_utils::tensorrt_version() << std::endl
+                      << "ONNX parser version " << tensorrt_utils::onnx_parser_version()  << std::endl;
             return 0;
         }
     } catch(po::error& e) {
@@ -277,8 +290,13 @@ void parse_command_line(int argc, char **argv,
         ("help", "Print help message")
         ("version", "Print version")
         ("gpus", po::value<std::string>(&gpus), "A comma seperated list of GPU identifiers to use.")
-        ("model", po::value<std::string>(&engine_opts.model_id_), "Model identifier like alexnet, resent18 etc. Used to store calibration caches.")
-        ("model_file", po::value<std::string>(&engine_opts.model_file_), "Caffe's prototxt deploy (inference) model.")
+        ("model", po::value<std::string>(&engine_opts.model_id_),
+         "Model identifier like alexnet, resent18 etc. Used to store calibration caches. The file format is "\
+         "{model}_{precision}_{batch}_v{tensorrt_major_version}.bin, for instance, googlenet_float16_32.bin. "\
+         "If it is a user provided model (not the one that's part of DLBS), this value is a model file name "\
+         "without extension (.prototxt or .onnx). This means that standard googlenet model will collide with "\
+         "user provided /home/user/onnx/googlenet.onnx.")
+        ("model_file", po::value<std::string>(&engine_opts.model_file_), "Neural network model in Caffe's prototxt or ONNX format.")
         ("batch_size", po::value<int>(&batch_size), "Per device batch size.")
         ("dtype", po::value<std::string>(&engine_opts.dtype_), "Type of data variables: float(same as float32), float32, float16 or int8.")
         ("num_warmup_batches", po::value<int>(&num_warmup_batches), "Number of warmup iterations.")

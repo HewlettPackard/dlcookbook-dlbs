@@ -18,7 +18,7 @@
       "desc": [
         "A path to store calibration caches for TensorRT when running in INT8 inference regime.",
         "If empty, no cache will be used and calibration will be done with every benchmark what's",
-        "not desireable for models that's input size is large. The advice is to run quick runs for",
+        "not desirable for models that's input size is large. The advice is to run quick runs for",
         "every model with this path set what will result in cache being populated. Then run real benchmarks",
         "and provide same cache path."
       ]
@@ -90,7 +90,7 @@
     },
     "tensorrt.args": {
       "val": [
-        "--model ${exp.model}",
+        "--model $('${exp.model}' if '${tensorrt.user_model}' == 'false' else os.path.splitext('${tensorrt.model_file}')[0])$",
         "--model_file ${tensorrt.model_dir}/${tensorrt.model_file}",
         "--batch_size ${exp.replica_batch}",
         "--dtype ${exp.dtype}",
@@ -118,14 +118,19 @@
       "desc": "Command line arguments that launcher uses to launch TensorRT."
     },
     "tensorrt.model_file": {
-      "val": "${exp.id}.model.prototxt",
+      "val": "$('${exp.id}.model.prototxt' if '${tensorrt.user_model}' == 'false' else os.path.basename('${exp.model}'))$",
       "type": "str",
       "desc": "Caffe's prototxt inference (deploy) model file."
     },
     "tensorrt.model_dir": {
-      "val": "$('${DLBS_ROOT}/models/${exp.model}' if ${exp.docker} is False else '/workspace/model')$",
+      "val": "$('/workspace/model' if ${exp.docker} else os.path.dirname('${exp.model}') if '${tensorrt.user_model}' == 'true' else '${DLBS_ROOT}/models/${exp.model}')$",
       "type": "str",
       "desc": "Directory where Caffe's model file is located. Different for host/docker benchmarks."
+    },
+    "tensorrt.user_model": {
+      "val": "$('true' if '${exp.model}'.endswith(('.onnx', '.prototxt')) else 'false')$",
+      "type": "str",
+      "desc": ""
     },
     "tensorrt.docker_image": {
       "val": "dlbs/tensorrt:18.11",
@@ -137,7 +142,7 @@
         "-i",
         "--security-opt seccomp=unconfined",
         "--pid=host",
-        "--volume=${DLBS_ROOT}/models/${exp.model}:/workspace/model",
+        "--volume=$('${DLBS_ROOT}/models/${exp.model}' if '${tensorrt.user_model}' == 'false' else os.path.dirname('${exp.model}'))$:/workspace/model",
         "$('--volume=${runtime.cuda_cache}:/workspace/cuda_cache' if '${runtime.cuda_cache}' else '')$",
         "$('--volume=${tensorrt.cache}:/workspace/tensorrt_cache' if '${tensorrt.cache}' != '' else '')$",
         "$('--volume=${monitor.pid_folder}:/workspace/tmp' if ${monitor.frequency} > 0 else '')$",
@@ -193,8 +198,8 @@
     {
       "condition":{ "exp.framework": "tensorrt", "exp.env": "host" },
       "parameters": { "tensorrt.env": [
-        "PATH=$('${tensorrt.host_path}:\\$PATH'.strip(' \t:'))$",
-        "LD_LIBRARY_PATH=$('${tensorrt.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
+        "PATH=$('${tensorrt.host_path}:$PATH'.strip(' \t:'))$",
+        "LD_LIBRARY_PATH=$('${tensorrt.host_libpath}:$LD_LIBRARY_PATH'.strip(' \t:'))$",
         "${runtime.EXPORT_CUDA_CACHE_PATH}"
       ]}
     }

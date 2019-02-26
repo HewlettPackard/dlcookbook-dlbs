@@ -1,6 +1,6 @@
 #include "core/utils.hpp"
 
-int main(int argc, char **argv) {
+int main(int /*argc*/, char** /*argv*/) {
 #if not defined TRACE_ALL
     std::cout << "This test is supposed to be ran with detailed tracing enabled. Uncomment "
               << "'add_definitions(-DTRACE_ALL)' in CMakeLists.txt and rebuild the project."

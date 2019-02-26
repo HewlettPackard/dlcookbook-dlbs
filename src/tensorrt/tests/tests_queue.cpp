@@ -8,7 +8,7 @@ void client(abstract_queue<int>* queue, long& counter, bool is_provider, int sle
 void test_queue(abstract_queue<int>*q, const int num_providers, const size_t num_consumers);
 
 
-int main(int argc, char **argv) {
+int main(int /*argc*/, char** /*argv*/) {
     std::cout << "Running Infinite Queue" << std::endl;
     infinite_queue<int> iq(1);
     test_queue(&iq, 10, 20);
@@ -40,7 +40,7 @@ void test_queue(abstract_queue<int>*q, const int num_providers, const size_t num
 
     for (size_t i=0; i<num_consumers; ++i)
         consumers[i] = new std::thread(client, std::ref(q), std::ref(consumer_data[i]), false, 100);
-    for (size_t i=0; i<num_providers; ++i)
+    for (int i=0; i<num_providers; ++i)
         providers[i] = new std::thread(client, std::ref(q), std::ref(provider_data[i]), true, 120);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(3000));
@@ -50,7 +50,7 @@ void test_queue(abstract_queue<int>*q, const int num_providers, const size_t num
         delete consumers[i];
         std::cout << "Consumer " << i << " updated its counter " << consumer_data[i] << " times." << std::endl;
     }
-    for (size_t i=0; i<num_providers; ++i) {
+    for (int i=0; i<num_providers; ++i) {
         providers[i] ->join();
         delete providers[i];
         std::cout << "Provider " << i << " updated its counter " << provider_data[i] << " times." << std::endl;

@@ -57,6 +57,11 @@ bool from_string<bool>(const char* const val) {
     return (str == "1" || str == "on" || str == "yes" || str == "true");
 }
 
+bool ends_with(const std::string& str, const std::string& suffix) {
+    if (suffix.size() > str.size()) return false;
+    return (0 == str.compare (str.size() - suffix.length(), suffix.length(), suffix));
+}
+
 std::string environment::file_reader() {
     return environment::variable<std::string>("DLBS_TENSORRT_FILE_READER", "directio");
 }

@@ -90,6 +90,11 @@ template<> std::string from_string<std::string>(const char* const val);
 template<> int from_string<int>(const char* const val);
 template<> bool from_string<bool>(const char* const val);
 
+/**
+ * @brief Check that given string ends with the suffix.
+ */
+bool ends_with(const std::string& str, const std::string& suffix);
+
 
 /**
  * @brief Class to access environment variables that affect benchmark behaviour.
@@ -599,6 +604,7 @@ template<> struct PictureTool::pixel<unsigned char> { static const char encoding
  */
 class abstract_reader {
 public:
+    virtual ~abstract_reader() {}
     virtual bool is_opened() = 0;
     virtual bool open(const std::string& fname) = 0;
     virtual void close() = 0;
@@ -622,11 +628,11 @@ public:
     reader(const std::string& dtype="float",
            const bool advise_no_cache=false);
     virtual ~reader() { close(); }
-    bool is_opened();
-    bool open(const std::string& fname);
-    void close();
-    ssize_t read(host_dtype* dest, const size_t count);
-    void allocate_if_needed(const size_t count);
+    bool is_opened() override;
+    bool open(const std::string& fname) override;
+    void close() override;
+    ssize_t read(host_dtype* dest, const size_t count) override;
+    void allocate_if_needed(const size_t count) override;
 };
 
 /**
@@ -660,16 +666,16 @@ public:
      */
     direct_reader(const std::string& dtype="float");
     virtual ~direct_reader() { close(); }
-    bool is_opened();
-    bool open(const std::string& fname);
-    void close();
+    bool is_opened() override;
+    bool open(const std::string& fname) override;
+    void close() override;
     /**
      * @brief Read 'count' elements from file.
      */
-    ssize_t read(host_dtype* dest, const size_t count);
+    ssize_t read(host_dtype* dest, const size_t count) override;
     // This is deprecated and does nothing. All allocations
     // are done on the fly in read function.
-    void allocate_if_needed(const size_t count) {}
+    void allocate_if_needed(const size_t /*count*/) override {}
 private:
     void allocate(const size_t new_sz);
     void deallocate();
@@ -683,6 +689,7 @@ private:
  */
 class allocator {
 public:
+    virtual ~allocator() {}
     virtual void allocate(float *&buf, const size_t sz) = 0;
     virtual void allocate(unsigned char *&buf, const size_t sz) = 0;
 

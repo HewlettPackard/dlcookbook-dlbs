@@ -93,12 +93,12 @@ void convert(std::vector<std::string>& input_files, const std::string input_dir,
     const size_t channel_size = img_size * img_size;
     std::vector<T> tensor(3 * channel_size);
     sharded_vector<std::string> my_files(input_files, num_shards, my_shard, true);
-    const int nchannels = 3;
+    //const int nchannels = 3;
     
     logger.log_info(fmt("Thread %d: shard_begin=%d, shard_length=%d", my_shard, my_files.shard_begin(), my_files.shard_length()));
     long nprocessed(0);
     timer tm;
-    const char pixel_encoding = PictureTool::pixel<T>::encoding;
+    //const char pixel_encoding = PictureTool::pixel<T>::encoding;
     
     std::ofstream out;
     int num_images_written(0);

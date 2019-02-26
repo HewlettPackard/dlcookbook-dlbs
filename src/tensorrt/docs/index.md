@@ -1,36 +1,40 @@
 # TensorRT Inference Benchmark Tool
-
 The TensorRT inference benchmark tool, or just _the tool_, is a part of [HPE Deep Learning Benchmarking Suite]
 (https://hpe.com/software/dl-cookbook) intended to run inference benchmarks with TensorRT inference engine.
 In particular, it can run with or without DLBS and can be used for:
 
 1. Benchmarking a particular model on your hardware.
 2. Identifying bottlenecks (CPU/GPU, PCIe, storage/network).
+3. This tool also supports users models in Caffe (.prototxt) or ONNX (.onnx) formats.
 
 
 ### Installation
-The tool can be built in docker container or bare metal. In both cases, you need to download/install TensorRT package.
-We currently use version 3.0.4 and make sure you have the following packages downloaded/installed:
-```
-nv-tensorrt-repo-ubuntu1604-ga-cuda9.0-trt3.0.4-20180208_1-1_amd64.deb
-```
+The latest docker images (starting 18.12)  are based on TensorRT images from NGC. Previous images (<= 18.11) are based on 
+`nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04` that require users to manually download TensorRT .deb package. The `versions`
+file in docker directory lists TensorRT packages required to build previous docker images. The deb packages need to be
+copied in the corresponding folders containing `Dockerfile` files.
+
 
 #### Docker containers
-Copy TensorRT deb package to `${DLBS_ROOT}/docker/tensorrt/${VERSION}`. Then, go to `${DLBS_ROOT}/docker` and run
+For  versions <= 18.11, copy TensorRT deb package to `${DLBS_ROOT}/docker/tensorrt/${VERSION}`. Then, go to `${DLBS_ROOT}/docker`
+and run:
 ```bash
 ./build.sh tensorrt/${VERSION}
 ```
 to build docker container (`dlbs/tensorrt:${VERSION}`). The `${VERSION}` here is the version of the container that
 needs to be built. For instance, it can be `18.10`. In general, it is recommended to build latest version that includes
-all optimziations. 
+all optimizations. 
 
 Type `./build.sh --help` to learn about additional optional input parameters.
 
 The build script will build programs and will install them and will make them available on the PATH environment variable
 inside container.
 
+To build latest TensorRT docker images (>= 18.12), just go to `${DLBS_ROOT}/docker` abd run `./build.sh tensorrt/${VERSION}`.
+There is no need to download TensorRT deb packages.
+
 #### Bare metal
-To build this project by yourself, you will need cmake, CUDA, boost program options, opencv 2 and TensorRT 3.0.4 installed
+To build this project by yourself, you will need cmake, CUDA, boost program options, opencv 2 and TensorRT installed
 in your system. Go to `${DLBS_ROOT}/src/tensorrt` and run the following commands:
 ```bash
 mkdir ./build && cd ./build

@@ -14,11 +14,13 @@ Several cmake configuration parameters affect the building process:
    ```bash
        cmake -DHOST_DTYPE=SP32 ..
    ```
+   This is not recommended because will significantly impact performance.
 
 2. `DEBUG_LOG=[OFF]` Enables/disables detailed logging. May be useful for debugging purposes:
    ```bash
        cmake -DDEBUG_LOG=ON ..
    ```
+   Not enabled by default.
 
 Some of the standard parameters:
 1. `CMAKE_BUILD_TYPE=[Release]` Build type. By default, release binaries are build. Set to `Debug` to debug the tool.

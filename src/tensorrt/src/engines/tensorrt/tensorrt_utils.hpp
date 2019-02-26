@@ -19,63 +19,101 @@
 #include <initializer_list>
 #include "core/logger.hpp"
 #include "core/cuda_utils.hpp"
+#include "core/infer_engine.hpp"
 
 #include <NvInfer.h>
 using namespace nvinfer1;
 
-/**
- * @brief Return version of the TensorRT engine as string
- * @return Version as MAJOR.MINOR.PATCH
- */
-std::string get_tensorrt_version();
 
-/**
- * @brief Return major version of the TensorRT  engine
- * @return Major version, integer
- */
-int get_tensorrt_major_version();
+class tensorrt_utils {
+public:
+    /**
+    * @brief Return version of the TensorRT engine as string
+    * @return Version as MAJOR.MINOR.PATCH
+    */
+    static std::string tensorrt_version();
+    
+    /**
+    * @brief Return major version of the TensorRT  engine
+    * @return Major version, integer
+    */
+    static int tensorrt_major_version();
 
-/**
- * @brief Verifies that this engine has required input and output tensors.
- * 
- * If there are no such tensors, program will terminate.
- * 
- * @param engine is the inference engine.
- * @param input_blob is the name of an input tensor.
- * @param output_blob is the name of an output tensor.
- * @param logger is the TensorRT logger.
- */
-void check_bindings(ICudaEngine* engine, const std::string& input_blob, const std::string output_blob, logger_impl& logger);
+    /**
+    * @brief Return version of the Onnx parser as string
+    * @return Version as MAJOR.MINOR.PATCH or "not supported".
+    */
+    static std::string onnx_parser_version();
 
-/**
- * @brief Returns number of elements in a tensor.
- * @param tensor is the tensor instance.
- * @return Number of elements in the tensor.
- */
-size_t get_tensor_size(const ITensor* tensor);
+    /**
+     * @brief Computes names of input and output tensors based network definition.
+     * 
+     * This method identifies the rigth names for input/output tensors. It may override
+     * user provided names in several cases. The logic is the following (for both input and
+     * output tensors):
+     *   - If there are no tensors, print error message and exit.
+     *   - If there is a single tensor, use name of that tensor. If that name differs from
+     *     a name provided by a user, issue a warning.
+     *   - If there are multiple tensors, use the one provided by a user. If there are no such
+     *     tensor, print error and exit.
+     * 
+     * @param me A string that is used to identify inference engine invoking this call.
+     * @param logger A logger instance.
+     * @param network An instance of a network definition.
+     * @param opts Inference options.
+     * @param input_name Output parameter that contains name of a model input tensor.
+     * @param output_name Output parameter that contains name of a model output tensor.
+     */
+    static void get_input_output_names(const std::string& me, logger_impl& logger,
+                                       INetworkDefinition* network, const inference_engine_opts& opts,
+                                       std::string& input_name, std::string& output_name);
 
-/**
- * @brief Returns size of idx-th engine binding.
- * @param engine Inference engine.
- * @param idx is the binding index.
- * @return Size (number of elements) for this binding. It is basically a multiplication if tensor dimensions.
- */
-size_t get_binding_size(ICudaEngine* engine, const int idx);
+        /**
+     * @brief Computes names of input and output tensors based network definition.
+     * 
+     * Same as above method but uses engine instead of a network definition.
+     * 
+     * @param me A string that is used to identify inference engine invoking this call.
+     * @param logger A logger instance.
+     * @param engine An instance of an inference engine.
+     * @param opts Inference options.
+     * @param input_name Output parameter that contains name of a model input tensor.
+     * @param output_name Output parameter that contains name of a model output tensor.
+     */
+    static void get_input_output_names(const std::string& me, logger_impl& logger,
+                                       ICudaEngine* engine, const inference_engine_opts& opts,
+                                       std::string& input_name, std::string& output_name);
 
-/**
- * @brief Loads TensorRT engine from file
- * @param fname is the name of a file.
- * @param logger is the logger to use.
- * @return Instance of and engine (ICudaEngine pointer)
- */
-ICudaEngine* load_engine_from_file(const std::string& fname, logger_impl& logger);
+    /**
+    * @brief Returns size of idx-th engine binding.
+    * @param engine Inference engine.
+    * @param idx is the binding index.
+    * @return Size (number of elements) for this binding. It is basically a multiplication if tensor dimensions.
+    */
+    static size_t get_tensor_size(ICudaEngine* engine, const int binding_idx);
 
-/**
- * @brief Serializes inference engine to a file.
- * @param engine_ Inference engine to serialize.
- * @param fname is the file name.
- */
-void serialize_engine_to_file(ICudaEngine *engine_, const std::string& fname);
+    /**
+    * @brief Returns number of elements in a tensor.
+    * @param tensor is the tensor instance.
+    * @return Number of elements in the tensor.
+    */    
+    static size_t get_tensor_size(INetworkDefinition* network, const std::string& tensor_name);
 
+    /**
+    * @brief Loads TensorRT engine from file
+    * @param fname is the name of a file.
+    * @param logger is the logger to use.
+    * @return Instance of and engine (ICudaEngine pointer)
+    */
+    static ICudaEngine* load_engine_from_file(const std::string& fname, logger_impl& logger);
+
+    /**
+    * @brief Serializes inference engine to a file.
+    * @param engine_ Inference engine to serialize.
+    * @param fname is the file name.
+    */
+    static void serialize_engine_to_file(ICudaEngine *engine_, const std::string& fname);
+
+};
 
 #endif

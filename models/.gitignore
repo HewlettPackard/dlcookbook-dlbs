@@ -2,3 +2,4 @@
 **/*.caffemodel
 **/*.pb
 **/*.pyc
+**/*.model.prototxt

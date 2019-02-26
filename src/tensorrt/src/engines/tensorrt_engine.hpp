@@ -21,8 +21,6 @@
 #include "engines/tensorrt/calibrator.hpp"
 #include "engines/tensorrt/profiler.hpp"
 
-#include <NvCaffeParser.h>
-
 /**
  * @brief Implementation of an inference engine that uses TensorRT library.
  * 
@@ -50,7 +48,7 @@ private:
     
     void init_device() override;
     void do_inference(abstract_queue<inference_msg*> &request_queue,
-                      abstract_queue<inference_msg*> &response_queue);
+                      abstract_queue<inference_msg*> &response_queue) override;
     // Past implementations
     /**
      * @brief Original implementation that does everything sequentially:

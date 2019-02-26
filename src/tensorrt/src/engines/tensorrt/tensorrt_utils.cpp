@@ -16,29 +16,92 @@
 
 #include "engines/tensorrt/tensorrt_utils.hpp"
 #include <sstream>
+#ifdef HAVE_ONNX_PARSER
+    #include <NvOnnxParser.h>
+#endif
 
-std::string get_tensorrt_version() {
+std::string get_tensor_name(const std::string& me, logger_impl& logger, const std::vector<std::string>& names,
+                            const std::string& in_or_out, const std::string& requested_name) {
+    if (names.empty()) {
+        logger.log_error(fmt("%s Model does not have %s, cannot proceed.", me.c_str(), in_or_out.c_str()));
+    } 
+    if (names.size() == 1) {
+        if (requested_name != names[0]) {
+            logger.log_warning(fmt("%s overriding user's %s tensor name ('%s') with models single %s ('%s').",
+                                   me.c_str(), in_or_out.c_str(), requested_name.c_str(), in_or_out.c_str(), names[0].c_str()));
+        }
+        return names[0];
+    }
+    const auto iter = std::find(names.begin(), names.end(), requested_name);
+    if (iter == names.end()) {
+        int size = names.size();
+        logger.log_error(fmt("%s model has multiple %ss (count=%d) but does not have requested %s (name='%s').",
+                                 me.c_str(), in_or_out.c_str(), size, in_or_out.c_str(), requested_name.c_str()));
+    }
+    return *iter;
+}
+
+nvinfer1::ITensor* get_tensor(nvinfer1::INetworkDefinition* network, const std::string& tensor_name) {
+    for (int i=0; i<network->getNbInputs(); ++i) {
+        ITensor* input = network->getInput(i);
+        if (input->getName() == tensor_name) { return input; }
+    }
+    for (int i=0; i<network->getNbOutputs(); ++i) {
+        ITensor* output = network->getOutput(i);
+        if (output->getName() == tensor_name) { return output; }
+    }
+    return nullptr;
+}
+
+
+std::string tensorrt_utils::tensorrt_version() {
     std::ostringstream os;
     os << NV_TENSORRT_MAJOR << "." << NV_TENSORRT_MINOR << "." << NV_TENSORRT_PATCH;
     return os.str();
 }
 
-int get_tensorrt_major_version() {
+std::string tensorrt_utils::onnx_parser_version() {
+#ifdef HAVE_ONNX_PARSER
+    std::ostringstream os;
+    os << NV_ONNX_PARSER_MAJOR << "." << NV_ONNX_PARSER_MINOR << "." << NV_ONNX_PARSER_PATCH;
+    return os.str();
+#endif
+    return "not supported";
+}
+
+int tensorrt_utils::tensorrt_major_version() {
     return static_cast<int>(NV_TENSORRT_MAJOR);
 }
 
-void check_bindings(ICudaEngine* engine, const std::string& input_blob, const std::string output_blob, logger_impl& logger) {
-    const auto nb = engine->getNbBindings();
-    if (nb <= 0)
-        logger.log_error("Invalid number of a model's IO bindings (" + std::to_string(nb) + ").");
-    const auto ib = engine->getBindingIndex(input_blob.c_str());
-    const auto ob = engine->getBindingIndex(output_blob.c_str());
-    if (ib < 0 || ob < 0 || ib > nb || ob > nb)
-        logger.log_error(
-            "Invalid indice(s) of IO blob(s). Number of bindings = " + std::to_string(nb) +
-            ", input blob (" + input_blob + ") index = " + std::to_string(ib) +
-            ", output blob (" + output_blob + ") index = " + std::to_string(ob)
-        );
+void tensorrt_utils::get_input_output_names(const std::string& me, logger_impl& logger,
+                                            INetworkDefinition* network, const inference_engine_opts& opts,
+                                            std::string& input_name, std::string& output_name) {
+    std::vector<std::string> names;
+    for (int i=0; i<network->getNbInputs(); ++i) {
+        names.push_back(network->getInput(i)->getName());
+    }
+    input_name = get_tensor_name(me, logger, names, "input", opts.input_name_);
+
+    names.clear();
+    for (int i=0; i<network->getNbOutputs(); ++i) {
+        names.push_back(network->getOutput(i)->getName());
+    }
+    output_name = get_tensor_name(me, logger, names, "output", opts.output_name_);
+}
+
+void tensorrt_utils::get_input_output_names(const std::string& me, logger_impl& logger,
+                                            ICudaEngine* engine, const inference_engine_opts& opts,
+                                            std::string& input_name, std::string& output_name) {
+    std::vector<std::string> input_names, output_names;
+    for (int i=0; i<engine->getNbBindings(); ++i) {
+        if (engine->bindingIsInput(i)) {
+            input_names.push_back(engine->getBindingName(i));
+        } else {
+            output_names.push_back(engine->getBindingName(i));
+        }
+    }
+    input_name = get_tensor_name(me, logger, input_names, "input", opts.input_name_);
+    output_name = get_tensor_name(me, logger, output_names, "output", opts.output_name_);
 }
 
 /**
@@ -46,30 +109,25 @@ void check_bindings(ICudaEngine* engine, const std::string& input_blob, const st
  * @param tensor A pointer to a tensor object.
  * @return Number of elements in \p tensor.
  */
-size_t get_tensor_size(const ITensor* tensor) {
-  #if NV_TENSORRT_MAJOR >= 3
-  Dims shape = tensor->getDimensions();
-  long sz = 1;
-  for (int i=0; i<shape.nbDims; ++i) {
-    sz *= shape.d[i];
-  }
-  return static_cast<size_t>(sz);
+size_t tensorrt_utils::get_tensor_size(INetworkDefinition* network, const std::string& tensor_name) {
+    ITensor* tensor = get_tensor(network, tensor_name);
+#if NV_TENSORRT_MAJOR >= 3
+    Dims shape = tensor->getDimensions();
+    long sz = 1;
+    for (int i=0; i<shape.nbDims; ++i) {
+        sz *= shape.d[i];
+    }
+    return static_cast<size_t>(sz);
 #else
-  // Legacy TensorRT returns Dims3 object
-  Dims3 shape = tensor->getDimensions();
-  return long(shape.c) * shape.w * shape.h;
+    // Legacy TensorRT returns Dims3 object
+    Dims3 shape = tensor->getDimensions();
+    return long(shape.c) * shape.w * shape.h;
 #endif
 }
 
-/**
- * @brief Return number of elements in tensor from binding
- * list accosiated with index \p idx.
- * @param engine Pointer to an engine.
- * @param idx Index of the tensor.
- * @return Number of elements in tensor.
- */
-// Get number of elements in this tensor (blob).
-size_t get_binding_size(ICudaEngine* engine, const int idx) {
+
+
+size_t tensorrt_utils::get_tensor_size(ICudaEngine* engine, const int idx) {
 #if NV_TENSORRT_MAJOR >= 3
   const Dims shape = engine->getBindingDimensions(idx);
   long sz = 1;
@@ -84,8 +142,7 @@ size_t get_binding_size(ICudaEngine* engine, const int idx) {
 #endif
 }
 
-
-ICudaEngine* load_engine_from_file(const std::string& fname, logger_impl& logger) {
+ICudaEngine* tensorrt_utils::load_engine_from_file(const std::string& fname, logger_impl& logger) {
     size_t nbytes_read(0);
     char* data = fs_utils::read_data(fname, nbytes_read);
     ICudaEngine* engine(nullptr);
@@ -98,7 +155,7 @@ ICudaEngine* load_engine_from_file(const std::string& fname, logger_impl& logger
     return engine;
 }
 
-void serialize_engine_to_file(ICudaEngine *engine_, const std::string& fname) {
+void tensorrt_utils::serialize_engine_to_file(ICudaEngine *engine_, const std::string& fname) {
     if (fname.empty()) {
         return;
     }

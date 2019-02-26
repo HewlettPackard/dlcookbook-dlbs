@@ -7,15 +7,33 @@ set(HOST_DTYPE "INT8" CACHE STRING "Data type to use to store images in host OS 
 
 # Following preprocessor variables can be defined: HAVE_CUDA, HAVE_NVINFER, HAVE_OPENCV
 find_package(Boost REQUIRED COMPONENTS program_options)
-find_path(nvinfer_include_dirs NvInfer.h HINTS ENV)
-find_library(nvinfer_library_dirs NAMES libnvinfer nvcaffe_parser)
 find_package(CUDA COMPONENTS cudart)
 find_package(OpenCV 2)
 find_package(Doxygen)
 
-if (CUDA_FOUND AND nvinfer_include_dirs AND nvinfer_library_dirs)
+# Find TensorRT library (libnvinfer.so). If found, also search for caffe and onnx parsers.
+find_path(nvinfer_include_dir NvInfer.h)
+find_library(nvinfer_library nvinfer)
+if (nvinfer_include_dir AND nvinfer_library)
     set (NvInfer_FOUND TRUE)
-else()
+    get_filename_component(nvinfer_path ${nvinfer_library} DIRECTORY)
+
+    find_path(caffe_parser_include_dir NvCaffeParser.h)
+    find_library(caffe_parser_library nvcaffe_parser HINTS ${nvinfer_path} NO_DEFAULT_PATH)
+    if (caffe_parser_include_dir AND caffe_parser_library)
+        set (CaffeParser_FOUND TRUE)
+    else() 
+        set (CaffeParser_FOUND FALSE)
+    endif()
+
+    find_path(onnx_parser_include_dir NvOnnxParser.h)
+    find_library(onnx_parser_library nvonnxparser HINTS ${nvinfer_path} NO_DEFAULT_PATH)
+    if (onnx_parser_include_dir AND onnx_parser_library)
+        set (OnnxParser_FOUND TRUE)
+    else() 
+        set (OnnxParser_FOUND FALSE)
+    endif()
+else() 
     set (NvInfer_FOUND FALSE)
 endif()
 
@@ -27,11 +45,25 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 message("Configuring TensorRT benchmark backend in ${CMAKE_BUILD_TYPE} mode.")
 
+# https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#Warning-Options
+add_compile_options(-Wpedantic)              # Issue all the warnings demanded by strict ISO C and ISO C++ ...
+add_compile_options(-Wall)                   # This enables all the warnings about constructions that some users consider questionable, and that are easy to avoid ...
+add_compile_options(-Wextra)                 # This enables some extra warning flags that are not enabled by -Wall ...
+add_compile_options(-Wformat)                # Check calls to printf and scanf, etc., to make sure that the arguments supplied have types appropriate ...
+add_compile_options(-Wuninitialized)         # Warn if an automatic variable is used without first being initialized or ...
+add_compile_options(-Wmaybe-uninitialized)   # For an automatic (i.e. local) variable, if there exists a path from the function entry to a use ...
+add_compile_options(-Winit-self)             # Warn about uninitialized variables that are initialized with themselves.
+add_compile_options(-Wmissing-include-dirs)  # Warn if a user-supplied include directory does not exist.
+add_compile_options(-Wreturn-type)           # Warn whenever a function is defined with a return type that defaults to int ...
+add_compile_options(-Wsuggest-override)      # Warn about overriding virtual functions that are not marked with the override keyword.
+add_compile_options(-Wshadow)                # Warn whenever a local variable or type declaration shadows another variable ...
+add_compile_options(-Wcast-qual)             # Warn whenever a pointer is cast so as to remove a type qualifier from the target type.
+add_compile_options(-Wredundant-decls)       # Warn if anything is declared more than once in the same scope, even in cases where ...
 
 if (0)
-    add_compile_options(-pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization)
-    add_compile_options(-Wformat=2 -Winit-self -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs -Wnoexcept)
-    add_compile_options(-Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo)
+    add_compile_options(-Wcast-align -Wctor-dtor-privacy -Wdisabled-optimization)
+    add_compile_options( -Wlogical-op -Wmissing-declarations  -Wnoexcept)
+    add_compile_options(-Woverloaded-virtual -Wshadow -Wsign-conversion -Wsign-promo)
     add_compile_options(-Wstrict-null-sentinel -Wswitch-default -Werror -Wno-unused)
     add_compile_options(-Wstrict-overflow=5 -Wold-style-cast  -Wundef)
 endif()
@@ -67,8 +99,21 @@ endif()
 if (NvInfer_FOUND)
     message("Configuring TensorRT benchmark backend with NvInfer library.")
     add_definitions(-DHAVE_NVINFER)
-    include_directories(SYSTEM ${nvinfer_include_dirs})
-    link_directories(${nvinfer_library_dirs})
+    include_directories(SYSTEM ${nvinfer_include_dir})
+    link_directories(${nvinfer_path})
+    
+    if (CaffeParser_FOUND)
+        message("Configuring TensorRT benchmark backend with CaffeParser library.")
+        add_definitions(-DHAVE_CAFFE_PARSER)
+        include_directories(SYSTEM ${caffe_parser_include_dir})
+    endif()
+    
+    if (OnnxParser_FOUND)
+        message("Configuring TensorRT benchmark backend with OnnxParser library.")
+        add_definitions(-DHAVE_ONNX_PARSER)
+        include_directories(SYSTEM ${onnx_parser_include_dir})
+    endif()
+    
 endif()
 
 if(OpenCV_FOUND)
@@ -127,7 +172,13 @@ if (NvInfer_FOUND)
                 "src/engines/tensorrt_engine.hpp" "src/engines/tensorrt_engine.cpp"
                 "src/engines/mgpu_engine.hpp")
     set_target_properties(trtbenchinfer PROPERTIES LINKER_LANGUAGE CXX)
-    set(infer_libs trtbenchinfer ${cuda_libs} libnvinfer.so.2 nvcaffe_parser)
+    set(infer_libs trtbenchinfer ${cuda_libs} libnvinfer.so)
+    if (CaffeParser_FOUND)
+        set(infer_libs ${infer_libs} libnvcaffe_parser.so)
+    endif()
+    if (OnnxParser_FOUND)
+        set(infer_libs ${infer_libs} libnvonnxparser.so)
+    endif()
 endif()
 # -------------------------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------------------------

@@ -160,7 +160,7 @@ private:
 public:
     fake_inference_engine(const int engine_id, const int num_engines,
                           logger_impl & logger, const inference_engine_opts& opts)
-        : inference_engine(engine_id, num_engines_, logger, opts) {}
+        : inference_engine(engine_id, num_engines, logger, opts) {}
 };
 
 

@@ -18,37 +18,36 @@ if [ "${tensorrt_fake_inference}" == "false" ]; then
         report_and_exit "skipped" "The replica batch size (${exp_replica_batch}) is too large for given SW/HW configuration." "${exp_log_file}";
     }
     # Make sure model exists
-    host_model_dir=$DLBS_ROOT/models/${exp_model}
-    model_file=$(find ${host_model_dir}/ -name "*.${exp_phase}.prototxt")
-    file_exists "$model_file" || \
-        report_and_exit "failure" "A model file (${host_model_dir}/*.${exp_phase}.prototxt) does not exist." "${exp_log_file}"
+    if [ "${tensorrt_user_model}" == "false" ]; then
+        host_model_dir=$DLBS_ROOT/models/${exp_model}
+        model_file=$(find ${host_model_dir}/ -name "*.${exp_phase}.prototxt")
+        file_exists "$model_file" || \
+            report_and_exit "failure" "A model file (${host_model_dir}/*.${exp_phase}.prototxt) does not exist." "${exp_log_file}"
 
-    # Copy model file and replace batch size there.
-    remove_files "${host_model_dir}/${caffe_model_file}"
-    cp ${model_file} ${host_model_dir}/${caffe_model_file} || {
-        report_and_exit "failure" "Cannot copy \"${model_file}\" to \"${host_model_dir}/${caffe_model_file}\"" "${exp_log_file}"
-    }
+        # Copy model file and replace batch size there.
+        remove_files "${host_model_dir}/${caffe_model_file}"
+        cp ${model_file} ${host_model_dir}/${caffe_model_file} || {
+            report_and_exit "failure" "Cannot copy \"${model_file}\" to \"${host_model_dir}/${caffe_model_file}\"" "${exp_log_file}"
+        }
 
-    sed -i "s/__EXP_DEVICE_BATCH__/${exp_replica_batch}/g" ${host_model_dir}/${caffe_model_file}
-    net_name=$(get_value_by_key "${host_model_dir}/${caffe_model_file}" "name")
-    echo "__exp.model_title__= \"${net_name}\"" >> ${exp_log_file}
+        sed -i "s/__EXP_DEVICE_BATCH__/${exp_replica_batch}/g" ${host_model_dir}/${caffe_model_file}
+        net_name=$(get_value_by_key "${host_model_dir}/${caffe_model_file}" "name")
+        echo "__exp.model_title__= \"${net_name}\"" >> ${exp_log_file}
+    fi
 fi
 # If does not exist, create calibration cache path
 [ ! -z ${tensorrt_cache} ] && mkdir -p ${tensorrt_cache}
 # This script is to be executed inside docker container or on a host machine.
 # Thus, the environment must be initialized inside this scrip lazily.
 [ -z "${runtime_launcher}" ] && runtime_launcher=":;"
-script="\
-    export ${tensorrt_env};\
-    echo -e \"__exp.framework_ver__= \x22\$(tensorrt --version)\x22\";\
-    echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-    ${runtime_launcher} tensorrt ${tensorrt_args} &\
-    proc_pid=\$!;\
-    [ \"${monitor_frequency}\" != \"0\" ] && echo -e \"\${proc_pid}\" > ${monitor_backend_pid_folder}/proc.pid;\
-    wait \${proc_pid};\
-    echo -e \"__results.end_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-    echo -e \"__results.proc_pid__= \${proc_pid}\";\
-"
+script="          export ${tensorrt_env}"
+script="$script;"'echo -e "__exp.framework_ver__= \x22$(tensorrt --version)\x22"'
+script="$script;"'echo -e "__results.start_time__= \x22$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22"'
+script="$script;${runtime_launcher} tensorrt ${tensorrt_args}"'& proc_pid=$!'
+script="$script; [ \x22${monitor_frequency}\x22 != \x220\x22 ] && "'echo -e "${proc_pid}"'"> ${monitor_backend_pid_folder}/proc.pid"
+script="$script;"'wait ${proc_pid}'
+script="$script;"'echo -e "__results.end_time__= \x22$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22"'
+script="$script;"'echo -e "__results.proc_pid__= ${proc_pid}";'
 
 if [ "${exp_docker}" = "true" ]; then
     assert_docker_img_exists "${exp_docker_image}" "${exp_docker_launcher}"

@@ -33,7 +33,7 @@ public:
         mProfile.clear();
     }
   
-    virtual void reportLayerTime(const char* layerName, float ms) {
+    virtual void reportLayerTime(const char* layerName, float ms) override {
         auto record = std::find_if(mProfile.begin(), mProfile.end(), [&](const Record& r){ return r.first == layerName; });
         if (record == mProfile.end()) {
             mProfile.push_back(std::make_pair(layerName, ms));

@@ -95,8 +95,9 @@ public:
 #if defined HAVE_NVINFER  
     // Print engine bindings (input/output blobs)
     void log_bindings(nvinfer1::ICudaEngine* engine, const std::string& log_prefix);
+    void log_bindings(nvinfer1::INetworkDefinition* network, const std::string& log_prefix);
 
-    void log(nvinfer1::ILogger::Severity severity, const char* msg) override { log_internal(severity_transform_[severity], msg); }
+    void log(nvinfer1::ILogger::Severity the_severity, const char* msg) override { log_internal(severity_transform_[the_severity], msg); }
 #endif
     template <typename T> void log_internal_error(const T& msg) { log_internal(severity::internal_error, msg); }
     template <typename T> void log_error(const T& msg) { log_internal(severity::error, msg); }
@@ -111,6 +112,8 @@ private:
             exit(1);
         }
     }
+    template<typename ShapeType>
+    void log_tensor_shape(const ShapeType& shape);
     
     std::string time_stamp();
 private:
