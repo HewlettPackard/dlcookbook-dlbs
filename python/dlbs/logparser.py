@@ -93,12 +93,13 @@ class LogParser(object):
             DictUtils.ensure_exists(opts, key)
         DictUtils.ensure_exists(opts, 'failed_benchmarks', 'discard')
         DictUtils.ensure_exists(opts, '_extended_params', {})
+        DictUtils.ensure_exists(opts, 'ignore_errors', False)
 
         succeeded_benchmarks = []
         failed_benchmarks = []
         for filename in filenames:
             # Parse log file
-            params = LogParser.parse_log_file(filename)
+            params = LogParser.parse_log_file(filename, ignore_errors=opts['ignore_errors'])
             # Check if this benchmark does not match filter
             if len(params) == 0 or \
                not DictUtils.contains(params, opts['filter_params']) or \
@@ -127,7 +128,7 @@ class LogParser(object):
         return (succeeded_benchmarks, failed_benchmarks)
 
     @staticmethod
-    def parse_log_file(filename):
+    def parse_log_file(filename, ignore_errors=False):
         """ Parses one log file.
 
         Parameters are defined in that file as key-value pairs. Values must be
@@ -154,7 +155,8 @@ class LogParser(object):
                 exp_params,
                 logfile,
                 pattern='[ \t]*__(.+?(?=__[ \t]*[=]))__[ \t]*=(.+)',
-                must_match=False
+                must_match=False,
+                ignore_errors=ignore_errors
             )
         return exp_params
 
@@ -174,6 +176,10 @@ def parse_args():
     parser.add_argument(
         '--recursive', required=False, default=False, action='store_true',
         help="Scan --log-dir folder recursively for log files."
+    )
+    parser.add_argument(
+        '--ignore_errors', required=False, default=False, action='store_true',
+        help="If set, ignore errors related to parsing benchmark parameters."
     )
     parser.add_argument(
         '--output_file', '--output-file', type=str, required=False, default=None,

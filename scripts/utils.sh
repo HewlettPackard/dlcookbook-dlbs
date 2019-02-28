@@ -239,3 +239,33 @@ report_and_exit() {
   logfatal "$2 (status code = $1)"
 }
 export -f report_and_exit
+
+# This is a temporary solution now - to update TensorFlow log files (tf_cnn_benchmarks)
+update_tf_cnn_benchmarks_logs() {
+    [[ "$#" -ne 1 ]] && logfatal "update_tf_cnn_benchmarks_logs: One mandatory parameter (log_dir) is required.)";
+    log_dir=$1
+    titles='{"alexnet_owt": "AlexNetOWT", "googlenet": "GoogleNet","inception_resnet_v2": "InceptionResNetV2","inception3": "InceptionV3", "inception4": "InceptionV4", "overfeat": "Overfeat","resnet18": "ResNet18", "resnet34": "ResNet34", "resnet50": "ResNet50","resnet101": "ResNet101", "resnet152": "ResNet152","vgg11": "VGG11", "vgg13": "VGG13", "vgg16": "VGG16", "vgg19": "VGG19","xception": "Xception"}'
+    cur_dir=$(pwd)
+    cd ${log_dir}
+    log_files=($(ls *.log))
+    for log_file in "${log_files[@]}"; do
+        # Extract images/sec
+        throughput=$(grep -oP "(?<=total images/sec: )[0-9]+([.][0-9]*)?" ${log_file})
+        [[ "${throughput}XXX" == "XXX" ]] && continue
+        # Extract replica batch size
+        replica_batch=$(grep -oP "(?<=__exp.replica_batch__=)([0-9])+" ${log_file})
+        [[ "${replica_batch}XXX" == "XXX" ]] && continue
+        # Extract and compute model name:
+        model=$(grep -oP '(?<=__exp.model__=")(.)+(?=")' ${log_file})
+        [[ "${model}XXX" == "XXX" ]] && continue
+        model=$(python -c "ts=${titles}; m='${model}'; print(m if m not in ts else ts[m]);")
+        # Compute batch time
+        batch_time=$(python -c "print(1000.0*${replica_batch}/${throughput})")
+        # Update log file
+        echo "__results.throughput__=${throughput}" >> ${log_file}
+        echo "__results.time__=${batch_time}" >> ${log_file}
+        echo "__exp.model_title__=\"${model}\"" >> ${log_file}
+    done
+    cd ${cur_dir}
+}
+export -f update_tf_cnn_benchmarks_logs
