@@ -252,15 +252,15 @@ update_tf_cnn_benchmarks_logs() {
         # Extract images/sec
         throughput=$(grep -oP "(?<=total images/sec: )[0-9]+([.][0-9]*)?" ${log_file})
         [[ "${throughput}XXX" == "XXX" ]] && continue
-        # Extract replica batch size
-        replica_batch=$(grep -oP "(?<=__exp.replica_batch__=)([0-9])+" ${log_file})
-        [[ "${replica_batch}XXX" == "XXX" ]] && continue
+        # Extract effective batch size
+        effective_batch=$(grep -oP "(?<=__exp.effective_batch__=)([0-9])+" ${log_file})
+        [[ "${effective_batch}XXX" == "XXX" ]] && continue
         # Extract and compute model name:
         model=$(grep -oP '(?<=__exp.model__=")(.)+(?=")' ${log_file})
         [[ "${model}XXX" == "XXX" ]] && continue
         model=$(python -c "ts=${titles}; m='${model}'; print(m if m not in ts else ts[m]);")
         # Compute batch time
-        batch_time=$(python -c "print(1000.0*${replica_batch}/${throughput})")
+        batch_time=$(python -c "print(1000.0*${effective_batch}/${throughput})")
         # Update log file
         echo "__results.throughput__=${throughput}" >> ${log_file}
         echo "__results.time__=${batch_time}" >> ${log_file}

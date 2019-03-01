@@ -137,7 +137,7 @@ for dockerfile_dir in "$@"; do
     # Sergey: this code will be removed once all frameworks use new image prefix 'dlbs'
     # If prefix was not provided by a user, set it here.
     if [ "${prefix}XXX" == "XXX" ]; then
-        if [ "${name}" == "tensorrt" ] || [ "${name}" == "pytorch" ] || [ "${name}" == "mxnet" ] || [ "${name}" == "caffe2" ] || [ "${name}" == "intel_caffe" ]; then
+        if [ "${name}" == "tensorrt" ] || [ "${name}" == "pytorch" ] || [ "${name}" == "mxnet" ] || [ "${name}" == "caffe2" ] || [ "${name}" == "intel_caffe" ] || [ "${name}" == "tensorflow" ]; then
             prefix=dlbs
         else
             prefix=hpe
