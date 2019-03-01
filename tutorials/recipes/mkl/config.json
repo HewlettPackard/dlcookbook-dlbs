@@ -15,7 +15,7 @@
 
     "tensorflow.use_nccl": false,
     "tensorflow.use_mkl": true,
-    "tensorflow.report_interval": 20,
+    "tensorflow.report_interval": "20",
     "tensorflow.git_hashtag": "0d5ca8084c96528b166b3839ed598a7a57114c68"
   },
   "variables":{
