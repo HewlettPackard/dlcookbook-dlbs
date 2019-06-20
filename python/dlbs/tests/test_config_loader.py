@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """These unit tests test dlbs.utils.ConfigurationLoader class methods."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 import unittest
 # append parent directory to import path
-import env #pylint: disable=W0611
+import dlbs.tests.env  # pylint: disable=W0611
 from dlbs.utils import ConfigurationLoader
+
 
 class TestConfigurationLoader(unittest.TestCase):
 
@@ -50,7 +55,7 @@ class TestConfigurationLoader(unittest.TestCase):
         ],
         'caffe2': [
             "launcher", "data_dir", "data_backend", "args", "docker_image",
-            "docker_args", "bench_path", "host_python_path","host_libpath"
+            "docker_args", "bench_path", "host_python_path", "host_libpath"
         ],
         'caffe': [
             "launcher", "env", "fork", "action", "model_file", "solver_file",
@@ -84,14 +89,14 @@ class TestConfigurationLoader(unittest.TestCase):
     def setUp(self):
         self.config_path = os.path.join(os.path.dirname(__file__), '..', 'configs')
         self.config_files = ['base.json', 'caffe.json', 'caffe2.json', 'mxnet.json',
-                             'tensorflow.json', 'tensorrt.json', 'pytorch.json']
+                             'tensorflow.json', 'tensorrt.json', 'pytorch.json', 'nvcnn.json', 'nvtfcnn.json']
         self.config_files.sort()
 
     def test_update_param_info(self):
         pi = {}
         ConfigurationLoader.update_param_info(
             pi,
-            {'parameters':{
+            {'parameters': {
                 'p1': 1, 'p2': u'2', 'p3': '3', 'p4': ['1', '2', '3', '4'],
                 'p5': False, 'p6': -3.33,
                 'p7': {'val': '34', 'type': 'str', 'desc': 'Some desc'}
@@ -109,7 +114,7 @@ class TestConfigurationLoader(unittest.TestCase):
 
     def test_remove_info(self):
         config = ConfigurationLoader.remove_info(
-            {'parameters':{
+            {'parameters': {
                 'p1': 1, 'p2': u'2', 'p3': '3', 'p4': ['1', '2', '3', '4'],
                 'p5': False, 'p6': -3.33,
                 'p7': {'val': '34', 'type': 's3tr', 'desc': 'Some desc'}

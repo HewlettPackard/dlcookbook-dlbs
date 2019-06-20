@@ -15,30 +15,36 @@
 
 Experiment is just a bunch of named parameters. Builder takes as an input standard
 configurations, configuration, provided by a user, parameters and variables passed on
-a command line and using cartesian product of variables plus etensions builds as many
+a command line and using cartesian product of variables plus extensions builds as many
 experiments as possible.
 
 Variables in experiments are not computed.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import itertools
 import copy
 import uuid
-from dlbs.utils import DictUtils
-from dlbs.processor import Processor
+from dlbs.utils import Six, DictUtils, ParamUtils
+
 
 class Builder(object):
     """Builds experiments' plans but does not compute their variables."""
 
     @staticmethod
     def build(config, params, variables):
-        """ Given input configuration and comamnd line parameters/variables build experiments
+        """ Given input configuration and command line parameters/variables build experiments
 
-        :param dict config: Dictionary of parameters/variables/extensions
-        :param dict params: Dictionary of command line parameters
-        :param dict variables: Dictionary of command line variables
-        :return: Array of experiments. Each experiment is defined by a set of parameters.
+        Args:
+            config (dict): Dictionary of parameters/variables/extensions
+            params (dict): Dictionary of command line parameters
+            variables (dict): Dictionary of command line variables
 
-        A high level overview of what buidler does is:
+        Returns:
+            list: Array of experiments. Each experiment is defined by a set of parameters.
+
+        A high level overview of what builder does is:
         ::
 
           1. Add **variables** to 'variables' section of a configuration ('config').
@@ -77,7 +83,7 @@ class Builder(object):
             if not isinstance(config['variables'][variable], list):
                 config['variables'][variable] = [config['variables'][variable]]
 
-        # Now, we need to override environmental varaibles
+        # Now, we need to override environmental variables
         for param in params:
             config['parameters'][param] = copy.deepcopy(params[param])
 
@@ -110,15 +116,18 @@ class Builder(object):
 
     @staticmethod
     def apply_extensions(base_experiment, config):
-        """ Apply extensions in *config* to experiment *base_experiment*.
+        """ Apply extensions in `config` to experiment `base_experiment`.
 
         The algorithm looks like this. We start with a list containing only
-        one experiment - *base_experiment*. Then, we each extension we try to
+        one experiment - `base_experiment`. Then, we each extension we try to
         extend all experiments in a list.
 
-        :param dict base_experiment: Parameters of an experiment
-        :param dict config: Configuration dictionary
-        :return: List of experiments extended with extensions or list with `base_experiment`.
+        Args:
+            base_experiment (dict): Parameters of an experiment
+            config (dict): Configuration dictionary
+
+        Returns:
+            list: List of experiments extended with extensions or list with `base_experiment`.
         """
         experiments = [copy.deepcopy(base_experiment)]
         for extension in config['extensions']:
@@ -148,7 +157,8 @@ class Builder(object):
                         extension_experiment[session_key] = matches[match_key]
                     # We need to update values in `extension["parameters"]` for
                     # current session id
-                    extension_experiment.update(Builder.correct_var_ref_in_extension(session_id, extension['parameters']))
+                    extension_experiment.update(Builder.correct_var_ref_in_extension(session_id,
+                                                                                     extension['parameters']))
                     if len(extension['cases']) == 0:
                         active_experiments.append(extension_experiment)
                     else:
@@ -165,40 +175,43 @@ class Builder(object):
 
     @staticmethod
     def assert_match_is_corrent(experiment, condition):
-        """ Checks that parameters in **condition** have constant values in **experiment**.
+        """ Checks that parameters in `condition` have constant values in `experiment`.
 
-        :param dict experiment: Dictionary of parameters for current experiment
-        :param dict condition: Dictionary of parameters constraints. Here, we are
-                               interested only in parameter names
+        Args:
+            experiment (dict): Dictionary of parameters for current experiment
+            condition (dict): Dictionary of parameters constraints. Here, we are interested only in parameter names
 
-        If match cannot be performed correctly, program terminates. Incorrect match
-        is a match when parameter in **experiment** is not constant i.e. depends on
-        other parameters.
+        If match cannot be performed correctly, program terminates. Incorrect match is a match when parameter in
+        `experiment` is not constant i.e. depends on other parameters.
         """
         for param in condition:
             # If parameter not in experiment, just do not consider it
             if param not in experiment:
                 continue
-            assert Processor.is_param_constant(experiment[param]),\
-                   "Condition must not use parameter that's not a constant (%s=%s)" % (param, experiment[param])
+            if not ParamUtils.is_constant(experiment[param]):
+                raise ValueError("Condition must not use parameter that's not a constant (%s=%s)" %
+                                 (param, experiment[param]))
 
     @staticmethod
     def correct_var_ref_in_extension(session_id, params):
-        """Correct variables references in *params* and 'cases' that reference extension variables.
+        """Correct variables references in `params` and 'cases' that reference extension variables.
 
-        :param str session_id: Unique identifier of an extension for this experiment.
-        :param dict params: Values in this dictionary must be scanned for correction.\
-                            This dictionary is not modified here.
-        :return: Dictionary with corrected variable references.
+        Args:
+            session_id (str): Unique identifier of an extension for this experiment.
+            params (str): Values in this dictionary must be scanned for correction. This dictionary is not modified
+                here.
+
+        Returns:
+            dict: Dictionary with corrected variable references.
         """
-        session_prefix = '${__dlbs_%s_' % (session_id)
+        session_prefix = '${__dlbs_%s_' % session_id
         new_params = copy.deepcopy(params)
         for key, value in new_params.items():
-            #assert not isinstance(value, list), "Lists are not supported in extension section"
-            if isinstance(value, basestring):
+            # assert not isinstance(value, list), "Lists are not supported in extension section"
+            if isinstance(value, Six.string_types):
                 new_params[key] = value.replace('${__condition.', session_prefix)
             elif isinstance(value, list):
                 for idx, item in enumerate(value):
-                    if isinstance(item, basestring):
+                    if isinstance(item, Six.string_types):
                         value[idx] = item.replace('${__condition.', session_prefix)
         return new_params

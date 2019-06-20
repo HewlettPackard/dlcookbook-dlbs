@@ -1,0 +1,17 @@
+#!/bin/bash
+
+export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
+source ${BENCH_ROOT}/../../../scripts/environment.sh
+
+# Run one of these configurations. The `_test` is a simple config to make sure everything works.
+config=./inference_test.json
+#config=./inference.json
+
+# On a multi-socket machine, try changing the following parameters in a configuration file (for example):
+#   "runtime.launcher": "numactl --localalloc --physcpubind=0-7",
+#   "runtime.launcher": "taskset -c 0-7",
+#   "tensorflow.num_intra_threads": 8,
+#   "tensorflow.num_inter_threads": 8,
+
+python ${experimenter} run --config=${config}
+exit 0

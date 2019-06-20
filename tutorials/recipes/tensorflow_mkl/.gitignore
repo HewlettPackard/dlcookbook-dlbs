@@ -1,0 +1,9 @@
+# Ignore everything
+*
+
+# But these files:
+!.gitignore
+!inference.json
+!inference_test.json
+!parse
+!run

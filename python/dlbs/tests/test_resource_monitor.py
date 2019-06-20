@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests Helper class."""
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+
 import os
 import unittest
 # append parent directory to import path
 import time
-import env  #pylint: disable=W0611
+import dlbs.tests.env  # pylint: disable=W0611
 from dlbs.utils import ResourceMonitor
+
 
 class TestResourceMonitor(unittest.TestCase):
     def setUp(self):

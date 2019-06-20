@@ -13,7 +13,7 @@
 # limitations under the License.
 """ Validator verifies that every experiment in a plan can be ran on a machine.
 
-It uses several huristics for that. This is what is checked:
+It uses several heuristics for that. This is what is checked:
 
 1. `Log files collision check`: no two or more experiments write results in a same file
 2. `Docker/NVIDIA docker availability check`: if docker or nvidia docker is required to
@@ -27,17 +27,21 @@ Usage:
 ::
 
   validator = Validator(plan)  # Create validator.
-  validator.validate()         # Compute variables and perform checks.
+  validator.validate()         # Perform checks.
   validator.report()           # Report results.
 
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 import json
 import os
 import subprocess
 import string
 import copy
+from dlbs.utils import Six
 from collections import defaultdict
+
 
 class Validator(object):
     """ Validates plan for various errors like log files collision, availability
@@ -45,27 +49,32 @@ class Validator(object):
     """
 
     def __init__(self, plan):
-        self.plan = copy.deepcopy(plan)    # Plan - we will compute variables here - so it's a machine dependent validation.
-        self.plan_ok = True                # Global summary: is plan OK.
-        self.log_files_collisions = set()  # Files that are produced by 2 or more experiments (collisions)
-        self.num_disabled = 0              # Number of disabled experiments
-        self.frameworks = {}               # Frameworks stats excluding disabled experiments
-        self.need_docker = False           # Does the plan need docker (CPU experiments)?
-        self.need_nvidia_docker = False    # Does the plan need nvidia docker (GPU experiments)?
-        self.need_nvidia_docker2 = False   # Does the plan need nvidia docker 2 (GPU experiments)?
-        self.cpu_docker_imgs = {}          # The mapping "framework -> set of docker images" for CPU experiments
-        self.gpu_docker_imgs = {}          # The mapping "framework -> set of docker images" for GPU experiments
-        self.errors = []                   # All the errors found in this plan.
-        self.messages = []                 # Any informational message that we want to print in a summary report.
-                                           # Like docker images IDs or framework versions.
+        """ Initialize validator.
 
-        self.framework_host_checks = {}    # Temporary storage for the mapping "framework -> env". Env is the env
-                                           # variables that we have already checked.
+        Args:
+            plan: A list of dictionaries. Each dictionary defines parameters for one benchmark.
+        """
+        self.plan = copy.deepcopy(plan)     # We will compute variables here - so it's a machine dependent validation.
+        self.plan_ok = True                 # Global summary: is plan OK.
+        self.log_files_collisions = set()   # Files that are produced by 2 or more experiments (collisions)
+        self.num_inactive = 0               # Number of inactive experiments
+        self.frameworks = {}                # Frameworks stats excluding inactive experiments
+        self.need_docker = False            # Does the plan need docker (CPU experiments)?
+        self.need_nvidia_docker = False     # Does the plan need nvidia docker (GPU experiments)?
+        self.need_nvidia_docker2 = False    # Does the plan need nvidia docker 2 (GPU experiments)?
+        self.cpu_docker_imgs = {}           # The mapping "framework -> set of docker images" for CPU experiments
+        self.gpu_docker_imgs = {}           # The mapping "framework -> set of docker images" for GPU experiments
+        self.errors = []                    # All the errors found in this plan.
+        self.messages = []                  # Any informational message that we want to print in a summary report.
+        #                                     Like docker images IDs or framework versions.
+
+        self.framework_host_checks = {}     # Temporary storage for the mapping "framework -> env". Env is the env
+        #                                     variables that we have already checked.
 
     def validate(self):
         """Performs all checks for provided plan."""
         # Log files play important role in logging benchmark results. By default, we perform log file check. We
-        # force every exepriment to have this parameter of type string (not None and not empty)
+        # force every experiment to have this parameter of type string (not None and not empty)
         log_file_check = True
         if 'DLBS_LOG_FILE_CHECK' in os.environ and os.environ['DLBS_LOG_FILE_CHECK'] == 'false':
             print("[WARNING] Found DLBS_LOG_FILE_CHECK environmental variable with value 'false'."
@@ -79,14 +88,15 @@ class Validator(object):
                 if 'exp.log_file' not in experiment:
                     self.errors.append(
                         "No 'exp.log_file' parameter found in experiment definition."
-                        "To disable log file check, define 'DLBS_LOG_FILE_CHECK=false' environemntal variable."
+                        "To disable log file check, define 'DLBS_LOG_FILE_CHECK=false' environmental variable."
                     )
                 else:
                     log_file = experiment['exp.log_file']
-                    if log_file is None or not isinstance(log_file, basestring) or log_file.strip() == '':
+                    if log_file is None or not isinstance(log_file, Six.string_types) or log_file.strip() == '':
                         self.errors.append(
-                            "Log file parameter has invalid value ('%s'). It must not be None, must be of type string and must not be empty."
-                            "To disable log file check, define 'DLBS_LOG_FILE_CHECK=false' environemntal variable." % log_file
+                            "Log file parameter has invalid value ('%s'). It must not be None, must be of "
+                            "type string and must not be empty. To disable log file check, define "
+                            "'DLBS_LOG_FILE_CHECK=false' environmental variable." % log_file
                         )
                     elif log_file in log_files:
                         self.log_files_collisions.add(log_file)
@@ -112,8 +122,6 @@ class Validator(object):
         if len(self.log_files_collisions) > 0 or len(self.errors) > 0:
             self.plan_ok = False
 
-
-
     def report(self):
         """Prints validation summary."""
         print("====================== VALIDATION REPORT =======================")
@@ -133,17 +141,18 @@ class Validator(object):
         print("========================= PLAN SUMMARY =========================")
         print("Is plan OK ................................ %s" % (str(self.plan_ok)))
         print("Total number of experiments (plan size).....%d" % (len(self.plan)))
-        print("Number of disabled experiments ............ %d" % (self.num_disabled))
-        print("Number of active experiments .............. %d" % (len(self.plan) - self.num_disabled))
+        print("Number of inactive experiments ............ %d" % self.num_inactive)
+        print("Number of active experiments .............. %d" % (len(self.plan) - self.num_inactive))
         print("Log files collisions ...................... %s" % ('YES' if self.log_files_collisions else 'NO'))
         print("================================================================")
 
     def update_framework_stats(self, exp):
         """Updates statistics for a framework in this experiment `exp`.
 
-        Will not update stats if this experiment is disabled.
+        Will not update stats if this experiment is inactive.
 
-        :param dict exp: An experiment item from :py:meth:`~dlbs.Validator.plan` list.
+        Args:
+            exp (dict): An experiment item from :py:meth:`~dlbs.validator.Validator.plan` list.
         """
         if 'exp.framework' not in exp:
             framework_id = 'UNK'
@@ -154,16 +163,16 @@ class Validator(object):
                 'num_exps': 0,
                 'num_docker_exps': 0,
                 'num_host_exps': 0,
-                'num_disabled': 0,
+                'num_inactive': 0,
                 'num_gpu_exps': 0,
                 'num_cpu_exps': 0,
                 'docker_images': []
             }
         stats = self.frameworks[framework_id]
-        # Update number of disabled exps
-        if 'exp.status' in exp and exp['exp.status'] == 'disabled':
-            stats['num_disabled'] += 1
-            self.num_disabled += 1
+        # Update number of inactive exps
+        if 'exp.status' in exp and exp['exp.status'] in ('disabled', 'inactive'):
+            stats['num_inactive'] += 1
+            self.num_inactive += 1
             return
         stats['num_exps'] += 1
         # Update docker/host stats
@@ -177,13 +186,15 @@ class Validator(object):
                 # that contains docker image to use is exp.docker_image. BTW other, framework
                 # specific parameters, such as nvcnn.docker_image may contain same or different
                 # values, but they are not used.
-                #docker_img_key = '%s.docker_image' % (exp['exp.framework'])
+                # docker_img_key = '%s.docker_image' % (exp['exp.framework'])
                 docker_img_key = 'exp.docker_image'
                 if exp[docker_img_key] not in stats['docker_images']:
                     stats['docker_images'].append(exp[docker_img_key])
             else:
                 stats['num_host_exps'] += 1
-                self.check_host_framework(exp['exp.framework'], exp['%s.env' % (exp['exp.framework_family'])], exp['runtime.python'])
+                self.check_host_framework(exp['exp.framework'],
+                                          exp['%s.env' % (exp['exp.framework_family'])],
+                                          exp['runtime.python'])
         # Update CPU/GPU stats
         if 'exp.device_type' in exp:
             if exp['exp.device_type'] == 'gpu':
@@ -204,12 +215,11 @@ class Validator(object):
     def add_docker_image(self, framework, device, docker_img):
         """Adds CPU or GPU docker image to list of images.
 
-        :param str framework:  Framework name (caffe, tensorflow, caffe2 ...). This\
-                               is not a framework ID, so, you should not pass here something like\
-                               bvlc_caffe - use caffe for all caffe forks.
-        :param str device:     Main computational device: 'cpu' or 'gpu'. Based on this\
-                               value we select docker/nvidia-docker.
-        :param str docker_img: Name of a docker image.
+        Args:
+            framework (str):  Framework name (caffe, tensorflow, caffe2 ...). This is not a framework ID, so, you
+                should not pass here something like bvlc_caffe - use caffe for all caffe forks.
+            device (str): Main computational device: 'cpu' or 'gpu'. Based on this value we select docker/nvidia-docker.
+            docker_img (str): Name of a docker image.
         """
         imgs = self.gpu_docker_imgs if device == 'gpu' else self.cpu_docker_imgs
         if framework not in imgs:
@@ -219,11 +229,12 @@ class Validator(object):
     def check_host_framework(self, framework, env, python_exec):
         """Checks it can run framework in host environment.
 
-        :param str framework: Framework name (caffe, tensorflow, caffe2 ...). This\
-                              is not a framework ID, so, you should not pass here something like\
-                              bvlc_caffe - use caffe for all caffe forks.
-        :param str env: Environmental variables from experiment. We will parse them\
-                        into a dictionary to pass to a`subprocess.Popen` call.
+        Args:
+            framework (str): Framework name (caffe, tensorflow, caffe2 ...). This is not a framework ID, so, you
+                should not pass here something like bvlc_caffe - use caffe for all caffe forks.
+            env (str): Environmental variables from experiment. We will parse them into a dictionary to pass to a
+                `subprocess.Popen` call.
+            python_exec (str): A path to python executable to use.
         """
         # Check if we have already performed this test
         if framework not in self.framework_host_checks:
@@ -252,9 +263,9 @@ class Validator(object):
         elif framework == 'caffe2':
             # It seems that in the future releases it'll be possible to use something like:
             # from caffe2.python.build import build_options
-            #cmd = ['python', '-c', 'import caffe2;']
+            # cmd = ['python', '-c', 'import caffe2;']
             cmd = [python_exec, '-c', 'import os; os.environ.setdefault("PATH", ""); from caffe2.python.build import build_options; print(build_options);']
-            #cmd = ['python', '-c', 'from caffe2.python.build import CAFFE2_NO_OPERATOR_SCHEMA; print(CAFFE2_NO_OPERATOR_SCHEMA);']
+            # cmd = ['python', '-c', 'from caffe2.python.build import CAFFE2_NO_OPERATOR_SCHEMA; print(CAFFE2_NO_OPERATOR_SCHEMA);']
         elif framework == 'caffe':
             cmd = ['caffe', '--version']
         elif framework == 'tensorrt':
@@ -267,11 +278,11 @@ class Validator(object):
     def check_can_run_docker(self, runtime='docker'):
         """Checks if DLBS can run docker/nvidia-docker/nvidia-docker2.
 
-        :param str runtime: The docker runtime to test. Valid values are:
+        Args:
+            runtime (str): The docker runtime to test. Valid values are:
              - 'docker' or 'runc' for CPU workloads
              - 'nvidia-docker' for GPU workloads with nvidia-docker1
-             - 'nvidia-docker2' or 'nvidia' for GPU workloads with nvidia-docker2 (using
-               --runtime=nvidia)
+             - 'nvidia-docker2' or 'nvidia' for GPU workloads with nvidia-docker2 (using --runtime=nvidia)
         """
         def _get_docker_runtimes(info):
             for line in info:
@@ -301,12 +312,13 @@ class Validator(object):
             self.add_check_result('CanRunDocker', cmd, retcode, output)
         except OSError as error:
             self.add_check_result('CanRunDocker', cmd, retcode, output, error=str(error))
-            #self.errors.append("CanRunDocker (nvidia_docker=%s) check failed with message: '%s'" % (nvidia_docker, str(error)))
+            # self.errors.append("CanRunDocker (nvidia_docker=%s) check failed with message: '%s'" % (nvidia_docker, str(error)))
 
     def check_docker_image_exists(self, docker_img):
         """Checks if this docker image exists.
 
-        :param str docker_img: Name of a docker image.
+        Args:
+            docker_img (str): Name of a docker image.
         """
         try:
             cmd = ["docker", "inspect", "--type=image", docker_img]
@@ -320,15 +332,18 @@ class Validator(object):
                 output if retcode != 0 else ['docker image exists']
             )
         except OSError as error:
-            self.errors.append("DockerImageExists (image=%s) check failed with message: '%s'" % (docker_img, str(error)))
+            self.errors.append("DockerImageExists (image=%s) "
+                               "check failed with message: '%s'" % (docker_img, str(error)))
 
     @staticmethod
     def run_process(cmd, env=None):
-        """Runs process with subprocess.Popen (some kind of test).
+        """Runs process with subprocess.Popen (run a test).
 
-        :param list cmd: A command with its arguments to run.
-        :param dict env: Environmental variables to initialize environment.
-        :return: tuple (return_code (int), command_output (list of strings))
+        Args:
+            cmd (list): A command with its arguments to run.
+            env (dict): Environmental variables to initialize environment.
+        Returns:
+            tuple: (return_code (int), command_output (list of strings))
         """
         process = subprocess.Popen(cmd, universal_newlines=True, stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT, env=env)
@@ -339,17 +354,18 @@ class Validator(object):
                 break
             if line:
                 output.append(line)
-        #print("%d -> %s" % (process.returncode, str(output)))
-        return (process.returncode, output)
+        # print("%d -> %s" % (process.returncode, str(output)))
+        return process.returncode, output
 
     def add_check_result(self, check_name, cmd, retcode, output, **kwargs):
         """Adds check result to list of messages/errors depending on return code.
 
-        :param str check_name: Name of this check, something like `DockerImageExists`.
-        :param list cmd: a command with its arguments to run.
-        :param int retcode: A return code. The '0' value most likely indicates OK.
-        :param list output: A lsit of strings - output of the command run.
-        :param kwargs: Any other named parameters to add to a report.
+        Args:
+            check_name (str): Name of this check, something like `DockerImageExists`.
+            cmd (list): a command with its arguments to run.
+            retcode (int): A return code. The '0' value most likely indicates OK.
+            output (list): A list of strings - output of the command run.
+            **kwargs: Any other named parameters to add to a report.
         """
         message = {
             'check_name': check_name,

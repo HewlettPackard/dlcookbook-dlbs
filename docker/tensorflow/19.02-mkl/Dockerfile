@@ -4,6 +4,7 @@ FROM ubuntu:16.04
 MAINTAINER Craig Citro <craigcitro@google.com>
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        numactl \
         build-essential \
         curl \
         git \

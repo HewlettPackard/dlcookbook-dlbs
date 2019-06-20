@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests Helper class."""
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+
 import unittest
 # append parent directory to import path
-import env  #pylint: disable=W0611
+import dlbs.tests.env  # pylint: disable=W0611
 from dlbs.help.helper import Helper
-from  test_config_loader import TestConfigurationLoader
+from dlbs.tests.test_config_loader import TestConfigurationLoader
+
 
 class TestHelper(unittest.TestCase):
     def setUp(self):
@@ -42,7 +46,7 @@ class TestHelper(unittest.TestCase):
         """dlbs  ->  TestHelper::test_help_with_params_02                [Tests for parameter helper #2]"""
         self.assertEqual(len(self.helper.help_with_params(None, ['cuda'])), 4)
         self.assertEqual(len(self.helper.help_with_params(None, ['cudnn'])), 4)
-        self.assertEqual(len(self.helper.help_with_params(None, ['docker'])), 28)
+        self.assertEqual(len(self.helper.help_with_params(None, ['docker'])), 35)
 
     def test_help_with_params_03(self):
         """dlbs  ->  TestHelper::test_help_with_params_03                [Tests for parameter helper #3]"""

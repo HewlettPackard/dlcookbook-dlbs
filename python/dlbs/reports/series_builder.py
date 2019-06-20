@@ -15,6 +15,8 @@
 Parses log files or loads JSON file with parsed results and produces JSON
 with series information that can be used to plot charts.
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 import argparse
 import os
@@ -34,6 +36,7 @@ if Modules.HAVE_MATPLOTLIB:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
+
 class SeriesBuilder(object):
     """Creates a JSON object that can be used to plot charts, plots chart."""
 
@@ -46,7 +49,7 @@ class SeriesBuilder(object):
                          the chart.
         """
         series_filters = json.loads(args.series)
-        # During preprocessing step, we store series as dictionaries mapping
+        # During pre-processing step, we store series as dictionaries mapping
         # X to Y. Then, we convert it into array.
         chart_data = {
             'ylabel': args.yparam,   # Benchmark parameter for Y-axis
@@ -88,7 +91,7 @@ class SeriesBuilder(object):
                 baseline_val = series['data'][args.baseline_xvalue]
                 for xval in series['data']:
                     series['data'][xval] /= baseline_val
-        # Normalizatino with respect to baseline series
+        # Normalization with respect to baseline series
         if args.baseline_series:
             # We will normalize only when all values from other series can be scaled
             # i.e. baseline series must contain values for x points found in all other
@@ -203,7 +206,7 @@ def main():
     )
     parser.add_argument(
         '--baseline_xvalue', '--baseline-xvalue', type=str, required=False, default=None,
-        help="A value that's used to normalize one series. Usefull to plot speedup charts."
+        help="A value that's used to normalize one series. Useful to plot speedup charts."
     )
     parser.add_argument(
         '--baseline_series', '--baseline-series', type=int, required=False, default=None,
@@ -242,6 +245,7 @@ def main():
     # Plot it
     if args.chart_file:
         SeriesBuilder.plot(chart_data, args)
+
 
 if __name__ == '__main__':
     main()

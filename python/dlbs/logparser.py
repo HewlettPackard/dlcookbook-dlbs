@@ -11,10 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""":py:class:`dlbs.logparser.LogParser` class parses log files and extracts experiments' parameters.
+""":py:class:`dlbs.logparser.LogParser` class parses log files and extracts benchmark' parameters.
 
 It can parse any other files that contain key-value items according to a specific
 format. See :py:meth:`~dlbs.logparser.LogParser.parse_log_file` for details.
+
+Log parser can read data from:
+  * Benchmark log files (.log). Compressed versions are also supported (.log.gz).
+  * Files with benchmark data (.json). Compressed versions are also OK (.json.gz).
+  * Directories. Directories are only searched for *.log files, can be searched recursively.
 
 * Named arguments
 
@@ -31,49 +36,58 @@ format. See :py:meth:`~dlbs.logparser.LogParser.parse_log_file` for details.
 
   * ``FILE1 FILE2 ...``           Log files to parse. If set, ``--log_dir`` parameter is ignored.
 
-Example 1
+Example:
     Parse one file and print results to a standard output. It should print out
-    a whole bunch of parameters.
+    a whole bunch of parameters::
 
-    >>> python logparser.py ./bvlc_caffe/alexnet_2.log
+        $ python logparser.py ./bvlc_caffe/alexnet_2.log
 
-Example 2
+Example:
     If we are intrested only in some of the parameters, we can specify them on a
     command line with ``--keys`` command line argument. That's OK if some of these
-    parameters are not the log files.
+    parameters are not the log files::
 
-    >>> python logparser.py ./bvlc_caffe/alexnet_2.log --keys "exp.framework_title" "exp.model_title"  "exp.effective_batch" "results.training_time" "results.inference_time"
+        $ python logparser.py ./bvlc_caffe/alexnet_2.log --keys "exp.framework_title" "exp.model_title"  "exp.effective_batch" "results.training_time" "results.inference_time"
 
 
-Example 3
-    It's possible to specify as many log files as you want:
+Example:
+    It's possible to specify as many log files as you want::
 
-    >>> python logparser.py ./bvlc_caffe/*.log --keys "exp.framework_title" "exp.model_title"  "exp.effective_batch" "results.training_time" "results.inference_time"
+        $ python logparser.py ./bvlc_caffe/*.log --keys "exp.framework_title" "exp.model_title"  "exp.effective_batch" "results.training_time" "results.inference_time"
 
-Example 4
+Example:
     It's also possible to specify directory. In case of directory, a switch
     ``--recursive`` can be used to find log files in that directory and all its
-    subdirectories
+    subdirectories::
 
-    >>> python logparser.py --log-dir ./bvlc_caffe --recursive --keys "exp.framework_title" "exp.model_title"  "exp.effective_batch" "results.training_time" "results.inference_time"
+        $ python logparser.py --log-dir ./bvlc_caffe --recursive --keys "exp.framework_title" "exp.model_title"  "exp.effective_batch" "results.training_time" "results.inference_time"
 
-Example 5
-    Finally, the summary can be written to a file
+Example:
+    Finally, the summary can be written to a file::
 
-    >>> python logparser.py --summary-file ./bvlc_caffe/summary.json --log-dir ./bvlc_caffe --recursive \\
-    >>>                     --keys "exp.gpus" "exp.framework_title" "exp.model_title"  "exp.effective_batch" "results.training_time" "results.inference_time" "exp.framework_id"
+        $ python logparser.py --summary-file ./bvlc_caffe/summary.json --log-dir ./bvlc_caffe --recursive \\
+        $                     --keys "exp.gpus" "exp.framework_title" "exp.model_title"  "exp.effective_batch" "results.training_time" "results.inference_time" "exp.framework_id"
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+
 import os
 import sys
 import json
 import argparse
 import gzip
 import math
-import dlbs.python_version   # pylint: disable=unused-import
-from dlbs.utils import DictUtils
-from dlbs.utils import IOUtils
+
+from dlbs.utils import DictUtils, IOUtils, OpenFile
 from dlbs.processor import Processor
+
+
+"""
+print("[WARNING] This module is deprecated and will be removed in future releases. "
+      "Please, use bench_data.py instead.")
+"""
+
 
 class LogParser(object):
     """Parser for log files produced by Deep Learning Benchmarking Suite."""
@@ -109,7 +123,7 @@ class LogParser(object):
             if len(opts['_extended_params']) > 0:
                 params.update(opts['_extended_params'])
                 Processor().compute_variables([params])
-                #params = params[0]
+                # params = params[0]
             # Identify is this benchmark succeeded of failed.
             succeeded = 'results.throughput' in params and \
                         isinstance(params['results.throughput'], (int, long, float)) and \
@@ -125,57 +139,71 @@ class LogParser(object):
                 elif opts['failed_benchmarks'] == 'keep_separately':
                     failed_benchmarks.append(params)
             #
-        return (succeeded_benchmarks, failed_benchmarks)
+        return succeeded_benchmarks, failed_benchmarks
 
     @staticmethod
     def parse_log_file(filename, ignore_errors=False):
-        """ Parses one log file.
+        """ Parses one benchmark log file (possible compressed).
 
+        A log file is a textual log file. This method can also parse compressed
+        log files - files that have *.gz extension. One log file is associated with
+        one benchmark.
         Parameters are defined in that file as key-value pairs. Values must be
         json parsable strings. Every key has a prefix and a suffix equal to ``__``
         (two underscores), for instance:
 
-        * __exp.device_batch__= 16
+        * __exp.replica_batch__= 16
         * __results.training_time__= 33.343
 
         Parameters are keys without prefixes and suffixes i.e. 'exp.device_batch'
         and 'results.training_time' are parameter names from above example.
+        Not every line must contain parsable parameters. Those that do not match
+        key/value regular expression pattern are ignored.
+        One parameter may present in a log file multiple times. Only the last value
+        is returned.
 
-        :param str filename: Name of a file to parse.
-        :return: Dictionary with experiment parameters.
-        :rtype: dict
+        Args:
+            filename (str): Name of a file to parse.
+            ignore_errors (bool): If true, ignore parsing errors associated with parameter values.
+
+        Returns:
+            Dictionary with experiment parameters, for instance: {"exp.device_batch": 16, "exp.model": "resnet50"}
         """
         #       __(.+?(?=__[=]))__=(.+)
         # [ \t]*__(.+?(?=__[ \t]*[=]))__[ \t]*=(.+)
-        exp_params = {}
-        with open(filename) as logfile:
-            # The 'must_match' must be set to false. It says that not every line
-            # in a log file must match key-value pattern.
+        parameters = {}
+        with OpenFile(filename, 'r') as logfile:
+            # The 'must_match' must be set to false. It says that not
+            # every line in a log file must match key-value pattern.
             DictUtils.add(
-                exp_params,
+                parameters,
                 logfile,
                 pattern='[ \t]*__(.+?(?=__[ \t]*[=]))__[ \t]*=(.+)',
                 must_match=False,
                 ignore_errors=ignore_errors
             )
-        return exp_params
+        return parameters
 
 
 def parse_args():
     """ Parse command line arguments.
 
-    :rtype: dict
-    :return: Dictionary of command line arguments
+    Returns:
+        Dictionary with command line arguments.
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'inputs', nargs='*', default=None,
-        help="Log files / directories to parse. It is a list of file names "\
+        help="Log files / directories to parse. It is a list of file names "
              "and/or directories to search for log files."
     )
     parser.add_argument(
         '--recursive', required=False, default=False, action='store_true',
-        help="Scan --log-dir folder recursively for log files."
+        help="Scan input folder(s) recursively for log files."
+    )
+    parser.add_argument(
+        '--overwrite', required=False, default=False, action='store_true',
+        help="If output file exists, overwrite it."
     )
     parser.add_argument(
         '--ignore_errors', required=False, default=False, action='store_true',
@@ -183,71 +211,71 @@ def parse_args():
     )
     parser.add_argument(
         '--output_file', '--output-file', type=str, required=False, default=None,
-        help="Write summary of experiments into this file. Two types of files "\
-             "are supported: *.json and *.json.gz. If multiple output files are "\
-             "requested, the actual name will be '*_INDEX.json' or *_INDEX.json.gz. "\
-             "If user requests to keep failed benchmarks separately, the name of "\
+        help="Write summary of experiments into this file. Two types of files "
+             "are supported: *.json and *.json.gz. If multiple output files are "
+             "requested, the actual name will be '*_INDEX.json' or *_INDEX.json.gz. "
+             "If user requests to keep failed benchmarks separately, the name of "
              "that file will be *_failed.json or *_failed.json.gz."
     )
     parser.add_argument(
         '--output_params', '--output-params', type=str, required=False, default=None,
-        help="Parameters that will go into output files. If not specified, all"\
-             "parameters are serialized. Keep in mind that will all parameters"\
-             "output files may become qute large - you may want to use *.json.gz"\
+        help="Parameters that will go into output files. If not specified, all"
+             "parameters are serialized. Keep in mind that will all parameters"
+             "output files may become quite large - you may want to use *.json.gz"
              "pattern for output file to write gzipped files."
     )
     # Only one of benchmarks-per-file or num-output-files can present.
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         '--benchmarks_per_file', '--benchmarks-per-file', type=int, required=False, default=None,
-        help="Maximal number of benchmarks per one output file. By default, "\
-             "all benchmarks go into one file. Is not compatible with "\
+        help="Maximal number of benchmarks per one output file. By default, "
+             "all benchmarks go into one file. Is not compatible with "
              "--num_output_files argument."
     )
     group.add_argument(
         '--num_output_files', '--num-output-files', type=int, required=False, default=None,
-        help="Number of output files. Algorithm is naive and may result in "\
-             "output files being of different size: determine total number of"\
-             "log files (N) and write first N/num-output-files benchmarks into"\
-             "first file etc. Is not compatible with --benchmarks_per_file "\
+        help="Number of output files. Algorithm is naive and may result in "
+             "output files being of different size: determine total number of"
+             "log files (N) and write first N/num-output-files benchmarks into"
+             "first file etc. Is not compatible with --benchmarks_per_file "
              "argument."
     )
     #
     parser.add_argument(
         '--failed_benchmarks', '--failed-benchmarks', type=str, required=False, default='discard',
-        choices=set(("keep", "discard", "keep_separately")),
-        help="Action for failed benchmarks - those that do not contain positive "\
+        choices={"keep", "discard", "keep_separately"},
+        help="Action for failed benchmarks - those that do not contain positive "
              "value for 'results.throughput' parameter."
     )
     # Only one filter specification is allowed
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         '--filter_params', '--filter-params', type=str, required=False, default=None,
-        help="A comma separated list of parameters to use as a filter. Only "\
-             "those benchmarks will be serialized that contain all parameters "\
+        help="A comma separated list of parameters to use as a filter. Only "
+             "those benchmarks will be serialized that contain all parameters "
              "defined here."
     )
     group.add_argument(
         '--filter_query', '--filter-query', type=str, required=False, default=None,
-        help="A JSON dictionary that sets constraints parameter names. In order "\
-             "to match, benchmark must contain all parameters defined in query "\
-             "with exactly the same values. Format is similar to 'condition' "\
+        help="A JSON dictionary that sets constraints parameter names. In order "
+             "to match, benchmark must contain all parameters defined in query "
+             "with exactly the same values. Format is similar to 'condition' "
              "section in extensions."
     )
     #
     parser.add_argument(
         '-P', action='append', required=False, default=[],
-        help="Parameters to add. Can be usefull to quickly add new parameters. "\
-             "Must be valid json parsable dictionary. Values in this dictionary "\
-             "can reference existing experiment parameters. If referenced parameter "\
+        help="Parameters to add. Can be useful to quickly add new parameters. "
+             "Must be valid json parsable dictionary. Values in this dictionary "
+             "can reference existing experiment parameters. If referenced parameter "
              "does not exist, exception is thrown."
     )
     opts = vars(parser.parse_args())
     #
     output_file = opts['output_file']
     if output_file is not None:
-        if os.path.exists(output_file):
-            raise ValueError("File for benchmarks exists (%s)" % output_file)
+        if os.path.exists(output_file) and not opts['overwrite']:
+            raise ValueError("Output file for benchmarks exists ({})".format(output_file))
         if output_file.endswith('.json.gz'):
             opts['_gz'] = True
             opts['_ext'] = 'json.gz'
@@ -333,4 +361,6 @@ def main():
 
 
 if __name__ == "__main__":
+    print("[WARNING] This module is deprecated and will be removed in future releases. "
+          "Please, use bench_data.py instead.")
     main()

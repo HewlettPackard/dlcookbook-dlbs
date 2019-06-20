@@ -55,15 +55,16 @@ def main():
     # Find average speed/processing time
     if len(speeds) < 20:
         # It's better to remove first two points even if number of iterations was small.
+        # Also we need to remove the last point because it is usually smaller.
         if len(speeds) >= 5:
-            speeds = speeds[2:]
+            speeds = speeds[2:-1]
             print(
-                "[WARNING] Number of performance points is too low (%d). "\
-                "I will use almost all points to compute average. Better algorithm "\
-                "exists."  % len(speeds)
+                "[WARNING] Number of performance points is too low (%d). "
+                "I will use almost all points to compute average. Better algorithm "
+                "exists." % len(speeds)
             )
     else:
-        speeds = speeds[10:]
+        speeds = speeds[10:-1]
     # Do some logging
     if model in MODEL_TITLES:
         print("__exp.model_title__=\"%s\"" % MODEL_TITLES[model])

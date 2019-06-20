@@ -32,6 +32,8 @@ In addition, a complete output in a json format can be obtained with:
 python ./python/dlbs/experimenter.py sysinfo
 ```
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 import subprocess
 import os
@@ -39,8 +41,9 @@ import re
 import shlex
 import json
 import logging
-#import functools
+# import functools
 from collections import OrderedDict
+
 
 class SysInfo(object):
 
@@ -54,6 +57,7 @@ class SysInfo(object):
 
     def collect(self):
         info = {}
+
         def _key(name):
             return self.namespace + '.' + name
 
@@ -119,7 +123,7 @@ class SysInfo(object):
         output_lines = re.split(r'\n', re.sub(r'\\x03', '', re.sub(r"\\x0312", "", output)))[2:-1]
         inxi_info = OrderedDict()
         for _, line in enumerate(output_lines):
-            if line[0] != ' ': # key
+            if line[0] != ' ':  # key
                 try:
                     key, prop = line.split(":")
                     inxi_info[key] = [prop.strip()]
@@ -206,7 +210,7 @@ class SysInfo(object):
                                        close_fds=True)
             output, _ = process.communicate()
             output = output.split('\n')
-            #print(output)
+            # print(output)
         except OSError:
             return None
         gpu_info = {}               # Top level dictionary containing parsed information
@@ -220,7 +224,7 @@ class SysInfo(object):
                 if groups[-1][1] == target_level:
                     return groups[-1]
                 groups.pop()
-            return (None, None)
+            return None, None
 
         kvpattern = re.compile("([ ]*)([a-zA-Z0-9]+([ ]+[a-zA-Z0-9]+)*)[ ]+[:][ ]+(.+)")
         for line in output:
@@ -238,17 +242,19 @@ class SysInfo(object):
                 gname = line.lstrip(' ')
                 glevel = (len(line) - len(gname)) / 4
                 if glevel > level + 1:
-                    #print("[WARNING] Found group (name=%s, level=%d) at level %d" % (gname, glevel, level))
-                    #return gpu_info
+                    # print("[WARNING] Found group (name=%s, level=%d) at level %d" % (gname, glevel, level))
+                    # return gpu_info
                     pass
                 elif glevel <= level:
-                    #print("[INFO] Found group (name=%s, level=%d) at level %d, moving back to level %d" % (gname, glevel, level, glevel-1))
+                    # print("[INFO] Found group (name=%s, level=%d) at level %d, "
+                    #       "moving back to level %d" % (gname, glevel, level, glevel-1))
                     group, level = __move_to_level(groups, glevel-1)
                     if not group:
-                        print("[WARNING] Found group (name=%s, level=%d) at level %d but could not move back to level %d" % (gname, glevel, level, glevel-1))
+                        print("[WARNING] Found group (name=%s, level=%d) at level %d "
+                              "but could not move back to level %d" % (gname, glevel, level, glevel-1))
                         return gpu_info
                 else:
-                    #print("[INFO] Found group (name=%s, level=%d) at level %d" % (gname, glevel, level))
+                    # print("[INFO] Found group (name=%s, level=%d) at level %d" % (gname, glevel, level))
                     pass
                 group[gname] = {}
                 groups.append((group[gname], glevel))
@@ -259,20 +265,22 @@ class SysInfo(object):
                 pname = kv.group(2)
                 pvalue = kv.group(4)
                 if plevel > level + 1:
-                    #print("[WARNING] Found property (name=%s, level=%d) at level %d" % (pname, plevel, level))
-                    #return gpu_info
+                    # print("[WARNING] Found property (name=%s, level=%d) at level %d" % (pname, plevel, level))
+                    # return gpu_info
                     pass
                 elif plevel <= level:
-                    #print("[INFO] Found property (name=%s, level=%d) at level %d, moving back to level %d" % (pname, plevel, level, plevel-1))
+                    # print("[INFO] Found property (name=%s, level=%d) at level %d, "
+                    #       "moving back to level %d" % (pname, plevel, level, plevel-1))
                     group, level = __move_to_level(groups, plevel-1)
                     if not group:
-                        print("[WARNING] Found property (name=%s, level=%d) at level %d but could not move back to level %d" % (pname, plevel, level, plevel-1))
+                        print("[WARNING] Found property (name=%s, level=%d) at level %d "
+                              "but could not move back to level %d" % (pname, plevel, level, plevel-1))
                         return gpu_info
                 group[pname] = pvalue
         return gpu_info
 
 
-#def nvidatopo(jsonfile):
+# def nvidatopo(jsonfile):
 #    """Description ...
 #    """
 #    process = subprocess.Popen(shlex.split("/usr/bin/nvidia-smi -q"),
@@ -287,7 +295,7 @@ class SysInfo(object):
 #        json.dump({'gpu/nvidia-smi/topo': lines}, fhandle, indent=4)
 #    return
 #
-#def sysconfig2json(jfile, inxi_exe=None):
+# def sysconfig2json(jfile, inxi_exe=None):
 #    """Description...
 #    """
 #    inxifunc = functools.partial(inxi, inxi_exe)

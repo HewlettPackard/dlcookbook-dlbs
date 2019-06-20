@@ -1,9 +1,0 @@
-#!/bin/bash
-
-export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
-. ${BENCH_ROOT}/../../../scripts/environment.sh
-assert_docker_img_exists "dlbs/tensorflow:19.02-mkl"
-
-# Run benchmarks.
-python $experimenter run --config=./config.json
-exit 0

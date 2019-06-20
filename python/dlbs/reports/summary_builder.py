@@ -16,7 +16,7 @@ generates json files that are used to generate data for HPE Discover Demo.
 
 Usage:
 
->>> python summary_builder.py [PARAMETERS]
+$ python summary_builder.py [PARAMETERS]
 
 Parameters:
 
@@ -30,17 +30,18 @@ Parameters:
   to build summary for. A typical use case is to select specific framework. For instance:
   **--query='{\"exp.framework_id\": \"tensorflow\"}'**. Should be json parsable string.
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 import json
 import argparse
-from sets import Set
-import dlbs.python_version   # pylint: disable=unused-import
 from dlbs.utils import DictUtils, OpenFile
 
 
 BATCH_TM_TITLE = "Batch time (milliseconds)"
 IPS_TITLE = "Inferences Per Second (IPS, throughput)"
 SPEEDUP_TITLE = "Speedup (instances per second)"
+
 
 class SummaryBuilder(object):
     """Class that builds summary reports in csv formats and generates json files."""
@@ -56,9 +57,9 @@ class SummaryBuilder(object):
         with OpenFile(summary_file) as file_obj:
             summary = json.load(file_obj)
         self.cache = {}
-        self.nets = Set()
-        self.batches = Set()
-        self.devices = Set()
+        self.nets = set()
+        self.batches = set()
+        self.devices = set()
         for experiment in summary['data']:
             if target_variable not in experiment:
                 print("target variable not in experiment, skipping")
@@ -173,10 +174,9 @@ class SummaryBuilder(object):
         )
         DictUtils.dump_json_to_file(json_report, jsonfile)
 
-
-    # Assuming that the first device in a list is a single GPU (CPU) device.
     def build_weak_scaling_report(self, jsonfile):
         """ Builds weak scaling report for multi-GPU training.
+        Assuming that the first device in a list is a single GPU (CPU) device.
         """
         header = "%-20s %-10s" % ('Network', 'Batch')
         for device in self.devices:
@@ -288,14 +288,18 @@ class SummaryBuilder(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--summary_file', '--summary-file', required=True, help="File name (json) with experiment results. This file is produced by a log parser.")
-    parser.add_argument('--report_file', '--report-file', required=False, default=None, help="File name of the report to be generated.")
+    parser.add_argument('--summary_file', '--summary-file', required=True,
+                        help="File name (json) with experiment results. This file is produced by a log parser.")
+    parser.add_argument('--report_file', '--report-file', required=False, default=None,
+                        help="File name of the report to be generated.")
     parser.add_argument('--type', help="Type of the report ('exploration', 'weak-scaling', 'strong-scaling')")
-    parser.add_argument('--target_variable', '--target-variable', help="Target variable for the report. In most cases it's 'results.time'.")
+    parser.add_argument('--target_variable', '--target-variable',
+                        help="Target variable for the report. In most cases it's 'results.time'.")
     parser.add_argument('--query', required=False, type=str, default="{}",
-                                   help="Optional JSON flat dictionary. Specifies query that selects experiments to build summary for.\
-                                         A typical use case is to select specific framework. For instance:\
-                                         --query='{\"exp.framework\": \"tensorflow\"}'. Should be json parsable string")
+                        help="Optional JSON flat dictionary. Specifies query that selects experiments to "
+                             "build summary for. A typical use case is to select specific framework. "
+                             "For instance: --query='{\"exp.framework\": \"tensorflow\"}'. "
+                             "Should be json parsable string")
     args = parser.parse_args()
 
     query = json.loads(args.query)
@@ -306,5 +310,5 @@ if __name__ == '__main__':
         'strong-scaling': summary_builder.build_strong_scaling_report,
         'weak-scaling': summary_builder.build_weak_scaling_report
     }
-    assert args.type in builder_funcs, "Invalid report type '%s'" % (args.type)
+    assert args.type in builder_funcs, "Invalid report type '%s'" % args.type
     builder_funcs[args.type](args.report_file)

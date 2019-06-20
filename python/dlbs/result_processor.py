@@ -15,26 +15,28 @@
 * Validate that every benchmark in ``input-file`` has mandatory parameters
   defined in ``params``
 
-  >>> python result_processor.py validate --input-file= --params=
+  $ python result_processor.py validate --input-file= --params=
 
 * Filter benchmarks in ``input-file`` by throwing away those not containing
-  specific parameters defined in ``params``. The filetered subset of benchmarks
+  specific parameters defined in ``params``. The filtered subset of benchmarks
   is written to ``output-file``.
 
-  >>> python result_processor.py filter --input-file= --params= --output-file=
+  $ python result_processor.py filter --input-file= --params= --output-file=
 
 * Update every benchmark in ``input-file`` by overriding values of specific
   parameters which value are defined in ``params``. The updated subset of
   benchmarks is written to ``output-file``.
 
-  >>> python result_processor.py update --input-file= --params= --output-file=
+  $ python result_processor.py update --input-file= --params= --output-file=
 
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 import argparse
 import json
 from collections import defaultdict
-import dlbs.python_version   # pylint: disable=unused-import
+from dlbs.utils import Six
 from dlbs.utils import DictUtils
 from dlbs.processor import Processor
 
@@ -52,14 +54,14 @@ def load_json_file(file_name):
 def get_params(params):
     """Loads parameters specified by params.
 
-    :param str params: A JSON parseable string that defines how parameters
+    :param str params: A JSON parsable string that defines how parameters
                        need to be loaded. See function comments on how it is
                        done.
     :return: A dictionary with keys being parameters and values being their
              values. Null value means no value - that's perfectly valid case.
     :rtype: dict
 
-    The ``params`` is a JSON parseable string treated differently depending
+    The ``params`` is a JSON parsable string treated differently depending
     on its type:
     * ``string`` The value is a file name that contains JSON object
     * ``list``   The list of parameters
@@ -69,7 +71,7 @@ def get_params(params):
     dictionary with null values.
     """
     parsed_params = json.loads(params)
-    if isinstance(parsed_params, basestring):
+    if isinstance(parsed_params, Six.string_types):
         parsed_params = load_json_file(parsed_params)
     if isinstance(parsed_params, list):
         parsed_params = dict.fromkeys(parsed_params, None)
@@ -163,7 +165,7 @@ def update_benchmarks(args):
     # Load benchmarks and parameters.
     benchmarks = load_json_file(args.input_file)['data']
     prefix = '__'
-    params = {prefix + k:v for k, v in get_params(args.params).items()}
+    params = {prefix + k: v for k, v in get_params(args.params).items()}
     # Add prefixed parameters to all benchmarks.
     for benchmark in benchmarks:
         benchmark.update(params)
@@ -213,7 +215,7 @@ def main():
     elif args.action == 'update':
         update_benchmarks(args)
     else:
-        raise ValueError("Action parameter has invalid value (%s). "\
+        raise ValueError("Action parameter has invalid value (%s). "
                          "Must be one of ['validate', 'filter', 'update']" % args.action)
 
 

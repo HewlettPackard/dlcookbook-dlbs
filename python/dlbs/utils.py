@@ -11,50 +11,210 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Two classes are define here :py:class:`dlbs.IOUtils` and :py:class:`dlbs.DictUtils`.
-"""
+"""Multiple classes are define in this module:
 
+  * :py:class:`dlbs.utils.ParamUtils` Various helper methods to work with benchmark parameters.
+  * :py:class:`dlbs.utils.OpenFile` Open textual or compressed textual files in one line.
+  * :py:class:`dlbs.utils.IOUtils` Various input/output/filesystem helper methods.
+  * :py:class:`dlbs.utils.DictUtils` Various methods to work with dictionaries
+  * :py:class:`dlbs.utils.ConfigurationLoader` A class that deals with DLBS configuration data.
+  * :py:class:`dlbs.utils.ResourceMonitor` A class that implements naive resource monitoring functionality.
+"""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import os
+import sys
 import copy
 import json
 import gzip
 import re
-import logging
 import subprocess
 import importlib
+import logging
 from multiprocessing import Process
 from multiprocessing import Queue
 from glob import glob
 from dlbs.exceptions import ConfigurationError
 
 
-def param2str(val):
-    """Convert value val of some benchmark parameter to a string."""
-    if isinstance(val, dict):
-        try:
-            return json.dumps(val)
-        except TypeError:
-            s = str(val)
-            print("[WARNING] cannot convert value ('%s') to a string with json.dumps" % s)
+# 99% of the DLBS source code is written in Python2/Python3 compatible mode using only standard modules. Some parts
+# however like checking variables type (strings for instance) are Python2/Python3 dependent. Obvious choice is to
+# use the `six` library. To run DLBS in a variety of benchmarking environments that may only have standard Python libs,
+# this thin `six`-type implementation is used.
+class Six(object):
+    """A part of functionality found in six library
+    https://github.com/benjaminp/six/blob/master/six.py
+    """
+    PY2 = sys.version_info[0] == 2
+    PY3 = sys.version_info[0] == 3
 
-    return str(val)
+    if PY3:
+        string_types = str,
+        integer_types = int,
+
+        @staticmethod
+        def iteritems(d, **kw):
+            return iter(d.items(**kw))
+    else:
+        string_types = basestring,
+        integer_types = (int, long)
+
+        @staticmethod
+        def iteritems(d, **kw):
+            return d.iteritems(**kw)
+
+
+class ParamUtils(object):
+
+    STRING_TYPES = ['str', 'string']
+    INTEGER_TYPES = ['int', 'integer']
+    NUMERIC_TYPES = ['float', 'numeric']
+    BOOLEAN_TYPES = ['bool', 'boolean', 'binary', 'flag']
+    TYPES = STRING_TYPES + INTEGER_TYPES + NUMERIC_TYPES + BOOLEAN_TYPES
+
+    BOOLEAN_TRUE_VALUES = ['true', 'on', '1', 'yes']
+    BOOLEAN_FALSE_VALUES = ['false', 'off', '0', 'no']
+    BOOLEAN_VALUES = BOOLEAN_TRUE_VALUES + BOOLEAN_FALSE_VALUES
+
+    # Pattern that matches ${variable_name} and returns as group(1) variable_name
+    VAR_PATTERN = re.compile(r'\$\{([^\}\4\{]+)\}', re.UNICODE)
+
+    @staticmethod
+    def to_string(param_value):
+        """Convert value `param_value` of some benchmark parameter to a string.
+
+        The function will attempt to converting using JSON methods and if fails, will use `str` function instead.
+
+        Args:
+            param_value: A value to convert to a string.
+
+        Returns:
+            str: A string representation of `param_value`.
+
+        TODO: Why is only dictionary? What about lists.
+        """
+        if isinstance(param_value, dict):
+            try:
+                return json.dumps(param_value)
+            except TypeError:
+                logging.warning("Cannot convert value ('%s') to a string with json.dumps", str(param_value))
+        return str(param_value)
+
+    @staticmethod
+    def from_string(value_as_str, value_type):
+        """Cast `value_as_str` to a variable of type `value_type`.
+
+        Args:
+            value_as_str (str): String representation of a variable stored here.
+            value_type (str): Type of a value stored in `value_as_str`.
+
+        Returns:
+            A variable of type `value_type` with value parsed from `value_as_str`.
+        """
+        if value_type in ParamUtils.STRING_TYPES:
+            value = value_as_str
+        elif value_type in ParamUtils.INTEGER_TYPES:
+            value = int(value_as_str)
+        elif value_type in ParamUtils.NUMERIC_TYPES:
+            value = float(value_as_str)
+        elif value_type in ParamUtils.BOOLEAN_TYPES:
+            boolean_value = value_as_str.lower()
+            if boolean_value not in ParamUtils.BOOLEAN_VALUES:
+                raise ValueError("Invalid boolean string (={}). "
+                                 "Supported values: {}".format(boolean_value, ParamUtils.BOOLEAN_VALUES))
+            value = boolean_value in ParamUtils.BOOLEAN_TRUE_VALUES
+        else:
+            raise ValueError("Invalid value type (={}). Supported types: {}".format(value_type, ParamUtils.TYPES))
+        return value
+
+    @staticmethod
+    def is_constant(param_value):
+        """ Returns True if `param_value` is a constant value
+
+        Args:
+            param_value: A value that must be checked for constness.
+
+        Returns:
+            bool: True if `param_value` is constant or False otherwise.
+        """
+        # If it's not a string, return True
+        if not isinstance(param_value, Six.string_types):
+            return True
+        # Does it reference other parameters? If yes, it's not a constant.
+        if ParamUtils.VAR_PATTERN.search(param_value):
+            return False
+        # Does it contain computable python expression? If yes, it's not a constant.
+        idx = param_value.find('$(')
+        if idx > 0 and param_value.find(')$', idx+2) > 0:
+            return False
+        # This is a constant variable.
+        return True
+
+    @staticmethod
+    def check_value(param_name, param_value, allowed_values=None, regexp=None):
+        """ Check if variable contains correct value according to a parameter info.
+
+        Args:
+            param_name (str): Name of a parameter.
+            param_value (str): Value of a parameter.
+            allowed_values (list): List of valid values for this parameter. May be None.
+            regexp (str): A regular expression that the value must match. May be None.
+
+        Raises:
+            ValueError: If `param_value` violates `allowed_values` or `regexp`.
+        """
+        # If value is not specified, this is OK.
+        if param_value is None:
+            return True
+        # Value domain check
+        if allowed_values is not None and param_value not in allowed_values:
+            raise ValueError("Incorrect parameter value found. "
+                             "Parameter %s=%s must have value from %s." % (param_name, param_value, allowed_values))
+        # Check of regular expression has been provided
+        if regexp is not None:
+            if re.match(regexp, param_value) is None:
+                raise ValueError("Incorrect parameter value found. "
+                                 "Parameter %s=%s must match regexp %s." % (param_name, param_value, regexp))
+
+    @staticmethod
+    def log_parameters(params, output=sys.stdout):
+        """Log parameters in dictionary `params` into an output `output`.
+
+        Args:
+            params (dict): Parameters, it is assumed that keys are strings and values are JSON serializable values
+            output: An output object to use. Must provide a `write` method accepting string.
+        """
+        if not isinstance(params, dict):
+            raise TypeError("Parameters must be stored in dictionary. But got object of type '%s'" % type(params))
+        for param_name in params:
+            output.write("__{}__={}\n".format(param_name, json.dumps(params[param_name])))
 
 
 class OpenFile(object):
-    """Class that can work with gzipped and regular textual files."""
-    def __init__(self, fname, mode='r'):
-        self.__fname = fname
+    """Class that can work with gzipped and regular textual files.
+    Example:
+        >>> import json
+        >>> my_files = ['~/my_file_1.json', 'my_file_2.jzon.gz']
+        >>> for my_file in my_files:
+        >>>     with OpenFile(my_file, 'r') as f:
+        >>>         print(json.load(f))
+    """
+
+    def __init__(self, file_name, mode='r'):
+        self.__file_name = file_name
         self.__flags = ['rb', 'r'] if mode == 'r' else ['wb', 'w']
+        self.__file_object = None
 
     def __enter__(self):
-        if self.__fname.endswith('.gz'):
-            self.__fobj = gzip.open(self.__fname, self.__flags[0])
+        if self.__file_name.endswith('.gz'):
+            self.__file_object = gzip.open(self.__file_name, self.__flags[0])
         else:
-            self.__fobj = open(self.__fname, self.__flags[1])
-        return self.__fobj
+            self.__file_object = open(self.__file_name, self.__flags[1])
+        return self.__file_object
 
-    def __exit__(self, type, value, traceback):
-        self.__fobj.close()
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.__file_object.close()
 
 
 class IOUtils(object):
@@ -64,13 +224,11 @@ class IOUtils(object):
     def mkdirf(file_name):
         """Makes sure that parent folder of this file exists.
 
-        The file itself may not exist. A typical usage is to ensure that we can
-        write to this file. If path to parent folder does not exist, it will be
-        created.
-        See documentation for :py:func:`os.makedirs` for more details.
+        The file itself may not exist. A typical usage is to ensure that we can write to this file. If path to parent
+        folder does not exist, it will be created. See documentation for :py:func:`os.makedirs` for more details.
 
-        :param str file_name: A name of the file for which we want to make sure\
-                              its parent directory exists.
+        Args:
+            file_name (str): A name of the file for which we want to make sure its parent directory exists.
         """
         dir_name = os.path.dirname(file_name)
         if dir_name != '' and not os.path.isdir(dir_name):
@@ -80,14 +238,16 @@ class IOUtils(object):
     def find_files(directory, file_name_pattern, recursively=False):
         """Find files in a directory, possibly, recursively.
 
-        Find files which names satisfy *file_name_pattern* pattern in folder
-        *directory*. If *recursively* is True, scans subfolders as well.
+        Find files which names satisfy *file_name_pattern* pattern in folder `directory`. If `recursively` is True,
+        scans sub-folders as well.
 
-        :param str directory: A directory to search files in.
-        :param str file_name_pattern: A file name pattern to search. For instance,
-                                      is can be '*.log'
-        :param bool recursively: If True, search in subdirectories.
-        :return: List of file names satisfying *file_name_pattern* pattern.
+        Args:
+            directory (str): A directory to search files in.
+            file_name_pattern (str): A file name pattern to search. For instance, is can be '*.log'
+            recursively (bool): If True, search in subdirectories.
+
+        Returns
+            list: List of file names satisfying `file_name_pattern` pattern.
         """
         if not recursively:
             files = [f for f in glob(os.path.join(directory, file_name_pattern))]
@@ -99,14 +259,18 @@ class IOUtils(object):
     def gather_files(path_specs, file_name_pattern, recursively=False):
         """Find/get files specified by an `inputs` parameter.
 
-        :param list path_specs: A list of file names / directories.
-        :param str file_name_pattern: A file name pattern to search. Only
-                                      used for entries in path_specs that
-                                      are directories.
-        :param bool recursively: If True, search in subdirectories. Only used
-                                 for entries in path_specs that are directories.
-        :return: List of file names satisfying *file_name_pattern* pattern.
+        Args:
+            path_specs (list): A list of file names / directories.
+            file_name_pattern (str): A file name pattern to search. Only used for entries in path_specs that
+                are directories.
+            recursively (bool): If True, search in subdirectories. Only used for entries in path_specs that are
+                directories.
+
+        Returns:
+            list: List of file names satisfying `file_name_pattern` pattern.
         """
+        if not isinstance(path_specs, list):
+            path_specs = [path_specs]
         files = []
         for path_spec in path_specs:
             if os.path.isdir(path_spec):
@@ -116,73 +280,112 @@ class IOUtils(object):
         return files
 
     @staticmethod
-    def get_non_existing_file(file_name, max_attempts = 1000):
+    def get_non_existing_file(file_name, max_attempts=1000):
         """Return file name that does not exist.
 
-        :param str file_name: Input file name.
-        :rtype: str
-        :return: The 'file_name' if this file does not exist else find first
-                 file name that file does not exist.
+        Args:
+            file_name (str): Input file name.
+            max_attempts (int): Maximal number of attempts for non-existing files.
+
+        Returns:
+            An input file name `file_name` if path does not exist.
+            A path in the format `file_name.ATTEMPT` where `ATTEMPT` is the integer between 0 and `max_attempts`.
         """
         if not os.path.exists(file_name):
             return file_name
-        attempt = 0
-        while True:
-            candidate_file_name = "%s.%d" % (file_name, attempt)
+        for attempt in range(max_attempts):
+            candidate_file_name = "{}.{}".format(file_name, attempt)
             if not os.path.exists(candidate_file_name):
                 return candidate_file_name
-            attempt += 1
-            if attempt >= max_attempts:
-                msg = "Cannot find non existing file from pattern %s"
-                raise ValueError(msg % file_name)
+        raise ValueError("Cannot find non existing file from pattern %s" % file_name)
 
     @staticmethod
-    def check_file_extensions(fname, extensions):
-        """Checks that fname has one of the provided extensions.
+    def check_file_extensions(file_name, extensions):
+        """Checks that `file_name` has one of the provided extensions.
 
-        :param str fname: The file name to check.
-        :param tuple extensions: A tuple of extensions to use.
+        Args:
+            file_name (str): The file name to check.
+            extensions (tuple): A tuple of file extensions to use.
 
-        Raises exception of fname does not end with one of the extensions.
+        Raises:
+            ValueError: If `file_name` does not end with one of the extensions.
         """
-        if fname is None:
+        if file_name is None:
             return
         assert isinstance(extensions, tuple), "The 'extensions' must be a tuple."
-        if not fname.endswith(extensions):
+        if not file_name.endswith(extensions):
             raise ValueError("Invalid file extension (%s). Must be one of %s" % extensions)
 
     @staticmethod
-    def read_json(fname, check_extension=False):
-        """Reads JSON object from file 'fname'.
-
-        :param str fname: File name.
-        :param boolean check_extension: If True, raises exception if fname does not end
-                                        with '.json' or '.json.gz'.
-        :rtype: None or JSON object
-        :return: None of fname is None else JSON loaded from the file.
+    def is_compressed_tarball(input_descriptor):
+        """Returns true if this descriptor is a compressed tarball.
+        It is an assumption that such files are compressed directories with benchmark log files.
+        Args:
+            input_descriptor: Input descriptor.
+        Returns:
+            True if a file name ends with .tgz or .tar.gz
         """
-        if fname is None:
-            return None
-        if check_extension:
-            IOUtils.check_file_extensions(fname, ('.json', '.json.gz'))
-        with OpenFile(fname, 'r') as fobj:
-            return json.load(fobj)
+        return isinstance(input_descriptor, Six.string_types) and input_descriptor.endswith(('.tgz', '.tar.gz'))
 
     @staticmethod
-    def write_json(fname, data, check_extension=False):
-        """ Dumps *dictionary* as a json object to a file with *file_name* name.
-
-        :param dict dictionary: Dictionary to serialize.
-        :param any data: A data to dump into a JSON file. 
-        :param str file_name: Name of a file to serialie dictionary in.
+    def is_json_file(input_descriptor):
+        """This is quite often used in the project
+        Args:
+            input_descriptor: Input descriptor.
+        Returns:
+            True if a file name ends with .json or .json.gz
         """
-        if fname is None:
-            raise ValueError("File name is None")
-        if check_extension:
-            IOUtils.check_file_extensions(fname, ('.json', '.json.gz'))
-        IOUtils.mkdirf(fname)
-        with OpenFile(fname, 'w') as fobj:
-            json.dump(data, fobj, indent=4)
+        return isinstance(input_descriptor, Six.string_types) and input_descriptor.endswith(('.json', '.json.gz'))
+
+    @staticmethod
+    def is_csv_file(input_descriptor):
+        """Returns true if this is a *.csv file.
+        Args:
+            input_descriptor: Input descriptor.
+        Returns:
+            True if a file name ends with .csv or .csv.gz
+        """
+        return isinstance(input_descriptor, Six.string_types) and input_descriptor.endswith(('.csv', '.csv.gz'))
+
+    @staticmethod
+    def read_json(file_name, check_extension=False):
+        """Reads JSON object from file 'file_name'.
+
+        Args:
+            file_name (str): A file name.
+            check_extension (bool): If True, raises exception if fname does not end with '.json' or '.json.gz'.
+
+        Returns:
+            None: if `file_name` is None.
+            JSON: JSON loaded from the file.
+        """
+        json_obj = None
+        if file_name is not None:
+            if check_extension:
+                IOUtils.check_file_extensions(file_name, ('.json', '.json.gz'))
+            with OpenFile(file_name, 'r') as file_obj:
+                json_obj = json.load(file_obj)
+        return json_obj
+
+    @staticmethod
+    def write_json(output_descriptor, data, check_extension=False):
+        """ Dumps `data` as a json object to a file with `file_name` name.
+        Args:
+            output_descriptor : A specifier of where to write a json object.
+            data: A data to dump into a JSON file.
+            check_extension (bool): If true, ensure `file_name` has either `json` or `json.gz` extension.
+        """
+        output_descriptor = output_descriptor if output_descriptor is not None else sys.stdout
+        if output_descriptor in [sys.stdout, sys.stderr]:
+            json.dump(data, output_descriptor, indent=4)
+        elif isinstance(output_descriptor, Six.string_types):
+            if check_extension:
+                IOUtils.check_file_extensions(output_descriptor, ('.json', '.json.gz'))
+            IOUtils.mkdirf(output_descriptor)
+            with OpenFile(output_descriptor, 'w') as file_obj:
+                json.dump(data, file_obj, indent=4)
+        else:
+            raise ValueError("Invalid write descriptor ({})".format(type(output_descriptor)))
 
 
 class DictUtils(object):
@@ -190,25 +393,30 @@ class DictUtils(object):
 
     @staticmethod
     def subdict(dictionary, keys):
-        """Return subdictionary containing only keys from 'keys'.
+        """Return sub-dictionary containing only keys from 'keys'.
 
-        :param dict dictionary: Input dictionary.
-        :param list_or_val keys: Keys to extract
-        :rtype: dict
-        :return: Dictionary that contains key/value pairs for key in keys.
+        Args:
+            dictionary (dict): Input dictionary.
+            keys: Keys to extract.
+
+        Returns:
+            dict: A dictionary that contains key/value pairs for key in `keys`.
         """
         if keys is None:
             return dictionary
+        keys = keys if isinstance(keys, list) else [keys]
         return dict((k, dictionary[k]) for k in keys if k in dictionary)
 
     @staticmethod
     def contains(dictionary, keys):
-        """Checkes if dictionary contains all keys in 'keys'
+        """Check if `dictionary` contains all keys in 'keys'.
 
-        :param dict dictionary: Input dictionary.
-        :param list_or_val keys: Keys to find in dictionary
-        :rtype: boolean
-        :return: True if all keys are in dictionary or keys is None
+        Args:
+            dictionary (dict): Input dictionary.
+            keys: Keys to find in dictionary
+
+        Returns:
+            bool: True if all keys are in `dictionary` or `keys` is None.
         """
         if keys is None:
             return True
@@ -219,15 +427,28 @@ class DictUtils(object):
         return True
 
     @staticmethod
+    def get(dictionary, key, default_value=None):
+        """Return value of `key` in `dictionary` if exists else `default_value`.
+        Args:
+            dictionary (dict): Dictionary to check.
+            key: A key that must exist.
+            default_value: Default value for key if it does not exist.
+        Returns:
+            bool: Value for the `key` if `key` in `dictionary` else `default_value`.
+        """
+        return dictionary[key] if key in dictionary else default_value
+
+    @staticmethod
     def ensure_exists(dictionary, key, default_value=None):
         """ Ensures that the dictionary *dictionary* contains key *key*
 
         If key does not exist, it adds a new item with value *default_value*.
         The dictionary is modified in-place.
 
-        :param dict dictionary: Dictionary to check.
-        :param str key: A key that must exist.
-        :param obj default_value: Default value for key if it does not exist.
+        Args:
+            dictionary (dict): Dictionary to check.
+            key: A key that must exist.
+            default_value: Default value for key if it does not exist.
         """
         if key not in dictionary:
             dictionary[key] = copy.deepcopy(default_value)
@@ -236,12 +457,13 @@ class DictUtils(object):
     def lists_to_strings(dictionary, separator=' '):
         """ Converts every value in dictionary that is list to strings.
 
-        For every item in *dictionary*, if type of a value is 'list', converts
-        this list into a string using separator *separator*.
-        The dictictionary is modified in-place.
+        For every item in `dictionary`, if type of a value is 'list', converts
+        this list into a string using separator `separator`.
+        The dictionary is modified in-place.
 
-        :param dict dictionary: Dictionary to modify.
-        :param str separator: An item separator.
+        Args:
+            dictionary (dict): Dictionary to modify.
+            separator (str): An item separator.
         """
         for key in dictionary:
             if isinstance(dictionary[key], list):
@@ -256,10 +478,12 @@ class DictUtils(object):
         dictionary will not contain this prefix.
         The dictionary *dictionary* is not modified.
 
-        :param dict dictionary: Dictionary to search keys in.
-        :param str prefix: Prefix of keys to be extracted.
-        :param bool remove_prefix: If True, remove prefix in returned dictionary.
-        :return: New dictionary with items which keys names start with *prefix*.
+        Args:
+            dictionary (dict): Dictionary to search keys in.
+            prefix (str): Prefix of keys to be extracted.
+            remove_prefix (bool): If True, remove prefix in returned dictionary.
+        Returns:
+            dict: New dictionary with items which keys names start with `prefix`.
         """
         return_dictionary = {}
         for key in dictionary:
@@ -270,10 +494,10 @@ class DictUtils(object):
 
     @staticmethod
     def dump_json_to_file(dictionary, file_name):
-        """ Dumps *dictionary* as a json object to a file with *file_name* name.
-
-        :param dict dictionary: Dictionary to serialize.
-        :param str file_name: Name of a file to serialie dictionary in.
+        """ Dumps `dictionary` as a json object to a file with `file_name` name.
+        Args:
+            dictionary (dict): Dictionary to serialize.
+            file_name (str): Name of a file to serialize dictionary in.
         """
         if file_name is not None:
             IOUtils.mkdirf(file_name)
@@ -282,17 +506,17 @@ class DictUtils(object):
 
     @staticmethod
     def add(dictionary, iterable, pattern, must_match=True, add_only_keys=None, ignore_errors=False):
-        """ Updates *dictionary* with items from *iterable* object.
+        """ Updates `dictionary` with items from `iterable` object.
 
         This method modifies/updates *dictionary* with items from *iterable*
         object. This object must support ``for something in iterable`` (list,
         opened file etc). Only those items in *iterable* are considered, that match
-        *pattern* (it's a regexp epression). If a particular item does not match,
+        *pattern* (it's a regexp expression). If a particular item does not match,
         and *must_match* is True, *ConfigurationError* exception is thrown.
 
         Regexp pattern must return two groups (1 and 2). First group is considered
         as a key, and second group is considered to be value. Values must be a
-        json-parseable strings.
+        json-parsable strings.
 
         If *add_only_keys* is not None, only those items are added to *dictionary*,
         that are in this list.
@@ -303,36 +527,38 @@ class DictUtils(object):
         One use case to use this method is to populate a dictionary with key-values
         from log files.
 
-        :param dict dictionary: Dictionary to update in-place.
-        :param obj iterable: Iterable object (list, opened file name etc).
-        :param str patter: A regexp pattern for matching items in ``iterable``.
-        :param bool must_match: Specifies if every element in *iterable* must match\
-                                *pattern*. If True and not match, raises exception.
-        :param list add_only_keys: If not None, specifies keys that are added into\
-                                   *dictionary*. Others are ignored.
-        :param boolean ignore_erros: If true, ignore errors.
+        Args:
+            dictionary (dict): Dictionary to update in-place.
+            iterable: Iterable object (list, opened file name etc).
+            pattern (str): A regexp pattern for matching items in ``iterable``.
+            must_match (bool): Specifies if every element in *iterable* must match `pattern`. If True and not match,
+                raises exception.
+            add_only_keys (list): If not None, specifies keys that are added into *dictionary*. Others are ignored.
+            ignore_errors (bool): If true, ignore errors.
 
-        :raises ConfigurationError: If *must_match* is True and not match or if value\
-                                    is not a json-parseable string.
+        Raises:
+            ConfigurationError: If *must_match* is True and not match or if value is not a json-parsable string.
         """
         matcher = re.compile(pattern)
         for line in iterable:
             match = matcher.match(line)
             if not match:
                 if must_match:
-                    raise ConfigurationError("Cannot match key-value from '%s' with pattern '%s'. Must match is set to true" % (line, pattern))
+                    raise ConfigurationError("Cannot match key-value from '%s' with pattern '%s'. "
+                                             "Must match is set to true" % (line, pattern))
                 else:
                     continue
             key = match.group(1).strip()
+            value = match.group(2).strip()
             try:
-                value = match.group(2).strip()
                 value = json.loads(value) if len(value) > 0 else None
                 if add_only_keys is None or key in add_only_keys:
                     dictionary[key] = value
                     logging.debug("Key-value item (%s=%s) has been parsed and added to dictionary", key, str(value))
             except ValueError as err:
                 if not ignore_errors:
-                    raise ConfigurationError("Cannot parse JSON string '%s' with key '%s' (key-value definition: '%s'). Error is %s" % (value, key, line, str(err)))
+                    raise ConfigurationError("Cannot parse JSON string '%s' with key '%s' (key-value definition: '%s')."
+                                             "Error is %s" % (value, key, line, str(err)))
 
     @staticmethod
     def match(dictionary, query, policy='relaxed', matches=None):
@@ -344,7 +570,7 @@ class DictUtils(object):
         to be matched. In this case, the intersection of keys in dictionary and query
         is used for matching.
 
-        It's assuemd we match primitive types such as numbers and strings not
+        It's assumed we match primitive types such as numbers and strings not
         lists or dictionaries. If values in query are lists, then condition OR applies.
         For instance:
 
@@ -360,36 +586,39 @@ class DictUtils(object):
            Match dictionary only if it (a) contains key 'framework' with value "tensorflow" OR "caffe2"\
            and (b) it contains key 'batch' with value 16 OR 32.
 
-        :param dict dictionary: Dictionary to match.
-        :param dict query: Query to use.
-        :param ['relaxed', 'strict'] policy: Policy to match.
-        :param dict matches: Dictionary where matches will be stored if match has been identified.
-        :return: True if match or query is None
-        :rtype: bool
+        Args:
+            dictionary (dict): Dictionary to match.
+            query (dict): Query to use.
+            policy (str): Policy to match. One of ['relaxed', 'strict'].
+            matches (dict): Dictionary where matches will be stored if match has been identified.
+        Returns:
+            bool: True if match or query is None.
         """
         if query is None:
             return True
+        if isinstance(query, list):
+            return DictUtils.contains(dictionary, query)
         assert policy in ['relaxed', 'strict'], ""
 
-        for field, value in query.iteritems():
+        for field, value in Six.iteritems(query):
             if field not in dictionary:
                 if policy == 'relaxed':
                     continue
                 else:
                     return False
-            if isinstance(value, list) or not isinstance(value, basestring):
+            if isinstance(value, list) or not isinstance(value, Six.string_types):
                 values = value if isinstance(value, list) else [value]
                 if dictionary[field] not in values:
                     return False
                 if matches is not None:
-                    matches['%s_0' % (field)] = dictionary[field]
+                    matches['%s_0' % field] = dictionary[field]
             else:
                 if value == '':
                     # Take special care if value is an empty string
                     if value != dictionary[field]:
                         return False
                     elif matches is not None:
-                        matches['%s_0' % (field)] = dictionary[field]
+                        matches['%s_0' % field] = dictionary[field]
                     continue
                 else:
                     match = re.compile(value).match(dictionary[field])
@@ -397,34 +626,43 @@ class DictUtils(object):
                         return False
                     else:
                         if matches is not None:
-                            matches['%s_0' % (field)] = dictionary[field]
+                            matches['%s_0' % field] = dictionary[field]
                             for index, group in enumerate(match.groups()):
                                 matches['%s_%d' % (field, index+1)] = group
                         continue
         return True
 
+
 class ConfigurationLoader(object):
-    """Loads experimenter configuration from multiple files."""
+    """Load benchmark configuration from multiple files."""
 
     @staticmethod
     def load(path, files=None):
-        """Loads configurations (normally in `conigs`) folder.
+        """Load configurations (normally in dlbs/configs) folder.
 
-        :param str path: Path to load configurations from
-        :param list files: List of file names to load. If None, all files with
-                           JSON extension in **path** are loaded.
-        :return: A tuple consisting of a list of config files, configuration
-                 object (dictionary) and dictionary of parameters info
+        This method loads configuration files located in `path`. If `files` is empty or None, all json files
+        are loaded from that folder. This method fails if one parameter is defined in multiple files.
+        This is intended behaviour for now (this also applies for update_param_info method).
 
-        This method loads configuration files located in 'path'. If `files` is
-        empty, all json files are loaded from that folder.
-        This method fails if one parameter is defined in multiple files. This
-        is intended behaviour for now (this also applies for update_param_info method).
+        Args:
+            path (str): Path to load configuration files from.
+            files (list): List of file names to load. If None, all files with JSON extension in `path`
+                are loaded, else, only those defined in `files` list.
+
+        Returns:
+            tuple: A tuple with three elements
+              1. A list of config files. This is either all files in `path` or only those files in path that are
+                 defined in `files`.
+              2. Configuration object. A large dictionary that contains all parameters and extensions found in
+                 configuration files listed in config files.
+              3. Dictionary of parameter info. Keys are parameters and values are objects defining such parameter
+                 information as types and help messages.
         """
         if path is None:
             raise ValueError("Configuration load error. The 'path' parameter cannot be None.")
         if not os.path.isdir(path):
-            raise ValueError("Configuration load error. The 'path' parameter (%s) must point to an existing directory." % path)
+            raise ValueError("Configuration load error. The 'path' parameter (%s) must point "
+                             "to an existing directory." % path)
 
         if files is not None:
             config_files = [os.path.join(path, f) for f in files]
@@ -434,37 +672,33 @@ class ConfigurationLoader(object):
         param_info = {}     # Information on params such as type and help messages
         for config_file in config_files:
             if not os.path.isfile(config_file):
-                raise ValueError("Configuration load error. Configuration data cannot be loaded for not a file (%s)" % config_file)
+                raise ValueError("Configuration load error. Configuration data cannot be loaded "
+                                 "for not a file (%s)" % config_file)
             with open(config_file) as file_obj:
                 try:
                     # A part of global configuration from this particular file
                     config_section = json.load(file_obj)
                     # Update parameters info.
                     ConfigurationLoader.update_param_info(param_info, config_section, is_user_config=False)
-                    # Joing configuration from this single file.
+                    # Joining configuration from this single file.
                     ConfigurationLoader.update(config, ConfigurationLoader.remove_info(config_section))
                 except ValueError:
                     logging.error("Configuration load error. Invalid JSON configuration in file %s", config_file)
                     raise
-        return (config_files, config, param_info)
-
+        return config_files, config, param_info
 
     @staticmethod
     def update_param_info(param_info, config, is_user_config=False):
-        """Update parameter info dictionary based on configurationi in **config**
+        """Update parameter info dictionary based on configuration in `config`
 
-        :param dict param_info: A parameter info dictionary that maps parameter
-                                name to its description dictionary that contains
-                                such fileds as value, help message, type, constraints
-                                etc.
-        :param dict config: A dictionary with configuration section that may contain
-                            parameters, variables and extensions. The **config** is
-                            a result of parsing a JSON configuration file.
-        :param bool is_user_config: If True, the config object represents user-provided
-                                    configuration. If False, this is a system configuration.
-                                    Based on this flag, we deal with parameters in config
-                                    that redefine parameters in existing param_info
-                                    differently. See comments below.
+        Args:
+            param_info (dict): A parameter info dictionary that maps parameter name to its description
+                dictionary that contains such fields as value, help message, type, fieldsaints etc.
+            config (dict): A dictionary with configuration section that may contain parameters, variables
+                and extensions. The `config` is a result of parsing a JSON configuration file.
+            is_user_config (bool): If True, the config object represents user-provided configuration. If False,
+                this is a system configuration. Based on this flag, we deal with parameters in config that
+                redefine parameters in existing param_info differently. See comments below.
 
         We are interested here only in parameters section where parameter information
         is defined. There are two scenarios this method is used:
@@ -513,15 +747,16 @@ class ConfigurationLoader(object):
                         json.dumps(val),
                         json.dumps(param_info[name])
                     )
-                    param_info[name]['val'] = val['val']   # Existing parameter from user configuration, update its value
+                    param_info[name]['val'] = val['val']  # Existing parameter from user configuration, update its value
             else:
                 # Just parameter value
-                val_type = 'str' if isinstance(val, basestring) or isinstance(val, list) else type(val).__name__
+                val_type = 'str' if isinstance(val, Six.string_types) or isinstance(val, list) else type(val).__name__
                 if name not in param_info:
                     param_info[name] = {
                         'val': val,
                         'type': val_type,
-                        'desc': "No description for this parameter provided (it was automatically converted from its value)."
+                        'desc': "No description for this parameter provided "
+                                "(it was automatically converted from its value)."
                     }
                 else:
                     param_info[name]['val'] = val
@@ -541,13 +776,15 @@ class ConfigurationLoader(object):
 
     @staticmethod
     def remove_info(config):
-        """In parameter section of a **config** the function removes parameter info
+        """In parameter section of a `config` the function removes parameter info
         leaving only their values
 
-        :param dict config: A dictionary with configuration section that may contain
-                            parameters, variables and extensions. The **config** is
-                            a result of parsing a JSON configuration file.
-        :return: A copy of **config** with info removed
+        Args:
+            config (dict): A dictionary with configuration section that may contain parameters, variables
+                and extensions. The `config` is a result of parsing a JSON configuration file.
+        Returns:
+            dict: A copy of `config` with info removed. This new dictionary maps parameter name to parameter
+                value.
         """
         clean_config = copy.deepcopy(config)
 
@@ -559,9 +796,9 @@ class ConfigurationLoader(object):
                     # This should not generally happen since we deal with it in update_param_info, but just in case
                     if 'val' not in val:
                         raise ConfigurationError(
-                            "Parameter info remove error."
-                            " Parameter that is defined by a dictionary must contain 'val' field that"
-                            " defines its default value. Found this definition: %s=%s" % (name, val)
+                            "Parameter info remove error. "
+                            "Parameter that is defined by a dictionary must contain 'val' field that "
+                            "defines its default value. Found this definition: %s=%s" % (name, val)
                         )
                     params[name] = val['val']
 
@@ -569,31 +806,33 @@ class ConfigurationLoader(object):
 
     @staticmethod
     def update(dest, source, is_root=True):
-        """Merge **source** dictionary into **dest** dictionary assuming source
-        and dest are JSON configuration configs or their members.
+        """Merge `source` dictionary into `dest` dictionary assuming `source`
+        and `dest` are JSON configuration configs or their members.
 
-        :param dict dest: Merge data to this dictionary.
-        :param dict source: Merge data from this dictionary.
-        :param bool is_root: True if **dest** and *source** are root configuration
-                             objects. False if these objects are members.
+        Args:
+            dest (dict): Merge data to this dictionary.
+            source (dict): Merge data from this dictionary.
+            is_root (bool): True if `dest` and `source` are root configuration objects. False if these objects are
+                members.
         """
         def _raise_types_mismatch_config_error(key, dest_val_type, src_val_type, valid_types):
             raise ConfigurationError(
                 "Configuration update error - expecting value types to be same and one of %s but"
-                " Dest(key=%s, val_type=%s) <- Source(key=%s, val_type=%s)" % (valid_types, key, dest_val_type.__name__, key, src_val_type.__name__)
+                " Dest(key=%s, val_type=%s) <- Source(key=%s, val_type=%s)" % (valid_types, key, dest_val_type.__name__,
+                                                                               key, src_val_type.__name__)
             )
         # Types and expected key names. Types must always match, else exception is thrown.
         if is_root:
-            schema = {'types':(dict, list), 'dict':['parameters', 'variables'], 'list':['extensions']}
+            schema = {'types': (dict, list), 'dict': ['parameters', 'variables'], 'list': ['extensions']}
         else:
-            schema = {'types':(list, basestring, int, float, long)}
+            schema = {'types': (list, float) + Six.string_types + Six.integer_types}
         for key in source:
             # Firstly, check that type of value is expected.
             val_type = type(source[key]).__name__
             if not isinstance(source[key], schema['types']):
                 raise ConfigurationError(
                     "Configuration update error - unexpected type of key value: "
-                    " is_root=%s, key=%s, value type=%s, expected type is one of %s" % \
+                    " is_root=%s, key=%s, value type=%s, expected type is one of %s" %
                     (str(is_root), key, val_type, str(schema['types']))
                 )
             # So, the type is expected. Warn if key value is suspicious - we can do it only for root.
@@ -607,7 +846,8 @@ class ConfigurationLoader(object):
                 # The key from source is in dest.
                 both_dicts = isinstance(dest[key], dict) and isinstance(source[key], dict)
                 both_lists = isinstance(dest[key], list) and isinstance(source[key], list)
-                both_primitive = type(dest[key]) is type(source[key]) and isinstance(dest[key], (basestring, int, float, long))
+                both_primitive = type(dest[key]) is type(source[key]) and \
+                                 isinstance(dest[key], Six.string_types + Six.integer_types + (float,))
 
                 if is_root:
                     if not both_dicts and not both_lists:
@@ -618,7 +858,8 @@ class ConfigurationLoader(object):
                         dest[key].extend(source[key])
                 else:
                     if not both_lists and not both_primitive:
-                        _raise_types_mismatch_config_error(key, type(dest[key]), type(source[key]), '[list, basestring, int, float, long]')
+                        _raise_types_mismatch_config_error(key, type(dest[key]), type(source[key]),
+                                                           '[list, basestring, int, float, long]')
                     dest[key] = copy.deepcopy(source[key]) if both_lists else source[key]
 
 
@@ -631,11 +872,12 @@ class ResourceMonitor(object):
     def __init__(self, launcher, pid_folder, frequency, fields_specs):
         """Initializes resource monitor but does not create queue and process.
 
-        :param str launcher: A full path to resource monitor script.
-        :param str pid_folder: A full path to folder where pid file is created. The
-                               file name is fixed and its value is `proc.pid`.
-        :param float frequency: A sampling frequency in seconds. Can be something like
-                                0.1 seconds
+        Args:
+            launcher (str): A full path to a resource monitor script.
+            pid_folder (str): A full path to folder where pid file is created. The file name is fixed and its
+                value is `proc.pid`.
+            frequency (float): A sampling frequency in seconds. Can be something like 0.1 seconds
+            fields_specs (str): A string specifier of what to monitor and how.
         """
         self.launcher = launcher
         self.pid_file = os.path.join(pid_folder, 'proc.pid')
@@ -648,14 +890,16 @@ class ResourceMonitor(object):
         raw_fields = fields_specs.split(',')
         for raw_field in raw_fields:
             fields_split = raw_field.split(':')
-            assert len(fields_split) in (3, 4),\
-                   "Invalid format of field specification (%s). Must be name:type:index, name:type:index: or name:type:index:count" % raw_field
+            if len(fields_split) not in (3, 4):
+                raise ValueError("Invalid format of field specification (%s). Must be name:type:index, "
+                                 "name:type:index: or name:type:index:count" % raw_field)
             field_name = fields_split[0]
-            assert field_name not in self.fields,\
-                   "Found duplicate timeseries field (%s)" % field_name
+            if field_name in self.fields:
+                raise ValueError("Found duplicate timeseries field (%s)" % field_name)
             field_type = fields_split[1]
-            assert field_type in ('str', 'int', 'float', 'bool'),\
-                   "Invalid field type (%s). Must be one of ('str', 'int', 'float', 'bool')" % field_type
+            if field_type not in ('str', 'int', 'float', 'bool'):
+                raise ValueError("Invalid field type (%s). Must be one of ('str', 'int', 'float', 'bool')" % field_type)
+
             index = int(fields_split[2])
             if len(fields_split) == 3:
                 count = -1
@@ -673,12 +917,12 @@ class ResourceMonitor(object):
     def monitor_function(launcher, pid_file, frequency, queue):
         """A main monitor worker function.
 
-        :param str launcher: A full path to resource monitor script.
-        :param str pid_folder: A full path to folder where pid file is created. The
-                               file name is fixed and its value is `proc.pid`.
-        :param float frequency: A sampling frequency in seconds. Can be something like
-                                0.1 seconds
-        :param multiprocessing.Queue queue: A queue to communicate measurements.
+        Args:
+            launcher(str): A full path to resource monitor script.
+            pid_file (str): A full path to folder where pid file is created. The file name is fixed and its value is
+                `proc.pid`.
+            frequency (float): A sampling frequency in seconds. Can be something like 0.1 seconds
+            queue (multiprocessing.Queue): A queue to communicate measurements.
 
         A resource monitor is launched as a subprocess. The thread is reading its
         output and will put the data into a queue. A main thread will then dequeue all
@@ -701,22 +945,6 @@ class ResourceMonitor(object):
                 # script. It's a whitespace separated string of numbers.
                 queue.put(output.strip())
 
-    @staticmethod
-    def str_to_type(str_val, val_type):
-        if val_type == 'str':
-            return str_val
-        elif val_type == 'int':
-            return int(str_val)
-        elif val_type == 'float':
-            return float(str_val)
-        elif val_type == 'bool':
-            v = str_val.lower()
-            assert v in ('true', 'false', '1', '0', 'on', 'off'),\
-                   "Invalid boolean value in string (%s)" % str_val
-            return v in ('true', 1, 'on')
-        else:
-            assert False, "Invalid value type %s" % val_type
-
     def get_measurements(self):
         """Dequeue all data, put it into lists and return them.
         time:str:1,mem_virt:float:2,mem_res:float:3,mem_shrd:float:4,cpu:float:5,mem:float:6,power:float:7,gpus:float:8-
@@ -735,17 +963,17 @@ class ResourceMonitor(object):
                 idx = self.fields[field]['index']
                 count = self.fields[field]['count']
                 if count == -1:
-                    metrics[field].append(ResourceMonitor.str_to_type(data[idx], tp))
+                    metrics[field].append(ParamUtils.from_string(data[idx], tp))
                 elif count == 0:
-                    metrics[field].append([ResourceMonitor.str_to_type(data[idx], tp)])
+                    metrics[field].append([ParamUtils.from_string(data[idx], tp)])
                 else:
                     metrics[field].append([
-                        ResourceMonitor.str_to_type(data[index], tp) for index in xrange(idx, idx+count)
+                        ParamUtils.from_string(data[index], tp) for index in range(idx, idx+count)
                     ])
         return metrics
 
     def remove_pid_file(self):
-        """Deletes pif file from disk."""
+        """Deletes pid file from disk."""
         try:
             os.remove(self.pid_file)
         except OSError:
@@ -760,14 +988,14 @@ class ResourceMonitor(object):
             pass
 
     def write_pid_file(self, pid):
-        """Write the pid into pid file.
-
-        :param int pid: A pid to write.
+        """Write the `pid` (process identifier) into pid file.
+        Args:
+            pid(int): A pid to write.
 
         This is a debugging function and most likely should not be used.
         """
-        with open(self.pid_file, 'w') as fhandle:
-            fhandle.write('%d' % pid)
+        with open(self.pid_file, 'w') as file_obj:
+            file_obj.write('%d' % pid)
 
     def run(self):
         """Create queue and start resource monitor in background thread.
@@ -801,16 +1029,16 @@ class _ModuleImporter(object):
     @staticmethod
     def try_import(module_name):
         """Tries to import module.
-
-        :param str module_name: A name of a module to try to import, something like
-                                'numpy', 'pandas', 'matplotlib' etc.
-        :return: True if module has been imported, False otherwise.
+        Args:
+            module_name (str): A name of a module to try to import, something like 'numpy', 'pandas', 'matplotlib' etc.
+        Returns:
+            bool: True if module has been imported, False otherwise.
         """
         have_module = True
         try:
             importlib.import_module(module_name)
         except ImportError:
-            logging.warn("Module '%s' cannot be imported, certain system information will not be available", module_name)
+            logging.warn("Module '%s' cannot be imported, some system information will not be available", module_name)
             have_module = False
         return have_module
 

@@ -22,11 +22,13 @@ In particular, the script creates the following files:
 * ``${exp.framework_family}.md`` Several framework-specific files that go into
                                  framework docs in docs/${exp.framework_family}.md.
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 import sys
 import os
 import json
-from dlbs.utils import ConfigurationLoader
+from dlbs.utils import Six, ConfigurationLoader
 
 
 class ParamDocBuilder(object):
@@ -46,7 +48,7 @@ class ParamDocBuilder(object):
         # If a parameter contains description and it is string, convert to array
         for key in self.param_info:
             pi = self.param_info[key]
-            if 'desc' in pi and isinstance(pi['desc'], basestring):
+            if 'desc' in pi and isinstance(pi['desc'], Six.string_types):
                 pi['desc'] = [pi['desc']]
         # Load common and framework specific params
         with open(os.path.join(os.path.dirname(__file__), 'frameworks.json')) as file_obj:
@@ -57,17 +59,17 @@ class ParamDocBuilder(object):
         self.build_param_overview(os.path.join(self.tmp_folder, 'params.md'))
         # Build framework specific param descriptions
         all_params = set(self.param_info.keys())
-        #
+
         def __write_param(fstream, param):
             fstream.write("#### __%s__\n\n" % param)
             param_val = self.param_info[param]['val']
-            if isinstance(param_val, basestring): 
+            if isinstance(param_val, Six.string_types):
                 f.write("* __default value__ `\"%s\"`\n" % self.param_info[param]['val'])
             else:
                 f.write("* __default value__ `%s`\n" % self.param_info[param]['val'])
             f.write("* __description__ " + ' '.join(self.param_info[param]['desc']).replace('(', '\(').replace(')', '\)').replace('"', '\"'))
             f.write('\n\n')
-        #
+
         def __write_framework_params(fstream, common_params, other_params):
             # Write commonly used configuration parameters that are stored in 'common_params'
             fstream.write("## Commonly used configuration parameters\n")

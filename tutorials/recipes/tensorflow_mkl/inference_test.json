@@ -1,0 +1,30 @@
+{
+  "parameters": {
+    "exp.framework": "tensorflow",
+    "exp.docker_image": "dlbs/tensorflow:19.02-mkl",
+
+    "exp.phase": "inference",
+    "exp.num_warmup_batches": 5,
+    "exp.num_batches": 240,
+    "exp.log_file": "${BENCH_ROOT}/logs/${exp.phase}/${exp.model}_${exp.effective_batch}.log",
+
+    "exp.dtype": "float32",
+    "exp.gpus": "",
+
+    "exp.sys_info": "cpuinfo,meminfo,lscpu,dmi",
+
+    "tensorflow.use_nccl": false,
+    "tensorflow.use_mkl": true,
+
+    "runtime.launcher": "",
+    "tensorflow.num_intra_threads": 0,
+    "tensorflow.num_inter_threads": 0,
+
+    "tensorflow.report_interval": "10",
+    "tensorflow.git_hashtag": "0d5ca8084c96528b166b3839ed598a7a57114c68"
+  },
+  "variables":{
+    "exp.model": ["resnet50"],
+    "exp.replica_batch":[2]
+  }
+}

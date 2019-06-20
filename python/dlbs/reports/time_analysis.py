@@ -15,7 +15,7 @@
 
 Usage:
 
->>> python time_analysis.py [PARAMETERS]
+$ python time_analysis.py [PARAMETERS]
 
 Parameters:
 
@@ -23,9 +23,10 @@ Parameters:
 * ``--log-file`` Get batch statistics from this experiment.
 * ``--recursive`` Scan ``--log-dir`` folder recursively for log files.
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 import argparse
-import dlbs.python_version   # pylint: disable=unused-import
 from dlbs.logparser import LogParser
 from dlbs.utils import IOUtils
 from dlbs.utils import Modules
@@ -46,24 +47,24 @@ def simple_moving_average(times, window_size):
     :return: Tuple of x and y values (x, y). Length of these lists is `len(times) - window_size`.
     """
     if window_size >= len(times):
-        return (None, None)
+        return None, None
     xs = range(window_size, len(times))
     ys = [0] * len(xs)
     # Compute first  value
     ys[0] = np.mean(times[0:window_size])
-    for i in xrange(1, len(ys)):
+    for i in range(1, len(ys)):
         ys[i] = ys[i-1] + (times[window_size + i - 1] - times[i-1])/window_size
-    return (xs, ys)
+    return xs, ys
 
 
 if __name__ == "__main__":
     if not Modules.HAVE_NUMPY or not Modules.HAVE_MATPLOTLIB:
-        print ("This script needs Numpy (available=%s) and Matplotlib (available=%s)" % (Modules.HAVE_NUMPY, Modules.HAVE_MATPLOTLIB))
-        exit(1)
+        raise ValueError("This script needs Numpy (available=%s) "
+                         "and Matplotlib (available=%s)" % (Modules.HAVE_NUMPY, Modules.HAVE_MATPLOTLIB))
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--log_dir', '--log-dir', type=str, required=False, default=None,
-                        help="Scan this folder for *.log files. "\
+                        help="Scan this folder for *.log files. "
                              "Scan recursively if --recursive is set.")
     parser.add_argument('--save_file', '--save-file', type=str, required=False, default=None,
                         help="Save to file. ")
@@ -106,7 +107,7 @@ if __name__ == "__main__":
             if xs is None or ys is None:
                 continue
             line, = plt.plot(xs, ys)
-            labels.append('Window=%d' % (window_size))
+            labels.append('Window=%d' % window_size)
         legend = plt.legend(labels)
         if save_file is not None:
             print("save file to ", save_file)

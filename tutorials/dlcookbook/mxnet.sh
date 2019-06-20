@@ -27,7 +27,6 @@ if true; then
                            -Vexp.replica_batch='[16]'\
                            -Pexp.num_warmup_batches=10\
                            -Pexp.num_batches=10\
-                           -Pmxnet.cudnn_autotune='"false"'\
                            -Vexp.model='["alexnet"]'\
                            -Pexp.phase='"training"'\
                            -Pexp.log_file='"${BENCH_ROOT}/mxnet/${exp.model}_${exp.effective_batch}.log"'\

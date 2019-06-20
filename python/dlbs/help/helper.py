@@ -19,31 +19,35 @@ knowledge approach
 
 Show help on every parameter. Will print a lot of information.
 
->>> python experimenter.py help --params
+$ python experimenter.py help --params
 
 Show help on parameter based on regexp match
 
->>> python experimenter.py help --params exp.device
->>> python experimenter.py help --params exp.*
+$ python experimenter.py help --params exp.device
+$ python experimenter.py help --params exp.*
 
 Perform full-text search in parameters description, case insensitive
 
->>> python experimenter.py help --text cuda
+$ python experimenter.py help --text cuda
 
 Perform full-text search in a subset of parameters that match params
 
->>> python experimenter.py help --params exp.device --text batch
+$ python experimenter.py help --params exp.device --text batch
 
 Show most commonly used parameters for TensorFlow
 
->>> experimenter.py help --frameworks tensorflow
+$ experimenter.py help --frameworks tensorflow
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import re
 import os
 import json
 import argparse
 import sys
-from dlbs.utils import ConfigurationLoader
+from dlbs.utils import Six, ConfigurationLoader
+
 
 class Helper(object):
     """The class that shows to a user various help messages on parameters,
@@ -59,24 +63,30 @@ class Helper(object):
         # parameter values is empty.
         parser = argparse.ArgumentParser()
         parser.add_argument('action', type=str, help="Action to perform. The only valid action is 'help'")
-        parser.add_argument('--params', nargs='*', required=False, help="Regular expression (s) that define which parameters to search for.")
-        parser.add_argument('--text', nargs='*', required=False, help="Regular expression (s) that define which parameter descriptions to search for.\
-                                                                       If --params is given, this is used to filter those results. If --params not given,\
-                                                                       search with this regexps in all parameters descriptions.")
-        parser.add_argument('--frameworks', nargs='*', required=False, help="Show help for these frameworks. It'll report the most commonly used parameters.\
-                                                                             If empty, list of supported framework is printed.")
-        parser.add_argument("--no-colors", default=False, action="store_true" , help="If your terminal does not support colors, use this switch to disable colored output.")
+        parser.add_argument('--params', nargs='*', required=False,
+                            help="Regular expression (s) that define which parameters to search for.")
+        parser.add_argument('--text', nargs='*', required=False,
+                            help="Regular expression (s) that define which parameter descriptions to search for. "
+                                 "If --params is given, this is used to filter those results. If --params not given, "
+                                 "search with this regexps in all parameters descriptions.")
+        parser.add_argument('--frameworks', nargs='*', required=False,
+                            help="Show help for these frameworks. It'll report the most commonly used parameters. "
+                                 "If empty, list of supported framework is printed.")
+        parser.add_argument("--no-colors", default=False, action="store_true",
+                            help="If your terminal does not support colors, use this switch to disable colored output.")
         args = parser.parse_args()
 
         if args.params is None and args.text is None and args.frameworks is None:
             assert False, "No command line arguments provided. For help, use: python %s help --help" % (sys.argv[0])
         if args.params is not None or args.text is not None:
-            assert args.frameworks is None, "The '--frameworks' argument must not be used with '--params' or '--text' arguments."
+            if args.frameworks is not None:
+                raise ValueError("The '--frameworks' argument must not be used with '--params' or '--text' arguments.")
 
         if args.frameworks is not None and len(args.frameworks) == 0:
-            red =  '\33[91m'   # Framework name Color
-            grn =  '\33[32m'   # Benchmark backend Color
+            red = '\33[91m'   # Framework name Color
+            grn = '\33[32m'   # Benchmark backend Color
             yellow = '\33[33m'   # Containers names
+
             def colr(txt, colr):
                 return txt if args.no_colors else colr + txt + '\33[0m'
 
@@ -125,7 +135,7 @@ class Helper(object):
             framework_info = helper.help_with_frameworks(args.frameworks)
             for framework in framework_info:
                 print("------------------------------------------------------")
-                print("---------------------%s------------------------" % (framework))
+                print("---------------------%s------------------------" % framework)
                 print("------------------------------------------------------")
                 Helper.print_param_help(framework_info[framework])
         else:
@@ -143,7 +153,7 @@ class Helper(object):
         )
         for key in self.param_info:
             pi = self.param_info[key]
-            if 'desc' in pi and isinstance(pi['desc'], basestring):
+            if 'desc' in pi and isinstance(pi['desc'], Six.string_types):
                 pi['desc'] = [pi['desc']]
         with open(os.path.join(os.path.dirname(__file__), 'frameworks.json')) as file_obj:
             self.frameworks_help = json.load(file_obj)
@@ -239,7 +249,7 @@ class Helper(object):
                             value and description message.
         """
         for param in sorted(params.keys()):
-            print("%s = %s"% (param, params[param]['def_val']))
+            print("%s = %s" % (param, params[param]['def_val']))
             for line in params[param]['help_msg']:
                 print("\t" + line)
 

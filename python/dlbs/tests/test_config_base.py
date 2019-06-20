@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Unit tests to verify all json configs can be parsed."""
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+
 import unittest
 import os
 import copy
 # append parent directory to import path
-import env  #pylint: disable=W0611
-import dlbs
+import dlbs.tests.env  # pylint: disable=W0611
 from dlbs.utils import ConfigurationLoader
 from dlbs.builder import Builder
 from dlbs.processor import Processor
@@ -34,7 +36,9 @@ class ConfigTester(unittest.TestCase):
     def build_plan(self, params):
         self.plan = Builder.build(self.config, params=params, variables={})
 
-    def setUpBase(self, files=['base.json']):
+    def setUpBase(self, files=None):
+        if files is None:
+            files = ['base.json']
         _, self.config, self.param_info = ConfigurationLoader.load(
             os.path.join(os.path.dirname(dlbs.__file__), 'configs'),
             files=files
@@ -51,7 +55,8 @@ class ConfigTester(unittest.TestCase):
             self.assertEqual(
                 exp[expected_output[0]],
                 expected_output[1],
-                "Actual output %s = %s differs from expected %s." % (expected_output[0], str(exp[expected_output[0]]), expected_output[1])
+                "Actual output %s = %s differs from expected %s." % (expected_output[0], str(exp[expected_output[0]]),
+                                                                     expected_output[1])
             )
 
 
@@ -64,14 +69,13 @@ class TestConfigBase(ConfigTester):
         # The 'exp.docker_image' variable's value depend on variable which name
         # depends on 'exp.framework' value. So, we need to disable it by setting
         # 'exp.docker_image' to an empty string.
+        # Same applies for `exp.data_dir`.
         self.build_plan({
             "exp.framework": "tensorflow", "exp.framework_title": "TensorFlow",
             "exp.framework_ver": "1.4.0", "exp.docker_image": "", "DLBS_ROOT": "",
             "exp.proj": "TestConfigBase", "exp.model": "resnet50",
-            "exp.model_title": "ResNet50"
+            "exp.model_title": "ResNet50", "exp.data_dir": ""
         })
-
-
 
     def test_base(self):
         self.assertEqual(len(self.plan), 1)
@@ -86,8 +90,7 @@ class TestConfigBase(ConfigTester):
              ('exp.model_title', 'ResNet50'), ('exp.num_warmup_batches', 111),
              ('exp.num_batches', 777), ('exp.phase', 'inference'),
              ('exp.data', 'real'), ('exp.data_store', 'local-ssd'),
-             ('exp.dtype', 'float16'), ('exp.use_tensor_core', True)
-            ]
+             ('exp.dtype', 'float16'), ('exp.use_tensor_core', True)]
         )
 
     def test_cpu(self):
@@ -138,6 +141,7 @@ class TestConfigBase(ConfigTester):
                  ('runtime.EXPORT_CUDA_VISIBLE_DEVICES', 'CUDA_VISIBLE_DEVICES=0,1,2,3'),
                  ('exp.docker_launcher', 'nvidia-docker')]
             )
+
 
 if __name__ == '__main__':
     unittest.main()

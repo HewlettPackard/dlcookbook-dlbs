@@ -14,7 +14,7 @@
 """A simple http server that provides basic capabilities on monitoring
 progress of a benchmarking experiment.
 
->>> python simple_server.py PROGRESS_FILE PORT
+$ python simple_server.py PROGRESS_FILE PORT
 
 * ``PROGRESS_FILE`` A path to JSON file that's updated by an experimenter
    process. It's the very same file that you pass to experimenter script with
@@ -25,15 +25,23 @@ On running instance of simple server can server one experiment session.
 If due to some reason you want to run multiple experiments at the same time
 on same machine, use different progress files and ports:
 
->>> nohup python simple_server.py /dev/shm/experiment1.json 8000 &
->>> nohup python simple_server.py /dev/shm/experiment2.json 8001 &
+$ nohup python simple_server.py /dev/shm/experiment1.json 8000 &
+$ nohup python simple_server.py /dev/shm/experiment2.json 8001 &
 
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 import os
 import sys
 import json
-from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+from dlbs.utils import Six
+# Do not want to make `six` module a dependency for the project.
+if Six.PY3:
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+else:
+    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+
 
 class DLBSHandler(BaseHTTPRequestHandler):
     """HTTP request handler for simple server

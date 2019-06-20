@@ -15,7 +15,7 @@
 
 Usage:
 
- >>> python bench_stats.py [PARAMETERS]
+ $ python bench_stats.py [PARAMETERS]
 
 Parameters:
 
@@ -26,39 +26,68 @@ Parameters:
 Example:
    Scan folder './bvlc_caffe' for log files recursively and print out stats to a console
 
-   >>> python bench_stats.py --log-dir ./bvlc_caffe --recursive
+   $ python bench_stats.py --log-dir ./bvlc_caffe --recursive
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+
+import os
 import argparse
 import json
-import dlbs.python_version   # pylint: disable=unused-import
 from dlbs.utils import IOUtils
 from dlbs.logparser import LogParser
+
+
+"""
+print("[WARNING] This module is deprecated and will be removed in future releases. "
+      "Please, use bench_data.py instead.")
+"""
+
 
 class BenchStats(object):
     """Class that finds log files and computes simple statistics on experiments."""
 
     @staticmethod
-    def compute(log_dir, recursive):
+    def load_data(**kwargs):
+        is_dir = os.path.isdir(kwargs['input'])
+        is_file = os.path.isfile(kwargs['input'])
+        is_log_file = is_file and kwargs['input'].endswith('.log')
+        is_json_file = is_file and (kwargs['input'].endswith('.json') or kwargs['input'].endswith('.json.gz'))
+
+        if is_dir or is_log_file:
+            files = IOUtils.find_files(config['input'], "*.log", config['recursive'])
+            benchmarks, failed_benchmarks = LogParser.parse_log_files(files)
+            benchmarks.extend(failed_benchmarks)
+        elif is_json_file:
+            benchmarks = IOUtils.read_json(kwargs['input'])
+            benchmarks = benchmarks['data']
+        else:
+            raise ValueError("Invalid input descriptor: {}".format(kwargs['input']))
+        return benchmarks
+
+    @staticmethod
+    def compute(**kwargs):
         """ Finds files and compute experiments' statistics.
 
         :param std log_dir: Directory to search files for.
         :param bool recursive: If True, directory will be searched recursively.
         :return: Dictionary with experiment statistics.
         """
-        files = IOUtils.find_files(log_dir, "*.log", recursive)
-        benchmarks, failed_benchmarks = LogParser.parse_log_files(files)
+        benchmarks = BenchStats.load_data(**kwargs)
+
         def _get(d, key, val=''):
             return d[key] if key in d else val
 
         stats = {
-            'num_log_files': len(files),
+            'num_benchmarks': len(benchmarks),
             'num_failed_exps': 0,
             'num_successful_exps': 0,
             'failed_exps': {},
             'node_ids': set(),
             'node_titles': set(),
-            'gpu_titles': set()
+            'gpu_titles': set(),
+            'framework_titles': set()
         }
         for bench in benchmarks:
             time_val = str(bench['results.time']).strip() if 'results.time' in bench else ''
@@ -76,23 +105,25 @@ class BenchStats(object):
             else:
                 stats['num_successful_exps'] += 1
             #
-            for key in [('exp.node_id', 'node_ids'), ('exp.node_title', 'node_titles'), ('exp.gpu_title', 'gpu_titles')]:
+            for key in [('exp.node_id', 'node_ids'), ('exp.node_title', 'node_titles'), ('exp.gpu_title', 'gpu_titles'), ('exp.framework_title', 'framework_titles')]:
                 if key[0] in bench:
                     stats[key[1]].add(bench[key[0]])
 
-        for key in ['node_ids', 'node_titles', 'gpu_titles']:
+        for key in ['node_ids', 'node_titles', 'gpu_titles', 'framework_titles']:
             stats[key] = list(stats[key])
         return stats
 
 
 if __name__ == "__main__":
+    print("[WARNING] This module is deprecated and will be removed in future releases. "
+          "Please, use bench_data.py instead.")
     parser = argparse.ArgumentParser()
-    parser.add_argument('--log_dir', '--log-dir', type=str, required=True, default=None,
-                        help="Scan this folder for *.log files. "\
+    parser.add_argument('--input', type=str, required=True, default=None,
+                        help="Either a folder containing Scan this folder for *.log files. "
                              "Scan recursively if --recursive is set.")
     parser.add_argument('--recursive', required=False, default=False, action='store_true',
                         help='Scan --log_dir folder recursively for log files.')
-    args = parser.parse_args()
+    config = vars(parser.parse_args())
 
-    stats = BenchStats.compute(args.log_dir, args.recursive)
+    stats = BenchStats.compute(**config)
     print(json.dumps(stats, sort_keys=False, indent=2))

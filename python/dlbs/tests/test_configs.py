@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Unit tests to verify all json configs can be parsed."""
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+
 import unittest
 import os
 import json
 # append parent directory to import path
-import env  #pylint: disable=W0611
+import dlbs.tests.env   # pylint: disable=W0611
 import dlbs
+
 
 class TestConfigs(unittest.TestCase):
     def setUp(self):
@@ -32,9 +36,9 @@ class TestConfigs(unittest.TestCase):
             with open(config_file) as f:
                 try:
                     json.load(f)
-                    #print("OK: " + config_file)
+                    # print("OK: " + config_file)
                 except ValueError as error:
-                    print("JSON Configuration file is invalid: %s" % (config_file))
+                    print("JSON Configuration file is invalid: %s" % config_file)
                     raise error
 
 

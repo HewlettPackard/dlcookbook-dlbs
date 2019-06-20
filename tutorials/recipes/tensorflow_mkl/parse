@@ -1,0 +1,12 @@
+#!/bin/bash
+
+export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
+source ${BENCH_ROOT}/../../../scripts/environment.sh
+
+[[ -d "./reports" ]] && rm -rf ./reports
+mkdir ./reports
+
+phase=inference
+
+python ${benchdata} report ./logs/${phase} --ignore_errors --report regular > ./reports/${phase}.txt
+exit 0

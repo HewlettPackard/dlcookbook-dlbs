@@ -77,8 +77,13 @@
     },
     "tensorflow.num_intra_threads": {
       "val": 0,
-      "type": "str",
+      "type": "int",
       "desc": "This is a 'num_intra_threads' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
+    },
+    "tensorflow.num_inter_threads": {
+      "val": 0,
+      "type": "int",
+      "desc": "This is a 'num_inter_threads' parameter for tf_cnn_benchmarks. See tf_cnn_benchmarks.py for more details."
     },
     "tensorflow.resize_method": {
       "val": "bilinear",
@@ -119,6 +124,7 @@
         "$('--data_name=${tensorflow.data_name}' if '${tensorflow.data_name}' else '')$",
         "--distortions=$('true' if ${tensorflow.distortions} else 'false')$",
         "--num_intra_threads=${tensorflow.num_intra_threads}",
+        "--num_inter_threads=${tensorflow.num_inter_threads}",
         "--resize_method=${tensorflow.resize_method}",
         "$('--mkl' if ${tensorflow.use_mkl} else '')$",
         "${tensorflow.other_args}"

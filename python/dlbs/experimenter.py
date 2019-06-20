@@ -15,16 +15,16 @@
 
 Experimenter takes as an input a specification of experiments, builds plan (just a
 set of experiments to run) and runs experiments one at a time. It accepts the following
-command line parameters:
+command line parameters::
 
->>> python experimenter.py ACTION [parameters]
+    $ python experimenter.py ACTION [parameters]
 
 * ``ACTION`` Action to perform. Valid actions are
 
   * **print-config**
   * **run** Build plan and run experiments.
   * **build** Only build plan. If file name specified, serialize to file.
-  * **validate** Analyze plan - run several validatation checks to make sure \
+  * **validate** Analyze plan - run several validation checks to make sure \
     operating system is properly tuned (see :py:class:`~dlbs.validator.Validator` class for details)
 
 * Parameters
@@ -43,50 +43,52 @@ command line parameters:
   * ``-E`` Extensions to add. Can be usefull to quickly customize experiments. Must be valid json\
     parsable array element for "extension" array.
 
-Example
+Example:
    Load default configuration, pretty print it to a command line and exit. Without other arguments,
    it will print default configuration. Parameters and variables defined in configuration files will
    not be evaluated. The 'print-config' just prints what's inside configuration files i.e. parameters/variables
-   passed via comamnd line arguments will not be included.
+   passed via comamnd line arguments will not be included::
 
-   >>> python experimenter.py print-config --log-level=debug
+       $ python experimenter.py print-config --log-level=debug
 
-Example
+Example:
    There are two types of variables. The first type is **parameter** variables or just parameter.
    These parameters do not contribute to generating different experiments and may be common to all
    experiments. It's possible to specify them on a command line. All values of such paarmeters must be json
-   parsable (json.loads()).
+   parsable (json.loads())::
 
-   >>> python experimenter.py build --discard-default-config --log-level=debug  \\
-   >>>                              -Pstr.greeting='"Hello World!"' -Pint.value=3 \\
-   >>>                              -Pfloat.value=3.4343 -Plist.value='["1", "2", "3"]' \\
-   >>>                              -Plist.value2='[100,101,102]'
+       $ python experimenter.py build --discard-default-config --log-level=debug  \\
+       $                              -Pstr.greeting='"Hello World!"' -Pint.value=3 \\
+       $                              -Pfloat.value=3.4343 -Plist.value='["1", "2", "3"]' \\
+       $                              -Plist.value2='[100,101,102]'
 
-Example
+Example:
    A minimal working example to run BVLC Caffe. Run one experiment and store results in a file.
    If you run multiple experiments, you really want to make sure that experiment log file is
-   different for every experiment (assuming you run it from DLBS_ROOT/tutorials/dlcookbook).
+   different for every experiment (assuming you run it from DLBS_ROOT/tutorials/dlcookbook)::
 
-   >>> export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
-   >>> export CUDA_CACHE_PATH=/dev/shm/cuda_cache
-   >>> . ${BENCH_ROOT}/../../scripts/environment.sh
-   >>> script=$DLBS_ROOT/python/dlbs/experimenter.py
-   >>>
-   >>> python experimenter.py run --log-level=debug \\
-   >>>                            -Pexp.framework='"bvlc_caffe"' \\
-   >>>                            -Pexp.env='"docker"' \\
-   >>>                            -Pexp.gpus='0' \\
-   >>>                            -Pexp.model='"alexnet"' \\
-   >>>                            -Pexp.device_batch='"16"'\\
-   >>>                            -Pexp.log_file='"${BENCH_ROOT}/${caffe.fork}_caffe/training.log"'
+       $ export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
+       $ export CUDA_CACHE_PATH=/dev/shm/cuda_cache
+       $ . ${BENCH_ROOT}/../../scripts/environment.sh
+       $ script=$DLBS_ROOT/python/dlbs/experimenter.py
+       $
+       $ python experimenter.py run --log-level=debug \\
+       $                            -Pexp.framework='"bvlc_caffe"' \\
+       $                            -Pexp.env='"docker"' \\
+       $                            -Pexp.gpus='0' \\
+       $                            -Pexp.model='"alexnet"' \\
+       $                            -Pexp.device_batch='"16"'\\
+       $                            -Pexp.log_file='"${BENCH_ROOT}/${caffe.fork}_caffe/training.log"'
 """
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 import os
 import sys
 import logging
 import argparse
 import json
-import dlbs.python_version   # pylint: disable=unused-import
+import copy
 from dlbs.builder import Builder
 from dlbs.launcher import Launcher
 from dlbs.utils import DictUtils
@@ -113,6 +115,7 @@ class Experimenter(object):
         self.__plan = []                 # Loaded or generated plan
         self.__params = {}               # Override env variables from files
         self.__variables = {}            # Override variables from files
+        self.__initialized = False       # Experimenter can be initialized only once
         # Dirty hacks
         DictUtils.ensure_exists(os.environ, 'CUDA_CACHE_PATH', '')
         DictUtils.ensure_exists(
@@ -139,9 +142,8 @@ class Experimenter(object):
     @action.setter
     def action(self, action):
         """Set current action."""
-        assert action in Experimenter.ACTIONS,\
-               'Invalid value for action (%s). Must be one of %s' %\
-                   (action, str(Experimenter.ACTIONS))
+        if action not in Experimenter.ACTIONS:
+            raise ValueError('Invalid value for action (%s). Must be one of %s' % (action, str(Experimenter.ACTIONS)))
         self.__action = action
 
     @property
@@ -166,7 +168,7 @@ class Experimenter(object):
 
     @property
     def param_info(self):
-        """Get prameters info dictionary."""
+        """Get parameters info dictionary."""
         return self.__param_info
 
     @param_info.setter
@@ -204,89 +206,61 @@ class Experimenter(object):
         """Get variables."""
         return self.__variables
 
-    def init(self, init_logger=False, load_default_config=True, load_config=True):
+    def init(self, **kwargs):
         """Initializes experimenter.
 
-        :param bool init_logger: If True, initializes loggers
-        :param bool load_default_config: If false, does not load standard configuration.
-        :param bool load_config: If true, loads configuration specified on a command line
+        Args:
+            **kwargs (dict): Optional initialization parameters:
+                - action (str): Action to perform.
+                - config (str): A user-provided configuration file.
+                - plan (str): A file for generated benchmark plan.
+                - no_validation (bool): If true, do not perform validation
+                - progress_file (str): A path to progress file (if not None, enables progress reporting).
+                - params (dict): User defined parameters.
+                - vars (dict): User defined variables.
+                - discard_default_config (bool): If True, do not load standard DLBS config.
+                - extensions (dict): User provided extensions.
+
+        User provided parameters (`params`), variables (`vars`) and extensions (`extensions`) overwrite values defined
+        in user configuration files (`config`) if it is present.
+        Information defined in a uses-provided configuration file (`config`) overwrites standard DLBS configuration.
         """
-        # Parse command line arguments
-        parser = argparse.ArgumentParser()
-        parser.add_argument('action', type=str, help='Action to perform. Valid actions: "print-config", "run", "build" and "analyze-plan".')
-        parser.add_argument('--config', required=False, type=str, help='Configuration file (json) of an experiment.\
-                                                                        Will override values from default configuration.')
-        parser.add_argument('--plan', required=False, type=str, help='Pre-built plan of an experiment (json).\
-                                                                      If action is "build", a file name to write plan to.\
-                                                                      If action is "run", a file name to read plan from.')
-        parser.add_argument('--progress_file', '--progress-file', required=False, type=str, default=None,
-                            help='A JSON file that experimenter will be updating on its progress.'\
-                                 'If not present, no progress info will be available.'\
-                                 'Put it somewhere in /dev/shm')
-        parser.add_argument('-P', action='append', required=False, default=[], help='Parameters that override parameters in configuration file.\
-                                                                                     For instance, -Pexp.phase=2. Values must be json parsable (json.loads()).')
-        parser.add_argument('-V', action='append', required=False, default=[], help='Variables that override variables in configuration file in section "variables". \
-                                                                                     These variables are used to generate different combinations of experiments.\
-                                                                                     For instance: -Vexp.framework=\'["tensorflow", "caffe2"]\'.\
-                                                                                     Values must be json parsable (json.loads()).')
-        parser.add_argument('--log_level', '--log-level', required=False, default='info', help='Python logging level. Valid values: "critical", "error", "warning", "info" and "debug"')
-        parser.add_argument('--discard_default_config', '--discard-default-config', required=False, default=False, action='store_true', help='Do not load default configuration.')
-        parser.add_argument('--no_validation', '--no-validation', required=False, default=False, action='store_true', help='Do not perform config validation before running benchmarks.')
-        parser.add_argument('-E', action='append', required=False, default=[], help='Extensions to add. Can be usefull to quickly customize experiments.\
-                                                                                     Must be valid json parsable array element for "extension" array.')
-        args = parser.parse_args()
+        if self.__initialized:
+            raise RuntimeError("Experimenter can only be initialized once.")
 
-        log_level = logging.getLevelName(args.log_level.upper())
-        self.action = args.action
-        self.config_file = args.config
-        self.plan_file = args.plan
-        self.validation = not args.no_validation
-        self.__progress_file = args.progress_file
-
-        # Initialize logger
-        if init_logger:
-            logging.debug("Initializing logger to level %s", args.log_level)
-            root = logging.getLogger()
-            root.setLevel(log_level)
-            handler = logging.StreamHandler(sys.stdout)
-            handler.setLevel(log_level)
-            root.addHandler(handler)
-
-        logging.debug("Parsing parameters on a command line")
-        DictUtils.add(self.params, args.P, pattern='(.+?(?=[=]))=(.+)', must_match=True)
-        logging.debug("Parsing variables on a command line")
-        DictUtils.add(self.variables, args.V, pattern='(.+?(?=[=]))=(.+)', must_match=True)
+        self.action = DictUtils.get(kwargs, 'action', 'run')
+        self.config_file = DictUtils.get(kwargs, 'config', None)
+        self.plan_file = DictUtils.get(kwargs, 'plan', None)
+        self.validation = not DictUtils.get(kwargs, 'no_validation', False)
+        self.__progress_file = DictUtils.get(kwargs, 'progress_file', None)
+        # Get parameters and variables from a command line/user-provided
+        self.params.update(DictUtils.get(kwargs, 'params', {}))
+        self.variables.update(DictUtils.get(kwargs, 'vars', {}))
 
         # Load default configuration
-        if load_default_config and not args.discard_default_config:
+        if not DictUtils.get(kwargs, 'discard_default_config', False):
             logging.debug("Loading default configuration")
             _, self.config, self.param_info = ConfigurationLoader.load(
                 os.path.join(os.path.dirname(__file__), 'configs')
             )
-
         # Load configurations specified on a command line
-        if load_config:
-            logging.debug("Loading user configuration")
-            self.load_configuration()
-
+        self.load_configuration()
         # Add extensions from command line
         DictUtils.ensure_exists(self.config, 'extensions', [])
-        if len(args.E) > 0:
-            logging.debug("Parsing extensions on a command line")
-        for extension in args.E:
-            try:
-                ext = json.loads(extension)
-                logging.debug('Found extension: %s', str(ext))
-                self.config['extensions'].append(ext)
-            except Exception as err:
-                logging.warn("Found non-json parsable extension: %s", extension)
-                raise err
-
-        #logging.debug("Configuration without command line parameters and variables: ")
-        #logging.debug("%s" % json.dumps(self.config, indent=4, sort_keys=True))
+        self.config['extensions'].extend(DictUtils.get(kwargs, 'extensions', []))
+        # All's done
+        self.__initialized = True
 
     def load_configuration(self):
-        """Loads configuration specified by a user on a command line."""
+        """Loads configuration specified by a user on a command line.
+
+        At this moment, DLBS has already loaded standard configuration (if `discard_default_config` flag is not
+        present). DLBS will try to load user configuration from `config` file (if not None) overwriting default
+        parameters. Then, it will try to load user provided parameters (`params`, `vars` and `extensions`) that will
+        overwrite existing configuration.
+
+        If `plan` file is present, it will be loaded if `action` is `run`.
+        """
         if self.config_file is not None:
             logging.debug('Loading configuration from: %s', self.config_file)
             with open(self.config_file) as file_obj:
@@ -316,10 +290,14 @@ class Experimenter(object):
                 validator.validate()
                 if not validator.plan_ok:
                     validator.report()
-                    logging.warn("Plan has not been validated. See reason (s) above.")
-                    logging.warn("If you believe validator is wrong, rerun experimenter with `--no-validation` flag.")
+                    logging.warn("---------------------------------------------------------------------------")
+                    logging.warn("-   Benchmark plan has not been validated. See reason (s) above.          -")
+                    logging.warn("-   If you believe validator is wrong (what can very well be the case),   -")
+                    logging.warn("-   rerun experimenter with `--no-validation` flag e.g.:                  -")
+                    logging.warn("-   python ./python/dlbs/experimenter.py run --no-validation ...          -")
+                    logging.warn("---------------------------------------------------------------------------")
                 else:
-                    logging.info("Plan has been validated")
+                    logging.info("Benchmark plan has been validated")
             if not self.validation or validator.plan_ok:
                 Launcher.run(self.plan, self.__progress_file)
         elif self.action == 'validate':
@@ -340,13 +318,117 @@ class Experimenter(object):
                 print ('')
 
 
+def parse_arguments():
+    """Parse command line arguments
+
+    Returns:
+        dict: Dictionary with command line arguments.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('action', type=str,
+                        help="Action to perform. Valid actions: 'print-config', 'run', 'build' and 'analyze-plan'.")
+    parser.add_argument('--config', required=False, type=str,
+                        help="Configuration file (json) of an experiment. Will override values from "
+                             "default configuration.")
+    parser.add_argument('--plan', required=False, type=str,
+                        help="Pre-built plan of an experiment (json file). If action is 'build', a file name to write "
+                             "plan to. If action is 'run', a file name to read plan from.")
+    parser.add_argument('--progress_file', '--progress-file', required=False, type=str, default=None,
+                        help="A JSON file that experimenter will be updating on its progress. "
+                             "If not present, no progress info will be available. "
+                             "Put it somewhere in /dev/shm")
+    parser.add_argument('-P', action='append', required=False, default=[],
+                        help="Parameters that override parameters in configuration file. "
+                             "For instance, -Pexp.phase=2. Values must be json parsable (json.loads()).")
+    parser.add_argument('-V', action='append', required=False, default=[],
+                        help="Variables that override variables in configuration file in section 'variables'. "
+                             "These variables are used to generate different combinations of experiments. "
+                             "For instance: -Vexp.framework='[\"tensorflow\", \"caffe2\"]'. "
+                             "Values must be json parsable (json.loads()).")
+    parser.add_argument('--log_level', '--log-level', required=False, default='info',
+                        help='Python logging level. Valid values: "critical", "error", "warning", "info" and "debug"')
+    parser.add_argument('--discard_default_config', '--discard-default-config', required=False, default=False,
+                        action='store_true', help='Do not load default configuration.')
+    parser.add_argument('--no_validation', '--no-validation', required=False, default=False,
+                        action='store_true', help='Do not perform config validation before running benchmarks.')
+    parser.add_argument('-E', action='append', required=False, default=[],
+                        help="Extensions to add. Can be useful to quickly customize experiments. "
+                             "Must be valid json parsable array element for 'extension' array.")
+    args = parser.parse_args()
+    return vars(args)
+
+
+def parse_json_arguments(args):
+    """Parse parameters, variables and extensions.
+
+    Args:
+        args (dict): Dictionary of command line arguments returned by `parse_arguments`. Is not modified.
+
+    Returns:
+        A tuple of (params, variables, extensions):
+          - `params` is a dictionary of parameters (all params in args['P'])
+          - `variables` is a dictionary of variables (all vars in args['V'])
+          - `extensions` is a list of dictionaries (all extensions in in args['E'])
+    """
+    for param in ('P', 'V', 'E'):
+        DictUtils.ensure_exists(args, param, [])
+    params, variables, extensions = ({}, {}, [])
+    DictUtils.add(params, args['P'], pattern='(.+?(?=[=]))=(.+)', must_match=True)
+    DictUtils.add(variables, args['V'], pattern='(.+?(?=[=]))=(.+)', must_match=True)
+    for extension in args['E']:
+        try:
+            extensions.append(json.loads(extension))
+        except Exception as err:
+            logging.warn("Found non-json parsable extension: %s", extension)
+            raise err
+    return params, variables, extensions
+
+
+def update_arguments(args, json_args):
+    """ Update `args` with data from `json_args`.
+
+    Args:
+        args (dict): Dictionary of command line arguments:
+          - Keys 'P', 'V' and 'E' are removed.
+          - Keys 'params', 'vars' and 'extensions' are created with values from `json_args`.
+        json_args (tuple): A tuple returned by `parse_json_arguments` - (params, variables, extensions)
+
+    Returns:
+        dict: Updated copy of `args`.
+    """
+    assert isinstance(json_args, tuple) and len(json_args) == 3, "Invalid type of a function argument"
+    args_copy = copy.deepcopy(args)
+    for param in ('P', 'V', 'E'):
+        del args_copy[param]
+    for idx, param in enumerate(['params', 'vars', 'extensions']):
+        args_copy[param] = copy.deepcopy(json_args[idx])
+    return args_copy
+
+
+def init_logger(log_level):
+    """Initialize logger."""
+    if log_level is None:
+        return
+    log_level = logging.getLevelName(log_level.upper())
+    logging.debug("Initializing logger to level %s", log_level)
+    root = logging.getLogger()
+    root.setLevel(log_level)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(log_level)
+    root.addHandler(handler)
+
+
 if __name__ == '__main__':
-    assert len(sys.argv) >= 2, "Minimal number of arguments is 1"
+    if len(sys.argv) < 2:
+        raise ValueError("Missing mandatory parameter `action`.")
     if sys.argv[1] == 'help':
         Helper.main()
     elif sys.argv[1] == 'sysinfo':
         print(json.dumps(SysInfo().collect(), indent=2))
     else:
+        args = parse_arguments()
+        init_logger(args['log_level'])
+        args = update_arguments(args, parse_json_arguments(args))
         experimenter = Experimenter()
-        experimenter.init(init_logger=True, load_default_config=True, load_config=True)
+        experimenter.init(**args)
         experimenter.execute()

@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Unit tests to verify all json configs can be parsed."""
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+
 import unittest
 # append parent directory to import path
-import env  #pylint: disable=W0611
-from test_config_base import ConfigTester
+import dlbs.tests.env  # pylint: disable=W0611
+from dlbs.tests.test_config_base import ConfigTester
 
 
 class TestConfigCaffe2(ConfigTester):
@@ -36,7 +39,7 @@ class TestConfigCaffe2(ConfigTester):
         )
 
     def test_docker_images(self):
-        self.check_parameters('hpe/caffe2:cuda9-cudnn7')
+        self.check_parameters('nvcr.io/nvidia/caffe2:18.05-py2')
 
 
 if __name__ == '__main__':

@@ -237,11 +237,14 @@
       "desc": ["The name of a log file for this experiment."]
     },
     "exp.rerun": {
-      "val": false,
-      "type": "bool",
+      "val": "never",
+      "type": "str",
+      "val_domain": ["never", "always", "onfail"],
       "desc": [
         "By default, if experimenter finds existing file for an experiment (see 'exp.log_file'), it will not run experiment again.",
-        "Set the value of this parameter to 'true' to force rerun benchmarks in this case."
+        "Adjust value of this parameter if you need to change the default behaviour. The 'never' value instructs to never re-run",
+        "benchmarks. The 'always' says to always re-run benchmarks. With 'onfail', only if previous benchmark did not succeed",
+        "DLBS will run benchmark again."
       ]
     },
     "exp.node_id": {

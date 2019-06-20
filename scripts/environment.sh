@@ -9,6 +9,8 @@ export CUDA_CACHE_PATH=/dev/shm/dlbs
 
 # The main frontend benchmarking script. This is what's called DLBS.
 export experimenter="$DLBS_ROOT/python/dlbs/experimenter.py"
+#
+export benchdata="$DLBS_ROOT/python/dlbs/bench_data.py"
 # A script that parses log files.
 export logparser="$DLBS_ROOT/python/dlbs/logparser.py"
 # A script that builds textual perfformance reports.

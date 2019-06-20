@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Unit tests to verify all json configs can be parsed."""
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
+
 import os
 import unittest
 # append parent directory to import path
-import env  #pylint: disable=W0611
-from test_config_base import ConfigTester
+import dlbs.tests.env  # pylint: disable=W0611
+from dlbs.tests.test_config_base import ConfigTester
 
 
 class TestConfigCaffe(ConfigTester):

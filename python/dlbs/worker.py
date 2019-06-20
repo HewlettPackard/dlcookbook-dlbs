@@ -11,7 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""":py:class:`~dlbs.Worker` class runs one benchmarking experiment."""
+""":py:class:`~dlbs.worker.Worker` class runs one benchmark experiment."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import sys
 import time
 import json
@@ -19,9 +22,9 @@ import threading
 import logging
 import subprocess
 import traceback
-from dlbs.utils import IOUtils
-from dlbs.utils import DictUtils
+from dlbs.utils import IOUtils, DictUtils, ParamUtils
 from dlbs.sysinfo.systemconfig import SysInfo
+
 
 class Worker(threading.Thread):
     """This class runs one benchmarking experiment.
@@ -34,20 +37,19 @@ class Worker(threading.Thread):
             ["echo", "'Hello World'"], # Command to execute (with ``Popen``)
             {},                        # Environmental variables to set
             {},                        # Experiment variables (dictionary)
-            5,                         # Index of current benchmark
+            5,                         # Current benchmark index
             10                         # Total number of benchmarks
         )
-        # This is a blocking call.
-        worker.work()
+        worker.work()                  # This is a blocking call.
     """
+
     def __init__(self, command, environ, params):
         """ Initializes this worker with the specific parameters.
 
-        :param list command: List containing command to execute and its comamnd\
-                             line arguments (with Popen).
-        :param dict environ: Environment variables to set with Popen.
-        :param dict params: Parameters of this experiment (dictionary).
-
+        Args:
+            command (list): List containing command to execute and its command line arguments (with Popen).
+            environ (dict): Environment variables to set with Popen.
+            params (dict): Parameters of this benchmark (dictionary).
         """
         threading.Thread.__init__(self)
         self.command = command            # Command + command line arguments
@@ -56,18 +58,28 @@ class Worker(threading.Thread):
         self.process = None               # Background process object
         self.ret_code = 0                 # Return code of the process
 
-    def __dump_parameters(self, a_file):
-        """Dumps all experiment parameters to a file (or /dev/stdout)."""
-        a_file.write("Running subprocess (%s) with log file '%s'\n" % (self.command, self.params['exp.log_file']))
-        a_file.write("\n-----------------------------------\nVariables from python entry script.\n-----------------------------------\n")
-        for key, val in self.params.items():
-            a_file.write('__%s__=%s\n' % (key, json.dumps(val)))
-        a_file.write("\n----------------------------\nStarting framework launcher.\n----------------------------\n")
+    def __dump_parameters(self, file_object):
+        """Dumps all experiment parameters to a file (or /dev/stdout).
+
+        Args:
+            file_object: A file object. This is a log file for an individual benchmark. All parameters are dumped which
+                not great.
+        """
+        file_object.write("Running subprocess (%s) with log file '%s'\n" % (self.command, self.params['exp.log_file']))
+        file_object.write("\n"
+                          "--------------------------\n"
+                          "Variables from python script.\n"
+                          "--------------------------\n")
+        ParamUtils.log_parameters(self.params, file_object)
+        file_object.write("\n"
+                          "----------------------------\n"
+                          "Starting framework launcher.\n"
+                          "----------------------------\n")
 
     def run(self):
         """Runs subprocess with Popen.
 
-        This method must not be called directly. Use blocking :py:meth:`~dlbs.Worker.work`
+        This method must not be called directly. Use blocking :py:meth:`~dlbs.worker.Worker.work`
         method instead.
         """
         try:
@@ -80,12 +92,13 @@ class Worker(threading.Thread):
                 self.__dump_parameters(log_file)
             # This is where we launch process. Keep in mind, that the log file that's
             # supposed to be created is exp.log_file or exp_log_file in the script.
-            # Other output of the launching script will be printed by this pyhton code
-            # to a stanard output.
+            # Other output of the launching script will be printed by this python code
+            # to a standard output.
             try:
-                self.process = subprocess.Popen(self.command, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=self.environ)
+                self.process = subprocess.Popen(self.command, universal_newlines=True, stdout=subprocess.PIPE,
+                                                stderr=subprocess.STDOUT, env=self.environ)
             except OSError:
-                print("[ERROR] Failed to run command '%s' (make sure file exists and is executable)" % str(self.command))
+                print("[ERROR] Failed to run command '%s' (file must exist and be executable)" % str(self.command))
                 raise
             while True:
                 output = self.process.stdout.readline()
@@ -100,10 +113,15 @@ class Worker(threading.Thread):
             logging.warn(traceback.format_exc())
             self.ret_code = -1
 
-    def work(self, resource_monitor):
-        """Runs experiment as subprocess and waits for its completion.
+    def work(self, resource_monitor=None):
+        """Runs a benchmark as subprocess and waits for it.
 
-        :return: Status code.
+        Args:
+            resource_monitor (dlbs.utils.ResourceMonitor): Optional resource monitor object.
+
+        Returns:
+            Status code for a subprocess call invocation.
+
         """
         self.start()
         self.join()
