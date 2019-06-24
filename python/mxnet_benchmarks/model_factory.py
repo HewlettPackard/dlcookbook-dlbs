@@ -19,22 +19,28 @@ contains model ids that class creates.
 
 To list supported models, run the following code:
 
->>> from mxnet_benchmarks.model_factory import ModelFactory
->>> print(ModelFactory.models.keys())
+.. code-block:: python
+
+    from mxnet_benchmarks.model_factory import ModelFactory
+    print(ModelFactory.models.keys())
 """
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import glob
 import os
 import importlib
 import inspect
+
 
 def import_models():
     """Scans **./models** folder and imports models.
 
     See this stackoverflow thread for implementation details:
     https://stackoverflow.com/questions/3178285/list-classes-in-directory-python
-    
-    :return: Dictionary that maps model id to its class.
+
+    Returns:
+        Dictionary that maps model id to its class.
     """
     models = {}
     fnames = glob.glob(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'models', '*.py'))
@@ -48,22 +54,28 @@ def import_models():
             if not model_cls or not inspect.isclass(model_cls) or not hasattr(model_cls, 'implements'):
                 continue	    
             implements = getattr(model_cls, 'implements')
-	    # Quick fix to make it compatible with Python3. Needs to be re-written.
-            #if isinstance(implements, basestring):
+            # Quick fix to make it compatible with Python3. Needs to be re-written.
+            # if isinstance(implements, basestring):
             if isinstance(implements, ("".__class__, u"".__class__)):
                 implements = [implements]
-            assert isinstance(implements, list), "The 'implements' static member must be either a string or a list of strings"\
-                                                 "Error in %s:%s class definition" % (fname, model_cls.__name__)
+            if isinstance(implements, list) is False:
+                raise ValueError("The 'implements' static member must be either a string or a list of strings"
+                                 "Error in %s:%s class definition" % (fname, model_cls.__name__))
             for model_id in implements:
-		# Quick fix to make it compatible with Python3. Needs to be re-written.
-                #assert isinstance(model_id, basestring), "The 'implements' static member must be either a string or a list of strings"\
-                #                                         "Error in %s:%s class definition" % (fname, model_cls.__name__)
-                assert isinstance(model_id, ("".__class__, u"".__class__)), \
-		                  "The 'implements' static member must be either a string or a list of strings"\
-		                  "Error in %s:%s class definition" % (fname, model_cls.__name__)
-                assert model_id not in models, "Model %s implements same model as %s (%s)" % (model_cls.__name__, models[model_id].__name__, model_id)
+                # Quick fix to make it compatible with Python3. Needs to be re-written.
+                # assert isinstance(model_id, basestring),\
+                #     "The 'implements' static member must be either a string or a list of strings"\
+                #     "Error in %s:%s class definition" % (fname, model_cls.__name__)
+                if isinstance(model_id, ("".__class__, u"".__class__)) is False:
+                    raise ValueError("The 'implements' static member must be either a string or a list of strings"
+                                     "Error in %s:%s class definition" % (fname, model_cls.__name__))
+                if model_id in models:
+                    raise ValueError("Model %s implements same model as %s (%s)" % (model_cls.__name__,
+                                                                                    models[model_id].__name__,
+                                                                                    model_id))
                 models[model_id] = model_cls
     return models
+
 
 class ModelFactory(object):
     """MXNet model factory that creates models."""
@@ -73,12 +85,16 @@ class ModelFactory(object):
     @staticmethod
     def get_model(params):
         """Return model identified by *params['model']*.
-        
-        :param dict params: Prameters of the model. Must include at least *model* 
-                            key that identifies model id.
-        :return: Model instance.
+
+        Args:
+            params (dict): Parameters of the model. Must include at least *model* key that identifies model id.
+
+        Returns:
+            Model instance.
         """
-        assert 'model' in params, "No model name found in params"
-        model = params['model']
-        assert model in ModelFactory.models, "Unsupported model: '%s'" % model
+        model = params.get('model', None)
+        if model is None:
+            raise ValueError("No model name found in params")
+        if model not in ModelFactory.models:
+            raise ValueError("Unsupported model: '%s'" % model)
         return ModelFactory.models[model](params)

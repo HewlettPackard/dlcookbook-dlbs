@@ -17,8 +17,11 @@
     fully connected layers as described in the paper.
 """
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import mxnet as mx
 from mxnet_benchmarks.models.model import Model
+
 
 class Overfeat(Model):
 

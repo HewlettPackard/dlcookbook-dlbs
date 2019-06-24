@@ -11,7 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Classes defined in this module implement various data iterators."""
+"""Classes defined in this module implement various data iterators.
+
+Data iterators are created after a model has been created, so, shape and layout of input data tensors are known and
+cannot be changed.
+"""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import mxnet as mx
 from mxnet.io import DataBatch, DataIter
 import numpy as np
@@ -24,40 +31,42 @@ class SyntheticDataIterator(DataIter):
     https://github.com/apache/incubator-mxnet/blob/master/example/image-classification/common/data.py
     Works with two standard input tensors - data tensor and label tensor.
     """
-    def __init__(self, data_shape, label_shape, labels_range, max_iter=100, dtype=np.float32):
+    def __init__(self, data_shape, label_shape, labels_range, opts):
         """MXNet partitions data batch evenly among the available GPUs. Here, the
            batch size is the effective batch size.
            
         Memory for data and label tensors is allocated with `cpu_pinned` context.
         To make this iterator consistent with other iterators that provide real data,
         I always set maximal number of iterations to be `warmup_iters + bench_iters`.
-           
-        :param int num_classes: Number of classes.
-        :param tuple data_shape: Shape of input data tensor (X) including batch size.
-                                 The batch size if the 0th dimension (bsz = data_shape[0])
-        :param int max_iter: Maximal number of iterations to perform. Basically, emulates
-                             the dataset size. If negative, will iterate forever and will
-                             never throw `StopIteration` exception.
-        :param dtype: Type of data (float32, float16).
+
+        Changes:
+            New version does not support `max_iter` parameter. To limit number of batches, wrap this iterator with
+                `mx.io.ResizeIter`.
+
+        Args:
+            data_shape (tuple): Shape of input data tensor (X) including batch size. The batch size is the 0th
+                dimension (bsz = data_shape[0]). This batch size must be an effective batch for a whole node.
+            label_shape (tuple): Shape of input label tensor (Y) including batch size. The batch size is the 0th
+                dimension (bsz = labels_shape[0]). This batch size must be an effective batch for a whole node.
+            labels_range (list): List of output labels. For ImageNet, that would be a list with integers from 0 to 999.
+            dtype (str): Data type for data tensor (float32, float16).
         """
         super(SyntheticDataIterator, self).__init__(data_shape[0])
-        self.cur_iter = 0
-        self.max_iter = max_iter
-        self.dtype = dtype
-        self.data = mx.nd.array(
-            np.random.uniform(-1, 1, data_shape),
-            dtype=self.dtype,
-            ctx=mx.Context('cpu_pinned', 0)
-        )
-        self.label_shape = label_shape
+        print("Creating synthetic data iterator with data shape {} "
+              "and data layout {}.".format(data_shape, opts['input_layout']))
+        # Let's assume this data iterator always returns single precision tensors.
+        self.dtype = opts['dtype']
+        # self.dtype = 'float32'
+        # mx.Context: cpu, gpu, cpu_pinned, cpu_shared
+        self.data = mx.nd.array(np.random.uniform(-1, 1, data_shape),
+                                dtype=self.dtype,
+                                ctx=mx.Context('cpu_pinned', 0))
+        self.label_shape = [label_shape[0]]
         if not self.label_shape:
-            self.label_shape = [self.batch_size,]
-        print(str(label_shape))
-        self.label = mx.nd.array(
-            np.random.randint(labels_range[0], labels_range[1] + 1, self.label_shape),
-            dtype=self.dtype,
-            ctx=mx.Context('cpu_pinned', 0)
-        )
+            self.label_shape = [self.batch_size]
+        self.label = mx.nd.array(np.random.randint(labels_range[0], labels_range[1] + 1, self.label_shape),
+                                 dtype='float32',
+                                 ctx=mx.Context('cpu_pinned', 0))
 
     def __iter__(self):
         return self
@@ -68,28 +77,17 @@ class SyntheticDataIterator(DataIter):
 
     @property
     def provide_label(self):
-        return [mx.io.DataDesc('softmax_label', self.label_shape, self.dtype)]
+        return [mx.io.DataDesc('softmax_label', self.label_shape, 'float32')]
 
     def next(self):
         """For DataBatch definition, see this page:
            https://mxnet.incubator.apache.org/api/python/io.html#mxnet.io.DataBatch
         """
-        self.cur_iter += 1
-        if self.max_iter < 0 or self.cur_iter <= self.max_iter:
-            return DataBatch(data=(self.data,),
-                             label=(self.label,),
-                             pad=0,
-                             index=None,
-                             provide_data=self.provide_data,
-                             provide_label=self.provide_label)
-        else:
-            raise StopIteration
+        return DataBatch(data=(self.data,), label=(self.label,), pad=0, index=None, provide_data=self.provide_data,
+                         provide_label=self.provide_label)
 
     def __next__(self):
         return self.next()
-
-    def reset(self):
-        self.cur_iter = 0
 
 
 class DataIteratorFactory(object):
@@ -101,46 +99,44 @@ class DataIteratorFactory(object):
     @staticmethod
     def get(data_shape, label_shape, labels_range, opts, kv_store=None):
         """Creates data iterator.
-        
-        :param int num_classes: Number of classes.
-        :param tuple data_shape: Shape of input data tensor (X) including batch size.
-                                 The batch size if the 0th dimension (bsz = data_shape[0]).
-                                 This batch size must be an affective batch for a whole node.
-        :param dict opts: Benchmark parameters
-        :param kv_store: An object returned by mx.kvstore.create('...')
-        :return: Data iterator.
+
+        Args:
+            data_shape (tuple): Shape of input data tensor (X) including batch size. The batch size is the 0th
+                dimension (bsz = data_shape[0]). This batch size must be an effective batch for a whole node.
+            label_shape (tuple): Shape of input label tensor (Y) including batch size. The batch size is the 0th
+                dimension (bsz = labels_shape[0]). This batch size must be an effective batch for a whole node.
+            labels_range (list): List of output labels. For ImageNet, that would be a list with integers from 0 to 999.
+            opts (dict): Dictionary with options.
+            kv_store (mxnet.kvstore.KVStore): An object returned by mx.kvstore.create('...').
+
+        Returns:
+            Data iterator (instance of mx.io.DataIter).
         """
-        data_iter = None
         if 'data_dir' not in opts or not opts['data_dir']:
-            data_iter = SyntheticDataIterator(
-                data_shape,
-                label_shape,
-                labels_range,
-                max_iter=opts['num_warmup_batches'] + opts['num_batches'],
-                #dtype=opts['dtype']
-                #dtype=np.float32
-                dtype='float32'
-            )
+            data_iter = SyntheticDataIterator(data_shape, label_shape, labels_range, opts)
         else:
-            if kv_store:
-                (rank, nworker) = (kv_store.rank, kv_store.num_workers)
-            else:
-                (rank, nworker) = (0, 1)
+            (rank, nworker) = (kv_store.rank, kv_store.num_workers) if kv_store else (0, 1)
             # https://mxnet.incubator.apache.org/api/python/io.html#mxnet.io.ImageRecordIter
             # https://github.com/apache/incubator-mxnet/blob/master/example/image-classification/common/data.py
+            # This iterator supports channels first format only.
+            input_layout = opts.get('input_layout', 'NCHW')
+            if input_layout != 'NCHW':
+                raise ValueError("Standard MXNET image iterator only supports channel first format, "
+                                 "requested format: {}.".format(input_layout))
+            print("Creating standard image record iterator (ImageRecordIter) with data layout {}.".format(input_layout))
             data_iter = mx.io.ImageRecordIter(
-                path_imgrec=opts['data_dir'],
+                path_imgrec=opts['data_dir'],    # Path to the image RecordIO (.rec) file or a directory path.
                 data_name='data',
                 label_name='softmax_label',
                 data_shape=(data_shape[1], data_shape[2], data_shape[3]),
                 batch_size=data_shape[0],
                 rand_crop=True,
                 rand_mirror=True,
-                #dtype=opts['dtype'],
-                preprocess_threads = opts.get('preprocess_threads', 4),
-                prefetch_buffer = opts.get('prefetch_buffer ', 10),
+                preprocess_threads=opts.get('preprocess_threads', 4),
+                prefetch_buffer=opts.get('prefetch_buffer ', 10),
                 dtype='float32',
                 num_parts=nworker,
                 part_index=rank
             )
+            # dtype=opts['dtype']
         return data_iter

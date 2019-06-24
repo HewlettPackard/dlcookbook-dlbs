@@ -26,6 +26,7 @@ Idea is similar to this one:
 The very fist agent that needs to run is the scheduler. Then all others can run.
 """
 from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 import argparse
 import sys
@@ -71,7 +72,7 @@ class Cluster(object):
             elif len(scheduler) == 3:
                 self.scheduler = {'interface': scheduler[0], 'host': scheduler[1], 'port': scheduler[2]}
             else:
-                raise ValueError("Invalid rendezvous specifier format (%s)" % (args.rendezvous))
+                raise ValueError("Invalid rendezvous specifier format (%s)" % args.rendezvous)
         self.agents = {
             'scheduler': None, 'server': None, 'worker': None
         }
@@ -118,7 +119,7 @@ class Cluster(object):
 
         env = os.environ.copy()
         cluster_vars = self.agent_specs('worker')
-        print_now("Running agent 'worker' with cluster parameters '%s'" % (cluster_vars))
+        print_now("Running agent 'worker' with cluster parameters '%s'" % cluster_vars)
         env.update(cluster_vars)
         cmd = [sys.executable, '-u', self.benchmark['script']] + self.benchmark['args']
         self.agents['worker'] = subprocess.Popen(cmd, env=env)

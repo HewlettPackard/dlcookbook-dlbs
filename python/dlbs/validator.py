@@ -257,9 +257,9 @@ class Validator(object):
         # The 'PATH' issue is described here: https://stackoverflow.com/questions/48168482/keyerror-path-on-numpy-import
         cmd = None
         if framework == 'tensorflow':
-            cmd = [python_exec, '-c', 'import os; os.environ.setdefault("PATH", ""); import tensorflow as tf; print tf.__version__;']
+            cmd = [python_exec, '-c', 'import os; os.environ.setdefault("PATH", ""); import tensorflow as tf; print(tf.__version__);']
         elif framework == 'mxnet':
-            cmd = [python_exec, '-c', 'import os; os.environ.setdefault("PATH", ""); import mxnet as mx; print mx.__version__;']
+            cmd = [python_exec, '-c', 'import os; os.environ.setdefault("PATH", ""); import mxnet as mx; print(mx.__version__);']
         elif framework == 'caffe2':
             # It seems that in the future releases it'll be possible to use something like:
             # from caffe2.python.build import build_options

@@ -34,6 +34,36 @@
       "type": "str",
       "desc": "A data directory if real data should be used. If empty, synthetic data is used (no data ingestion pipeline)."
     },
+    "mxnet.input_layout": {
+      "val": "",
+      "type": "str",
+      "desc": [
+        "Layout of an input tensor data. Now, must only be used with half precision and NGC containers for",
+        "convolutional neural network - set it to NHWC"
+      ]
+    },
+    "mxnet.model_layout": {
+      "val": "",
+      "type": "str",
+      "desc": [
+        "Layout of model tensors. Now, must only be used with half precision and NGC containers for",
+        "convolutional neural network - set it to NHWC"
+      ]
+    },
+    "mxnet.nvidia_layers": {
+      "val": false,
+      "type": "bool",
+      "desc": "When running half precision in NGC containers, setting it to true for some models may improve performance."
+    },
+    "mxnet.workspace": {
+      "val": 1024,
+      "type": "int",
+      "desc": [
+        "Maximum temporary workspace allowed (MB) in convolution.This parameter has two usages. When CUDNN is not used,",
+        "it determines the effective batch size of the convolution kernel. When CUDNN is used, it controls the",
+        "maximum temporary storage used for tuning the best CUDNN kernel when limited_workspace strategy is used."
+      ]
+    },
     "mxnet.preprocess_threads": {
       "val": 4,
       "type": "int",
@@ -59,7 +89,11 @@
         "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
         "--dtype=${exp.dtype}",
         "--preprocess_threads=${mxnet.preprocess_threads}",
-        "--prefetch_buffer=${mxnet.prefetch_buffer}"
+        "--prefetch_buffer=${mxnet.prefetch_buffer}",
+        "$('' if not '${mxnet.input_layout}' else '--input_layout=${mxnet.input_layout}')$",
+        "$('' if not '${mxnet.model_layout}' else '--model_layout=${mxnet.model_layout}')$",
+        "--nvidia_layers=${mxnet.nvidia_layers}",
+        "--workspace=${mxnet.workspace}"
       ],
       "type": "str",
       "desc": "Command line arguments that launcher will pass to a mxnet_benchmarks script."

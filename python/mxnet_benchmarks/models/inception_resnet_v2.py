@@ -18,8 +18,11 @@ Visualization (may be slightly different from this implementation):
 http://ethereon.github.io/netscope/#/gist/95826c28109d1a5ab95306c37bb30225
 """
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import mxnet as mx
 from mxnet_benchmarks.models.model import Model
+
 
 def ConvFactory(data, num_filter, kernel, stride=(1, 1), pad=(0, 0),
                 act_type="relu", mirror_attr=None, with_act=True):
@@ -111,7 +114,7 @@ class InceptionResNetV2(Model):
         """ """
         Model.check_parameters(
             params,
-            {'name': 'InceptionResNetV2', 'input_shape':(3, 299, 299),
+            {'name': 'InceptionResNetV2', 'input_shape': (3, 299, 299),
              'num_classes': 1000, 'phase': 'training',
              'dtype': 'float32'}
         )

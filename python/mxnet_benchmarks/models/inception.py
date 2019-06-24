@@ -19,9 +19,12 @@
       http://ethereon.github.io/netscope/#/gist/8fdab7a3ea5bceb9169832dfd73b5e31
 """
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import mxnet as mx
 from collections import defaultdict
 from mxnet_benchmarks.models.model import Model
+
 
 class BaseInceptionModel(Model):
 
@@ -38,7 +41,7 @@ class BaseInceptionModel(Model):
     def inception_module(self, name, inputs, branches):
         """Add parallel branches from 'branhes' into current graph"""
         def get_tuple(value):
-            return value if isinstance(value,tuple) else (value, value)
+            return value if isinstance(value, tuple) else (value, value)
         self.counts[name] += 1
         name = name + str(self.counts[name]-1)
         layers_outputs = []             # Outputs of each layer in each branch
@@ -74,13 +77,12 @@ class BaseInceptionModel(Model):
     def __init__(self, params):
         Model.check_parameters(
             params,
-            {'input_shape':(3, 299, 299), 'num_classes': 1000,
+            {'input_shape': (3, 299, 299), 'num_classes': 1000,
              'phase': 'training',
              'dtype': 'float32'}
         )
         Model.__init__(self, params)
         self.counts = defaultdict(lambda: 0)
-
 
 
 class Inception3(BaseInceptionModel):
@@ -111,9 +113,9 @@ class Inception3(BaseInceptionModel):
     def module_c(self, inputs, n):
         branches = [
             [('conv', 192, 1, 1, 0)],
-            [('conv', n, 1, 1, 0), ('conv', n, (1,7), 1, (0,3)), ('conv', 192, (7,1), 1, (3,0))],
-            [('conv', n, 1, 1, 0), ('conv', n, (7,1), 1, (3,0)), ('conv', n, (1,7), 1, (0,3)),
-             ('conv', n, (7,1), 1, (3,0)), ('conv', 192, (1,7), 1, (0,3))],
+            [('conv', n, 1, 1, 0), ('conv', n, (1, 7), 1, (0, 3)), ('conv', 192, (7, 1), 1, (3, 0))],
+            [('conv', n, 1, 1, 0), ('conv', n, (7, 1), 1, (3, 0)), ('conv', n, (1, 7), 1, (0, 3)),
+             ('conv', n, (7, 1), 1, (3, 0)), ('conv', 192, (1, 7), 1, (0, 3))],
             [('avg', 3, 1, 1), ('conv', 192, 1, 1, 0)]
         ]
         return self.inception_module('inception_c', inputs, branches)
@@ -121,8 +123,8 @@ class Inception3(BaseInceptionModel):
     def module_d(self, inputs):
         branches = [
             [('conv', 192, 1, 1, 0), ('conv', 320, 3, 2, 0)],
-            [('conv', 192, 1, 1, 0), ('conv', 192, (1,7), 1, (0,3)),
-             ('conv', 192, (7,1), 1, (3,0)), ('conv', 192, 3, 2, 0)],
+            [('conv', 192, 1, 1, 0), ('conv', 192, (1, 7), 1, (0, 3)),
+             ('conv', 192, (7, 1), 1, (3, 0)), ('conv', 192, 3, 2, 0)],
             [('max', 3, 2, 0)]
         ]
         return self.inception_module('inception_d', inputs, branches)
@@ -130,10 +132,10 @@ class Inception3(BaseInceptionModel):
     def module_e(self, inputs, pooltype):
         branches = [
             [('conv', 320, 1, 1, 0)],
-            [('conv', 384, 1, 1, 0), ('conv', 384, (1,3), 1, (0,1))],
-            [('share',),             ('conv', 384, (3,1), 1, (1,0))],
-            [('conv', 448, 1, 1, 0), ('conv', 384, 3, 1, 1), ('conv', 384, (1,3), 1, (0,1))],
-            [('share',),             ('share',),             ('conv', 384, (3,1), 1, (1,0))],
+            [('conv', 384, 1, 1, 0), ('conv', 384, (1, 3), 1, (0, 1))],
+            [('share',),             ('conv', 384, (3, 1), 1, (1, 0))],
+            [('conv', 448, 1, 1, 0), ('conv', 384, 3, 1, 1), ('conv', 384, (1, 3), 1, (0, 1))],
+            [('share',),             ('share',),             ('conv', 384, (3, 1), 1, (1, 0))],
             [(pooltype, 3, 1, 1), ('conv', 192, 1, 1, 0)]
         ]
         return self.inception_module('inception_e', inputs, branches)
@@ -189,7 +191,7 @@ class Inception4(BaseInceptionModel):
     def inception_v4_sb(self, inputs):
         branches = [
             [('conv', 64, 1, 1, 0), ('conv', 96, 3, 1, 0)],
-            [('conv', 64, 1, 1, 0), ('conv', 64, (1,7), 1, (0,3)), ('conv', 64, (7,1), 1, (3,0)),
+            [('conv', 64, 1, 1, 0), ('conv', 64, (1, 7), 1, (0, 3)), ('conv', 64, (7, 1), 1, (3, 0)),
              ('conv', 96, 3, 1, 0)]
         ]
         return self.inception_module('incept_v4_sb', inputs, branches)
@@ -213,7 +215,7 @@ class Inception4(BaseInceptionModel):
     def inception_v4_rb(self, inputs):
         branches = [
             [('conv', 192, 1, 1, 0), ('conv', 192, 3, 2, 0)],
-            [('conv', 256, 1, 1, 0), ('conv', 256, (1,7), 1, (0,3)), ('conv', 320, (7,1), 1, (3,0)),
+            [('conv', 256, 1, 1, 0), ('conv', 256, (1, 7), 1, (0, 3)), ('conv', 320, (7, 1), 1, (3, 0)),
              ('conv', 320, 3, 2, 0)],
             [('max', 3, 2, 0)],
         ]
@@ -231,9 +233,9 @@ class Inception4(BaseInceptionModel):
     def inception_v4_b(self, inputs):
         branches = [
             [('conv', 384, 1, 1, 0)],
-            [('conv', 192, 1, 1, 0), ('conv', 224, (1,7), 1, (0,3)), ('conv', 256, (7,1), 1, (3,0))],
-            [('conv', 192, 1, 1, 0), ('conv', 192, (7,1), 1, (3,0)), ('conv', 224, (1,7), 1, (0,3)),
-             ('conv', 224, (7,1), 1, (3,0)), ('conv', 256, (1,7), 1, (0,3))],
+            [('conv', 192, 1, 1, 0), ('conv', 224, (1, 7), 1, (0, 3)), ('conv', 256, (7, 1), 1, (3, 0))],
+            [('conv', 192, 1, 1, 0), ('conv', 192, (7, 1), 1, (3, 0)), ('conv', 224, (1, 7), 1, (0, 3)),
+             ('conv', 224, (7, 1), 1, (3, 0)), ('conv', 256, (1, 7), 1, (0, 3))],
             [('avg', 3, 1, 1), ('conv', 128, 1, 1, 0)]
         ]
         return self.inception_module('incept_v4_b', inputs, branches)
@@ -241,11 +243,11 @@ class Inception4(BaseInceptionModel):
     def inception_v4_c(self, inputs):
         branches = [
             [('conv', 256, 1, 1, 0)],
-            [('conv', 384, 1, 1, 0), ('conv', 256, (1,3), 1, (0,1))],
-            [('share',),             ('conv', 256, (3,1), 1, (1,0))],
-            [('conv', 384, 1, 1, 0), ('conv', 448, (3,1), 1, (1,0)),
-             ('conv', 512, (1,3), 1, (0,1)), ('conv', 256, (1,3), 1, (0,1))],
-            [('share',), ('share',), ('share',), ('conv', 256, (3,1), 1, (1,0))],
+            [('conv', 384, 1, 1, 0), ('conv', 256, (1, 3), 1, (0, 1))],
+            [('share',),             ('conv', 256, (3, 1), 1, (1, 0))],
+            [('conv', 384, 1, 1, 0), ('conv', 448, (3, 1), 1, (1, 0)),
+             ('conv', 512, (1, 3), 1, (0, 1)), ('conv', 256, (1, 3), 1, (0, 1))],
+            [('share',), ('share',), ('share',), ('conv', 256, (3, 1), 1, (1, 0))],
             [('avg', 3, 1, 1), ('conv', 256, 1, 1, 0)]
         ]
         return self.inception_module('incept_v4_c', inputs, branches)
@@ -264,17 +266,17 @@ class Inception4(BaseInceptionModel):
         v = self.inception_v4_sb(v)
         v = self.inception_v4_sc(v)
         # Four Type A modules
-        for _ in xrange(4):
+        for _ in range(4):
             v = self.inception_v4_a(v)
         # One Type A Reduction module
         v = self.inception_v4_ra(v, 192, 224, 256, 384)
         # Seven Type B modules
-        for _ in xrange(7):
+        for _ in range(7):
             v = self.inception_v4_b(v)
         # One Type B Reduction module
         v = self.inception_v4_rb(v)
         # Three Type C modules
-        for _ in xrange(3):
+        for _ in range(3):
             v = self.inception_v4_c(v)
         # Final global pooling
         v = mx.symbol.Pooling(name='pool', data=v, pool_type="avg", kernel=(8, 8), stride=(1, 1))

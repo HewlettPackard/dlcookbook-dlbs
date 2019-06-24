@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import mxnet as mx
 from mxnet_benchmarks.models.model import Model
+
 
 class AcousticModel(Model):
     
@@ -26,7 +29,7 @@ class AcousticModel(Model):
     def __init__(self, params):
         Model.check_parameters(
             params,
-            {'name': 'AcousticModel', 'input_shape':(540),
+            {'name': 'AcousticModel', 'input_shape': (540, ),
              'num_classes': 8192, 'phase': 'training',
              'dtype': 'float32'}
         )
@@ -36,6 +39,6 @@ class AcousticModel(Model):
 
         for _ in range(5):
             v = mx.sym.FullyConnected(data=v, num_hidden=2048)
-            v = mx.symbol.Activation(data=v, act_type="relu")
+            v = mx.symbol.Activation(data=v, act_type='relu')
 
         self.__output = self.add_head_nodes(v)

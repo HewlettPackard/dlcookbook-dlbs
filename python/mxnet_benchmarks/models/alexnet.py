@@ -16,8 +16,11 @@
     Reference AlexNet with grouped convolutions removed.
 """
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import mxnet as mx
-from mxnet_benchmarks.models.model import Model
+from mxnet_benchmarks.models.model import Model, Layers
+
 
 class AlexNet(Model):
 
@@ -30,42 +33,44 @@ class AlexNet(Model):
     def __init__(self, params):
         Model.check_parameters(
             params,
-            {'name': 'AlexNet', 'input_shape':(3, 227, 227), 'num_classes': 1000,
-             'phase': 'training',
-             'dtype': 'float32'}
+            {'name': 'AlexNet', 'num_classes': 1000, 'phase': 'training', 'dtype': 'float32',
+             'input_layout': 'NCHW', 'model_layout': 'NCHW', 'nvidia_layers': False}
         )
+        params['input_shape'] = Model.conv_shape(3, (227, 227), params['input_layout'])
         Model.__init__(self, params)
 
-        training = self.phase == 'training'
+        layers = Layers(params)
+
         data = self.add_data_node()
+        data = Layers.conv_transform_layout(data, params['input_layout'], params['model_layout'])
 
-        conv1 = mx.symbol.Convolution(name='conv1', data=data, kernel=(11, 11), stride=(4, 4), num_filter=96)
-        relu1 = mx.symbol.Activation(name='relu1', data=conv1, act_type='relu')
+        conv1 = layers.Convolution(name='conv1', data=data, kernel=(11, 11), stride=(4, 4), num_filter=96)
+        relu1 = layers.Activation(name='relu1', data=conv1, act_type='relu')
         norm1 = self.maybe_lrn(relu1, 'norm1')
-        pool1 = mx.symbol.Pooling(name='pool1', data=norm1, pool_type="max", kernel=(3, 3), stride=(2, 2))
+        pool1 = layers.Pooling(name='pool1', data=norm1, pool_type="max", kernel=(3, 3), stride=(2, 2))
 
-        conv2 = mx.symbol.Convolution(name='conv2', data=pool1, kernel=(5, 5), pad=(2, 2), num_filter=256, num_group=1)
-        relu2 = mx.symbol.Activation(name='relu2', data=conv2, act_type="relu")
+        conv2 = layers.Convolution(name='conv2', data=pool1, kernel=(5, 5), pad=(2, 2), num_filter=256, num_group=1)
+        relu2 = layers.Activation(name='relu2', data=conv2, act_type="relu")
         norm2 = self.maybe_lrn(relu2, 'norm2')
-        pool2 = mx.symbol.Pooling(name='pool2', data=norm2, kernel=(3, 3), stride=(2, 2), pool_type="max")
+        pool2 = layers.Pooling(name='pool2', data=norm2, kernel=(3, 3), stride=(2, 2), pool_type="max")
 
-        conv3 = mx.symbol.Convolution(name='conv3', data=pool2, kernel=(3, 3), pad=(1, 1), num_filter=384)
-        relu3 = mx.symbol.Activation(name='relu3', data=conv3, act_type="relu")
+        conv3 = layers.Convolution(name='conv3', data=pool2, kernel=(3, 3), pad=(1, 1), num_filter=384)
+        relu3 = layers.Activation(name='relu3', data=conv3, act_type="relu")
 
-        conv4 = mx.symbol.Convolution(name='conv4', data=relu3, kernel=(3, 3), pad=(1, 1), num_filter=384, num_group=1)
-        relu4 = mx.symbol.Activation(name='relu4', data=conv4, act_type="relu")
+        conv4 = layers.Convolution(name='conv4', data=relu3, kernel=(3, 3), pad=(1, 1), num_filter=384, num_group=1)
+        relu4 = layers.Activation(name='relu4', data=conv4, act_type="relu")
 
-        conv5 = mx.symbol.Convolution(name='conv5', data=relu4, kernel=(3, 3), pad=(1, 1), num_filter=256, num_group=1)
-        relu5 = mx.symbol.Activation(name='relu5', data=conv5, act_type="relu")
-        pool5 = mx.symbol.Pooling(name='pool5', data=relu5, kernel=(3, 3), stride=(2, 2), pool_type="max")
+        conv5 = layers.Convolution(name='conv5', data=relu4, kernel=(3, 3), pad=(1, 1), num_filter=256, num_group=1)
+        relu5 = layers.Activation(name='relu5', data=conv5, act_type="relu")
+        pool5 = layers.Pooling(name='pool5', data=relu5, kernel=(3, 3), stride=(2, 2), pool_type="max")
 
         flatten = mx.symbol.Flatten(data=pool5)
         fc6 = mx.symbol.FullyConnected(name='fc6', data=flatten, num_hidden=4096)
-        relu6 = mx.symbol.Activation(name='relu6', data=fc6, act_type="relu")
-        drop6 = mx.symbol.Dropout(name='drop6', data=relu6, p=0.5) if training else relu6
+        relu6 = layers.Activation(name='relu6', data=fc6, act_type="relu")
+        drop6 = layers.Dropout(name='drop6', data=relu6, p=0.5)
 
         fc7 = mx.symbol.FullyConnected(name='fc7', data=drop6, num_hidden=4096)
-        relu7 = mx.symbol.Activation(name='relu7', data=fc7, act_type="relu")
-        drop7 = mx.symbol.Dropout(name='drop7', data=relu7, p=0.5) if training else relu7
+        relu7 = layers.Activation(name='relu7', data=fc7, act_type="relu")
+        drop7 = layers.Dropout(name='drop7', data=relu7, p=0.5)
 
         self.__output = self.add_head_nodes(drop7)

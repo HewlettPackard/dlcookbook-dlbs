@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import mxnet as mx
 from mxnet_benchmarks.models.model import Model
+
 
 class SensorNet(Model):
     
@@ -26,7 +29,7 @@ class SensorNet(Model):
     def __init__(self, params):
         Model.check_parameters(
             params,
-            {'name': 'SensorNet', 'input_shape':(784),
+            {'name': 'SensorNet', 'input_shape': (784,),
              'num_classes': 16, 'phase': 'training',
              'dtype': 'float32'}
         )

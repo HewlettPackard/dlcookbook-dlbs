@@ -56,6 +56,7 @@ In summary (comparing to https://github.com/PaddlePaddle/DeepSpeech):
 
 """
 from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 import os
 import math
@@ -65,6 +66,7 @@ import numpy as np
 import mxnet as mx
 from mxnet_benchmarks.models.model import Model
 from mxnet_benchmarks.contrib.ctc_metrics import CtcMetrics
+
 
 class DeepSpeech2(Model):
     """ Based on MXNET implementation
@@ -104,7 +106,7 @@ class DeepSpeech2(Model):
         Model.check_parameters(
             params,
             {
-                'name': 'DeepSpeech2', 'input_shape':(1, 200, 161),
+                'name': 'DeepSpeech2', 'input_shape': (1, 200, 161),
                 'num_classes': 29*29 + 1,  # Alphabet size + BLANK character (which is 0)
                 'phase': 'training', 'dtype': 'float32', 'model_opts': {}
             }
@@ -130,23 +132,26 @@ class DeepSpeech2(Model):
         self.__batch_size = params['batch_size']
         self.__output_length = 0                                   # [output] Length of output sequence
         self.__data_shape = (self.batch_size,) + self.input_shape  # For debugging purposses
-        self.__debug = logging.getLogger().isEnabledFor(logging.DEBUG) or ('DLBS_DEBUG' in os.environ and os.environ['DLBS_DEBUG'] == '1')
+        self.__debug = logging.getLogger().isEnabledFor(logging.DEBUG) or os.environ.get('DLBS_DEBUG', '0') == '1'
 
         if self.model_opts['conv_arch'] not in DeepSpeech2.CONV_ARCHS:
-            raise "Invalid conv arch ('%s'), must be one of '%s'" % (self.model_opts['conv_arch'], str(DeepSpeech2.CONV_ARCHS))
+            raise "Invalid conv arch ('%s'), must be one of '%s'" % \
+                  (self.model_opts['conv_arch'], str(DeepSpeech2.CONV_ARCHS))
         if self.model_opts['rnn_type'] not in DeepSpeech2.RNN_TYPES:
-            raise "Invalid RNN type ('%s'), must be one of '%s'" % (self.model_opts['rnn_type'], str(DeepSpeech2.RNN_TYPES))
+            raise "Invalid RNN type ('%s'), must be one of '%s'" % \
+                  (self.model_opts['rnn_type'], str(DeepSpeech2.RNN_TYPES))
         if self.model_opts['brnn_output'] not in DeepSpeech2.BRNN_OUTPUT:
-            raise "Invalid BRNN output function ('%s'), must be one of '%s'" % (self.model_opts['brnn_output'], str(DeepSpeech2.BRNN_OUTPUT))
+            raise "Invalid BRNN output function ('%s'), must be one of '%s'" % \
+                  (self.model_opts['brnn_output'], str(DeepSpeech2.BRNN_OUTPUT))
         if self.model_opts['ctc_loss'] not in DeepSpeech2.CTC_LOSSES:
-            raise "Invalid ctc loss ('%s'), must be one of '%s'" % (self.model_opts['ctc_loss'], str(DeepSpeech2.CTC_LOSSES))
+            raise "Invalid ctc loss ('%s'), must be one of '%s'" % \
+                  (self.model_opts['ctc_loss'], str(DeepSpeech2.CTC_LOSSES))
         if self.model_opts['rnn_batch_norm'] is True:
             self.model_opts['rnn_batch_norm'] = False
             print("[WARNING] Batch norm is not supported in RNNs.")
         if self.model_opts['brnn_share_i2h'] is True:
             self.model_opts['brnn_share_i2h'] = False
             print("[WARNING] Sharing input2hidden weights in BRNNs is not supported.")
-
 
         print("Model options: " + str(self.model_opts))
         # This helps debugging shapes
@@ -170,8 +175,8 @@ class DeepSpeech2(Model):
             print("Casting logits to np.float32")
             v = mx.sym.cast(data=v, dtype=np.float32)
         if self.phase == 'training':
-            v_ctc = mx.sym.Reshape(data=v,
-                                   shape=(length, self.batch_size, self.num_classes))   # [CnnLen, Batch, NumClasses(alphabet+1)]
+            # [CnnLen, Batch, NumClasses(alphabet+1)]
+            v_ctc = mx.sym.Reshape(data=v, shape=(length, self.batch_size, self.num_classes))
             labels = mx.sym.Variable(name="softmax_label",
                                      shape=(self.batch_size, length),
                                      init=mx.init.Zero())
@@ -200,12 +205,13 @@ class DeepSpeech2(Model):
         self.log_shape("Output shape: %s", v)
 
         self.__output = v
-        self.__output_length = length                                    # We have this many labels per input sequence.
-        self._labels_shape = (self.__output_length, )                    # K labels for every batch
-        self._labels_range = (1, self.num_classes)                       # The class '0' is reserved for BLANK character.
+        self.__output_length = length                                   # We have this many labels per input sequence.
+        self._labels_shape = (self.__output_length, )                   # K labels for every batch
+        self._labels_range = (1, self.num_classes)                      # The class '0' is reserved for BLANK character.
 
         self.__ctc_metrics = CtcMetrics(seq_len=self.__output_length)
-        self._eval_metric = mx.metric.CustomMetric(feval=self.__ctc_metrics.accuracy, name='ctc_metric', allow_extra_outputs=True)
+        self._eval_metric = mx.metric.CustomMetric(feval=self.__ctc_metrics.accuracy, name='ctc_metric',
+                                                   allow_extra_outputs=True)
 
     def add_conv_layers(self, v):
         """ Add convolutional layers.
@@ -218,14 +224,20 @@ class DeepSpeech2(Model):
         length = self.input_shape[1]
         nfeatures = self.input_shape[2]
         defs = {
-            '1-layer-1D':    {'channels': [1280], 'filters': [(11, nfeatures)], 'strides': [(2,1)], 'pads': [(0,0)]},
-            '2-layer-1D':    {'channels': [640,640], 'filters': [(5, nfeatures),(5, 1)], 'strides': [(1,1),(2,1)], 'pads': [(0,0),(0,0)]},
-            '3-layer-1D':    {'channels': [512,512,512],  'filters': [(5, nfeatures),(5, 1),(5, 1)], 'strides': [(1,1),(1,1),(2,1)], 'pads': [(0,0),(0,0),(0,0)]},
-            '1-layer-2D':    {'channels': [32], 'filters': [(11, 41)], 'strides': [(2,2)], 'pads': [(0,0)]},
-            '2-layer-2D':    {'channels': [32,32], 'filters': [(11, 41),(11,21)], 'strides': [(2,2),(1,2)], 'pads': [(0,0),(0,0)]},
-            '3-layer-2D':    {'channels': [32,32,96], 'filters': [(11,41),(11,21),(11,21)], 'strides': [(2,2),(1,2),(1,2)], 'pads': [(0,0),(0,0),(0,0)]},
-            '2-layer-2D-v2': {'channels':  [32,32], 'filters': [(11,41),(11,21)], 'strides': [(3,2),(1,2)], 'pads': [(5,20),(5,10)]}
-            # To increase # conv layers in '2-layer-2D-v2' config, replicate parameters of last layer (https://github.com/PaddlePaddle/DeepSpeech/blob/develop/model_utils/network.py).
+            '1-layer-1D':    {'channels': [1280], 'filters': [(11, nfeatures)], 'strides': [(2, 1)], 'pads': [(0, 0)]},
+            '2-layer-1D':    {'channels': [640, 640], 'filters': [(5, nfeatures), (5, 1)], 'strides': [(1, 1), (2, 1)],
+                              'pads': [(0, 0), (0, 0)]},
+            '3-layer-1D':    {'channels': [512, 512, 512],  'filters': [(5, nfeatures), (5, 1), (5, 1)],
+                              'strides': [(1, 1), (1, 1), (2, 1)], 'pads': [(0, 0), (0, 0), (0, 0)]},
+            '1-layer-2D':    {'channels': [32], 'filters': [(11, 41)], 'strides': [(2, 2)], 'pads': [(0, 0)]},
+            '2-layer-2D':    {'channels': [32, 32], 'filters': [(11, 41), (11, 21)], 'strides': [(2, 2), (1, 2)],
+                              'pads': [(0, 0), (0, 0)]},
+            '3-layer-2D':    {'channels': [32, 32, 96], 'filters': [(11, 41), (11, 21), (11, 21)],
+                              'strides': [(2, 2), (1, 2), (1, 2)], 'pads': [(0, 0), (0, 0), (0, 0)]},
+            '2-layer-2D-v2': {'channels':  [32, 32], 'filters': [(11, 41), (11, 21)],
+                              'strides': [(3, 2), (1, 2)], 'pads': [(5, 20), (5, 10)]}
+            # To increase # conv layers in '2-layer-2D-v2' config, replicate parameters of last layer
+            # (https://github.com/PaddlePaddle/DeepSpeech/blob/develop/model_utils/network.py).
         }
         arch = defs[self.model_opts['conv_arch']]
         for i in range(len(arch['filters'])):
@@ -241,7 +253,7 @@ class DeepSpeech2(Model):
             length = int(math.floor((length + 2*arch['pads'][i][0] - arch['filters'][i][0])/arch['strides'][i][0])) + 1
             self.log_shape("Conv '" + name + "' output shape: %s", v)
         logging.debug("Utterance length after conv layers is %d", length)
-        return (v, length)
+        return v, length
 
     def add_rnn_layers(self, v, length):
         """Add RNN layers
@@ -257,18 +269,22 @@ class DeepSpeech2(Model):
             for info in rnn_cell.state_info:
                 rnn_cell._init_counter += 1
                 if info is None:
-                    state = func(name='%sbegin_state_%d'%(rnn_cell._prefix, rnn_cell._init_counter),dtype=np.float16, **kwargs)
+                    state = func(name='%sbegin_state_%d' % (rnn_cell._prefix, rnn_cell._init_counter),
+                                 dtype=np.float16,
+                                 **kwargs)
                 else:
                     kwargs.update(info)
-                    state = func(name='%sbegin_state_%d'%(rnn_cell._prefix, rnn_cell._init_counter),dtype=np.float16, **kwargs)
+                    state = func(name='%sbegin_state_%d' % (rnn_cell._prefix, rnn_cell._init_counter),
+                                 dtype=np.float16,
+                                 **kwargs)
                 states.append(state)
             return states
         #
         rnn_cell = mx.rnn.FusedRNNCell(
             num_hidden=self.model_opts['rnn_layer_size'],
             num_layers=self.model_opts['num_rnn_layers'],
-            bidirectional = self.model_opts['bidirectional'],
-            mode= self.model_opts['rnn_type'],
+            bidirectional=self.model_opts['bidirectional'],
+            mode=self.model_opts['rnn_type'],
             prefix='rnn',
             dropout=self.model_opts['rnn_dropout']
         )
@@ -276,7 +292,7 @@ class DeepSpeech2(Model):
         # 'TNC' layout (Time, BatchSize,...)
         v = mx.sym.Reshape(data=v, shape=(length, self.batch_size, -1))
         self.log_shape("RNN input shape: %s", v)
-        v,_ = rnn_cell.unroll(
+        v, _ = rnn_cell.unroll(
             length=length,
             inputs=v,
             begin_state=_begin_state(rnn_cell),
@@ -285,9 +301,9 @@ class DeepSpeech2(Model):
         )
         self.log_shape("RNN output shape: %s", v)
         
-        nfeatures = self.model_opts['rnn_layer_size']                      # Number of output features. In case of BRNN,
-        if self.model_opts['bidirectional']:                               # mnet concats outputs of forward/backward passes.
-            if self.model_opts['brnn_output'] == 'sum':                    # DS2 uses sum instead.
+        nfeatures = self.model_opts['rnn_layer_size']                 # Number of output features. In case of BRNN,
+        if self.model_opts['bidirectional']:                          # mnet concats outputs of forward/backward passes.
+            if self.model_opts['brnn_output'] == 'sum':               # DS2 uses sum instead.
                 outputs = mx.sym.split(data=v, num_outputs=2, axis=2)   
                 v = outputs[0] + outputs[1]
             else:
@@ -295,12 +311,12 @@ class DeepSpeech2(Model):
         return v, nfeatures
 
     @staticmethod
-    def conv_bn(name, input, kernel, stride, num_channels_out, pad=(0,0), batch_norm=False, activation='relu'):
+    def conv_bn(name, input, kernel, stride, num_channels_out, pad=(0, 0), batch_norm=False, activation='relu'):
         logging.debug("Adding convolution layer kernel=%s, stride=%s, num_filters=%d, padding=%s",
-                      str(kernel), str(stride), num_channels_out,str(pad))
+                      str(kernel), str(stride), num_channels_out, str(pad))
         v = mx.symbol.Convolution(name=name+'_conv', data=input, kernel=kernel,
                                   stride=stride, num_filter=num_channels_out,
-                                  no_bias=batch_norm==True, pad=pad)
+                                  no_bias=batch_norm is True, pad=pad)
         if batch_norm:
             logging.debug("Adding batch norm layer")
             v = mx.sym.BatchNorm(name=name+"_bn", data=v, fix_gamma=False,
@@ -349,11 +365,10 @@ class DeepSpeech2(Model):
             })
             data_shape = (m.batch_size,) + m.input_shape
             data = SyntheticDataIterator(
-                m.num_classes, data_shape, max_iter=10, dtype=np.float32,
-                label_shape=(m.batch_size, m.output_length)
-            )
+                data_shape, (m.batch_size, m.output_length), list(range(m.num_classes)), max_iter=10, dtype='float32')
             mod = mx.mod.Module(symbol=m.output, context=device, label_names=['softmax_label'])
-            mod.bind(data_shapes=data.provide_data, label_shapes=data.provide_label, for_training=True, inputs_need_grad=False)
+            mod.bind(data_shapes=data.provide_data, label_shapes=data.provide_label, for_training=True,
+                     inputs_need_grad=False)
             mod.init_params(initializer=mx.init.Xavier(magnitude=2.))
             mod.init_optimizer(kvstore='local', optimizer='sgd', optimizer_params=(('learning_rate', 0.01),))  
             
@@ -385,14 +400,14 @@ class DeepSpeech2(Model):
                     p = Process(target=__worker, args=(queue, c[0], c[1], c[2], c[3], c[4], brrn_output))
                     p.start()
                     p.join()
-                    print("%s %d %d %s %s %s %s" % (c[0], c[1], c[2], 'true' if c[3] else 'false', c[4], brrn_output, queue.get()))  
+                    print("%s %d %d %s %s %s %s" % (c[0], c[1], c[2], 'true' if c[3] else 'false', c[4],
+                                                    brrn_output, queue.get()))
             
-
 
 if __name__ == '__main__':
     from mxnet_benchmarks.data_iterator import SyntheticDataIterator
     os.environ['MXNET_CUDNN_AUTOTUNE_DEFAULT'] = '0'
-    #DeepSpeech2.test_configurations()
+    # DeepSpeech2.test_configurations()
     logging.getLogger().setLevel(logging.DEBUG)
     
     model = DeepSpeech2({
@@ -404,15 +419,15 @@ if __name__ == '__main__':
         }
     })
 
-    #model.render_to_file(model.output, bsize=model.batch_size, fname='deepspeech2_graph')
-    #exit(0)
+    # model.render_to_file(model.output, bsize=model.batch_size, fname='deepspeech2_graph')
+    # exit(0)
     
     data_shape = (model.batch_size,) + model.input_shape
     labels_shape = (model.batch_size,) + model.labels_shape
     device = mx.gpu(0)
 
     data = SyntheticDataIterator(data_shape, labels_shape, model.labels_range,
-                                 max_iter=10, dtype=np.float32)
+                                 max_iter=10, dtype='float32')
 
     mod = mx.mod.Module(symbol=model.output, context=device, label_names=['softmax_label'])
     
@@ -425,5 +440,5 @@ if __name__ == '__main__':
     mod.update()
     mx.nd.waitall()
 
-    #print (Model.num_parameters(mod))
-    #print (Model.print_parameters(mod))
+    # print (Model.num_parameters(mod))
+    # print (Model.print_parameters(mod))
