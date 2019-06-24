@@ -19,6 +19,7 @@ cannot be changed.
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+import os
 import mxnet as mx
 from mxnet.io import DataBatch, DataIter
 import numpy as np
@@ -121,11 +122,21 @@ class DataIteratorFactory(object):
             # This iterator supports channels first format only.
             input_layout = opts.get('input_layout', 'NCHW')
             if input_layout != 'NCHW':
-                raise ValueError("Standard MXNET image iterator only supports channel first format, "
+                raise ValueError("Standard MXNET image record iterator only supports channel first format (NCHW), "
                                  "requested format: {}.".format(input_layout))
+            dataset_files = [
+                os.path.join(opts['data_dir'], 'train.rec'),
+                os.path.join(opts['data_dir'], 'train.idx')
+            ]
+            for dataset_file in dataset_files:
+                if not os.path.exists(dataset_file):
+                    raise ValueError("Missing mandatory dataset file '{}'. The train directory '{}' must "
+                                     "contain at least two files - train.rec and train.idx.".format(dataset_file,
+                                                                                                    opts['data_dir']))
             print("Creating standard image record iterator (ImageRecordIter) with data layout {}.".format(input_layout))
             data_iter = mx.io.ImageRecordIter(
-                path_imgrec=opts['data_dir'],    # Path to the image RecordIO (.rec) file or a directory path.
+                path_imgrec=dataset_files[0],
+                path_imgidx=dataset_files[1],
                 data_name='data',
                 label_name='softmax_label',
                 data_shape=(data_shape[1], data_shape[2], data_shape[3]),
