@@ -110,31 +110,50 @@ class DataIteratorFactory(object):
             opts (dict): Dictionary with options.
             kv_store (mxnet.kvstore.KVStore): An object returned by mx.kvstore.create('...').
 
+        The data_shape and label_shape have first dimension to be batch dimension. It is a local batch, i.e.:
+            replica_batch * num_devices
         Returns:
             Data iterator (instance of mx.io.DataIter).
         """
-        if 'data_dir' not in opts or not opts['data_dir']:
-            data_iter = SyntheticDataIterator(data_shape, label_shape, labels_range, opts)
-        else:
-            (rank, nworker) = (kv_store.rank, kv_store.num_workers) if kv_store else (0, 1)
-            # https://mxnet.incubator.apache.org/api/python/io.html#mxnet.io.ImageRecordIter
+        print("Creating data iterator: data_shape={}, label_shape={}.".format(data_shape, label_shape))
+        data_dir = opts.get('data_dir', None)
+        # 1.
+        if data_dir is None or data_dir == "":
+            print("Creating synthetic data iterator.")
+            return SyntheticDataIterator(data_shape, label_shape, labels_range, opts)
+        # 2.
+        fnames = [f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f))]
+        if len(fnames) == 1 and fnames[0].endswith('.npz'):
+            dataset = np.load(os.path.join(data_dir, fnames[0]))
+            data, labels = dataset.get('data', None), dataset.get('labels', None)
+            if data is None:
+                raise ValueError("The dataset ({}) does not contain 'data' "
+                                 "field.".format(os.path.join(data_dir, fnames[0])))
+            print("Creating NDArray iterator: data={}, labels={}".format(data.shape, labels.shape))
+            return mx.io.NDArrayIter(data=data, label=labels, batch_size=data_shape[0],
+                                     shuffle=False, last_batch_handle='discard')
+        # 3.
+        (rank, nworker) = (kv_store.rank, kv_store.num_workers) if kv_store else (0, 1)
+        dataset_files = [
+            os.path.join(opts['data_dir'], 'train.rec'),
+            os.path.join(opts['data_dir'], 'train.idx')
+        ]
+        if os.path.exists(dataset_files[0]) and os.path.exists(dataset_files[1]):
+            # https://mxnet.incubator.apache.org/api/python/io.html#mxnet.io.imagerecorditer
             # https://github.com/apache/incubator-mxnet/blob/master/example/image-classification/common/data.py
-            # This iterator supports channels first format only.
+            # this iterator supports channels first format only.
             input_layout = opts.get('input_layout', 'NCHW')
             if input_layout != 'NCHW':
-                raise ValueError("Standard MXNET image record iterator only supports channel first format (NCHW), "
+                raise ValueError("Standard mxnet image record iterator only supports channel first format (NCHW), "
                                  "requested format: {}.".format(input_layout))
-            dataset_files = [
-                os.path.join(opts['data_dir'], 'train.rec'),
-                os.path.join(opts['data_dir'], 'train.idx')
-            ]
-            for dataset_file in dataset_files:
-                if not os.path.exists(dataset_file):
-                    raise ValueError("Missing mandatory dataset file '{}'. The train directory '{}' must "
-                                     "contain at least two files - train.rec and train.idx.".format(dataset_file,
-                                                                                                    opts['data_dir']))
+
             print("Creating standard image record iterator (ImageRecordIter) with data layout {}.".format(input_layout))
-            data_iter = mx.io.ImageRecordIter(
+            num_preprocess_threads = opts.get('preprocess_threads', 4)
+            if num_preprocess_threads <= 4:
+                print("[WARNING] Number of pre-process threads is {}. This may be too small for large number of GPUs. "
+                      "If you do not see speedup as you add more GPUs, increase this "
+                      "number.".format(num_preprocess_threads))
+            return mx.io.ImageRecordIter(
                 path_imgrec=dataset_files[0],
                 path_imgidx=dataset_files[1],
                 data_name='data',
@@ -143,11 +162,22 @@ class DataIteratorFactory(object):
                 batch_size=data_shape[0],
                 rand_crop=True,
                 rand_mirror=True,
-                preprocess_threads=opts.get('preprocess_threads', 4),
+                preprocess_threads=num_preprocess_threads,
                 prefetch_buffer=opts.get('prefetch_buffer ', 10),
                 dtype='float32',
                 num_parts=nworker,
                 part_index=rank
             )
-            # dtype=opts['dtype']
-        return data_iter
+
+        # 4.
+        raise ValueError(
+            "Cannot find data set files. MXNET benchmark backend supports the following data sets:\n"
+            "  1. Synthetic data set. It is used when data_dir parameter is none or empty:\n"
+            "     -Pexp.data_dir='\"\"'\n"
+            "  2. Real data set in a file with 'npz' extension. This data set is used if data_dir value\n"
+            "     is a valid directory and contains one file with npz extension. If found, this file\n"
+            "     must contain a dictionary with at least one key - `data`. It can also contain 'labels'\n"
+            "     key for labels.\n"
+            "  3. Real image data set in standard RecordIO format. This data set is used if provided data directory\n"
+            "     contains 'train.rec' and 'train.idx' files.'"
+        )
