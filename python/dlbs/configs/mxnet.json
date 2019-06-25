@@ -55,6 +55,11 @@
       "type": "bool",
       "desc": "When running half precision in NGC containers, setting it to true for some models may improve performance."
     },
+    "mxnet.use_dali": {
+      "val": false,
+      "type": "bool",
+      "desc": "Use DALI for data ingestion pipeline."
+    },
     "mxnet.workspace": {
       "val": 1024,
       "type": "int",
@@ -67,7 +72,10 @@
     "mxnet.preprocess_threads": {
       "val": 4,
       "type": "int",
-      "desc": "Number preprocess threads for data ingestion pipeline when real data is used."
+      "desc": [
+        "Number of pre-processing threads for data ingestion pipeline when real data is used. This is used for",
+        "CPU based ImageRecordIter data iterator and is not applicable to DALI pipeline."
+      ]
     },
     "mxnet.prefetch_buffer": {
       "val": 10,
@@ -93,6 +101,7 @@
         "$('' if not '${mxnet.input_layout}' else '--input_layout=${mxnet.input_layout}')$",
         "$('' if not '${mxnet.model_layout}' else '--model_layout=${mxnet.model_layout}')$",
         "--nvidia_layers=${mxnet.nvidia_layers}",
+        "--use_dali=${mxnet.use_dali}",
         "--workspace=${mxnet.workspace}"
       ],
       "type": "str",

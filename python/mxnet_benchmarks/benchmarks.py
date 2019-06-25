@@ -245,12 +245,13 @@ def benchmark_training(model, opts):
         opts,
         kv_store=kv
     )
-    train_data = mx.io.ResizeIter(train_data, opts['num_warmup_batches'] + opts['num_batches'])
     devices = get_devices(opts)
     optimizer_params = {'multi_precision': True} if opts['dtype'] == 'float16' else {}
     mod = mx.mod.Module(symbol=model.output, context=devices)
     batch_end_callback = BatchEndCallback(opts['num_warmup_batches'], opts['num_batches'])
     # print ("Starting benchmarks.")
+    # TODO: In current implementation, number of epochs must always equal to 1. It is iterator responsibility to
+    #       iterate the right number of batched - warm up plus benchmark batches.
     mod.fit(
         train_data,
         kvstore=kv,
@@ -287,7 +288,7 @@ def main():
                         help="Number of gpus to use (per node?). Use CUDA_VISIBLE_DEVICES to select those devices.")
     parser.add_argument('--num_workers', type=int, required=False, default=1,
                         help="Number of workers participating in training.")
-    parser.add_argument('--device', type=str, required=False, default='cpu', help="Comptue device, 'cpu' or 'gpu'")
+    parser.add_argument('--device', type=str, required=False, default='cpu', help="Compute device, 'cpu' or 'gpu'")
     parser.add_argument('--kv_store', type=str, required=False, default='device',
                         help="Type of gradient aggregation schema (local, device, dist_sync, dist_device_sync, "
                              "dist_async). See https://mxnet.incubator.apache.org/how_to/multi_devices.html "
@@ -313,6 +314,8 @@ def main():
     parser.add_argument('--nvidia_layers', nargs='?', const=True, default=False, type=str2bool,
                         help="This is probably a temporary functionality. If set, it is assumed that this code runs in "
                              "NGC container with extended functionality. ")
+    parser.add_argument('--use_dali', nargs='?', const=True, default=False, type=str2bool,
+                        help="Use DALI for data ingestion pipeline.")
     # The workspace description is taken from here:
     #  https://mxnet.incubator.apache.org/api/python/symbol/symbol.html
     parser.add_argument('--workspace', type=int, required=False, default=1024,

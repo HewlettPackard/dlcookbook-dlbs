@@ -15,6 +15,9 @@
 
 Data iterators are created after a model has been created, so, shape and layout of input data tensors are known and
 cannot be changed.
+
+Each iterator must iterate the following number of times - #warm-up batched + #benchmark batches
+DALI was tested to work with mxnet NGC container 19.05.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -23,6 +26,55 @@ import os
 import mxnet as mx
 from mxnet.io import DataBatch, DataIter
 import numpy as np
+
+try:
+    # https://github.com/NVIDIA/DeepLearningExamples/blob/master/MxNet/Classification/RN50v1.5/dali.py
+    _mean_pixel = [255 * x for x in (0.485, 0.456, 0.406)]
+    _std_pixel = [255 * x for x in (0.229, 0.224, 0.225)]
+
+    from nvidia import dali
+    from nvidia.dali.plugin.mxnet import DALIClassificationIterator
+
+    class HybridTrainPipe(dali.pipeline.Pipeline):
+        """
+        https://docs.nvidia.com/deeplearning/sdk/dali-master-branch-user-guide/docs/api.html
+        """
+        def __init__(self, batch_size, num_threads, device_id, rec_path, idx_path,
+                     shard_id, num_shards, crop_shape,
+                     nvjpeg_padding, prefetch_queue=3,
+                     output_layout=dali.types.NCHW, pad_output=True, dtype='float16'):
+            super(HybridTrainPipe, self).__init__(batch_size, num_threads, device_id, seed=12 + device_id,
+                                                  exec_pipelined=True, prefetch_queue_depth=prefetch_queue)
+            self.input = dali.ops.MXNetReader(path=[rec_path], index_path=[idx_path],
+                                              random_shuffle=True, shard_id=shard_id, num_shards=num_shards)
+
+            self.decode = dali.ops.nvJPEGDecoder(device="mixed", output_type=dali.types.RGB,
+                                                 device_memory_padding=nvjpeg_padding,
+                                                 host_memory_padding=nvjpeg_padding)
+            self.rrc = dali.ops.RandomResizedCrop(device="gpu", size=crop_shape)
+            self.cmnp = dali.ops.CropMirrorNormalize(
+                device="gpu",
+                output_dtype=dali.types.FLOAT16 if dtype == 'float16' else dali.types.FLOAT,
+                output_layout=output_layout,
+                crop=crop_shape,
+                pad_output=pad_output,
+                image_type=dali.types.RGB,
+                mean=_mean_pixel,
+                std=_std_pixel)
+            self.coin = dali.ops.CoinFlip(probability=0.5)
+            self.jpegs, self.labels = None, None
+
+        def define_graph(self):
+            rng = self.coin()
+            self.jpegs, self.labels = self.input(name="Reader")
+
+            images = self.decode(self.jpegs)
+            images = self.rrc(images)
+            output = self.cmnp(images, mirror=rng)
+            return [output, self.labels]
+except ImportError:
+    dali = None
+    DALIClassificationIterator = None
 
 
 class SyntheticDataIterator(DataIter):
@@ -117,11 +169,14 @@ class DataIteratorFactory(object):
         """
         print("Creating data iterator: data_shape={}, label_shape={}.".format(data_shape, label_shape))
         data_dir = opts.get('data_dir', None)
-        # 1.
+        # 1. Synthetic Iterator ----------------------------------------------------------------------------------------
         if data_dir is None or data_dir == "":
             print("Creating synthetic data iterator.")
-            return SyntheticDataIterator(data_shape, label_shape, labels_range, opts)
-        # 2.
+            return mx.io.ResizeIter(
+                SyntheticDataIterator(data_shape, label_shape, labels_range, opts),
+                opts['num_warmup_batches'] + opts['num_batches']
+            )
+        # 2. Numpy Array Iterator --------------------------------------------------------------------------------------
         fnames = [f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f))]
         if len(fnames) == 1 and fnames[0].endswith('.npz'):
             dataset = np.load(os.path.join(data_dir, fnames[0]))
@@ -130,19 +185,59 @@ class DataIteratorFactory(object):
                 raise ValueError("The dataset ({}) does not contain 'data' "
                                  "field.".format(os.path.join(data_dir, fnames[0])))
             print("Creating NDArray iterator: data={}, labels={}".format(data.shape, labels.shape))
-            return mx.io.NDArrayIter(data=data, label=labels, batch_size=data_shape[0],
-                                     shuffle=False, last_batch_handle='discard')
-        # 3.
+            nd_arr_iter = mx.io.NDArrayIter(data=data, label=labels, batch_size=data_shape[0],
+                                            shuffle=False, last_batch_handle='discard')
+            return mx.io.ResizeIter(nd_arr_iter, opts['num_warmup_batches'] + opts['num_batches'])
+        # 3. DALI Iterator ---------------------------------------------------------------------------------------------
         (rank, nworker) = (kv_store.rank, kv_store.num_workers) if kv_store else (0, 1)
         dataset_files = [
             os.path.join(opts['data_dir'], 'train.rec'),
             os.path.join(opts['data_dir'], 'train.idx')
         ]
         if os.path.exists(dataset_files[0]) and os.path.exists(dataset_files[1]):
+            input_layout = opts.get('input_layout', 'NCHW')
+
+            if opts.get('use_dali', False) is True:
+                # https://docs.nvidia.com/deeplearning/sdk/dali-developer-guide/docs/examples/mxnet/mxnet-resnet50.html
+                if dali is None:
+                    raise ValueError("DALI library not found (use_dali is true).")
+                if opts['device'] != 'gpu' or opts['num_gpus'] <= 0:
+                    raise ValueError("DALI can only be used with GPU devices (device={}, num_gpus={})".format(
+                        opts['device'], opts['num_gpus']
+                    ))
+                print("Creating DALI iterator")
+                output_layout = dali.types.NHWC if input_layout == 'NHWC' else dali.types.NCHW
+                cropshape = (data_shape[1], data_shape[2]) if input_layout == 'NHWC' else (data_shape[2], data_shape[3])
+                gpus = list(range(opts['num_gpus']))
+                channel_idx = 3 if input_layout == 'NHWC' else 1
+                trainpipes = [HybridTrainPipe(batch_size=data_shape[0] // opts['num_gpus'],        # Replica batch.
+                                              num_threads=3,                                       # Per GPU
+                                              device_id=gpu_id,
+                                              rec_path=dataset_files[0],
+                                              idx_path=dataset_files[1],
+                                              shard_id=gpus.index(gpu_id) + len(gpus) * rank,
+                                              num_shards=len(gpus) * nworker,
+                                              crop_shape=cropshape,
+                                              output_layout=output_layout,
+                                              pad_output=data_shape[channel_idx] == 4,
+                                              dtype=opts['dtype'],
+                                              nvjpeg_padding=16 * 1024 * 1024,
+                                              prefetch_queue=3) for gpu_id in gpus]
+                trainpipes[0].build()
+                # epoch_size = trainpipes[0].epoch_size("Reader") // nworker
+                epoch_size = data_shape[0] * (opts['num_warmup_batches'] + opts['num_batches'])
+                return DALIClassificationIterator(
+                    trainpipes,                                         # List of pipelines to use
+                    epoch_size,                                         # Epoch size.
+                    'data',                                             # Data name for provided symbols.
+                    'softmax_label',                                    # Label name for provided symbols.
+                    input_layout                                        # Layout of the pipeline outputs (NCHW / NHWC).
+                )
+
+            # 4. MXNET Image Record Iterator ---------------------------------------------------------------------------
             # https://mxnet.incubator.apache.org/api/python/io.html#mxnet.io.imagerecorditer
             # https://github.com/apache/incubator-mxnet/blob/master/example/image-classification/common/data.py
             # this iterator supports channels first format only.
-            input_layout = opts.get('input_layout', 'NCHW')
             if input_layout != 'NCHW':
                 raise ValueError("Standard mxnet image record iterator only supports channel first format (NCHW), "
                                  "requested format: {}.".format(input_layout))
@@ -153,7 +248,7 @@ class DataIteratorFactory(object):
                 print("[WARNING] Number of pre-process threads is {}. This may be too small for large number of GPUs. "
                       "If you do not see speedup as you add more GPUs, increase this "
                       "number.".format(num_preprocess_threads))
-            return mx.io.ImageRecordIter(
+            img_rec_iter = mx.io.ImageRecordIter(
                 path_imgrec=dataset_files[0],
                 path_imgidx=dataset_files[1],
                 data_name='data',
@@ -168,8 +263,9 @@ class DataIteratorFactory(object):
                 num_parts=nworker,
                 part_index=rank
             )
+            return mx.io.ResizeIter(img_rec_iter, opts['num_warmup_batches'] + opts['num_batches'])
 
-        # 4.
+        # 5. All Failed ------------------------------------------------------------------------------------------------
         raise ValueError(
             "Cannot find data set files. MXNET benchmark backend supports the following data sets:\n"
             "  1. Synthetic data set. It is used when data_dir parameter is none or empty:\n"
