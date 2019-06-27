@@ -195,6 +195,7 @@
     }
   },
   "extensions": [
+    {"condition":{"exp.framework": "tensorrt"}, "parameters": {"exp.framework_title": "TensorRT"}},
     {
       "condition":{ "exp.framework": "tensorrt", "exp.env": "host" },
       "parameters": { "tensorrt.env": [

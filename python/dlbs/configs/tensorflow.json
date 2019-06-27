@@ -159,6 +159,7 @@
     }
   },
   "extensions": [
+    {"condition":{"exp.framework": "tensorflow"}, "parameters": {"exp.framework_title": "TensorFlow"}},
     {
       "condition":{ "exp.framework": "tensorflow", "exp.docker": false },
       "parameters": { "tensorflow.env": [

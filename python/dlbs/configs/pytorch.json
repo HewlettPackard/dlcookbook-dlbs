@@ -141,6 +141,7 @@
     }
   },
   "extensions": [
+    {"condition":{"exp.framework": "pytorch"}, "parameters": {"exp.framework_title": "PyTorch"}},
     {
       "condition":{ "exp.framework": "pytorch", "exp.docker": true },
       "parameters": { "pytorch.env": [

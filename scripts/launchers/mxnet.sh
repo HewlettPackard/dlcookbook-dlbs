@@ -3,7 +3,7 @@ unknown_params_action=set
 . ${DLBS_ROOT}/scripts/parse_options.sh || exit 1;    # Parse command line options
 . ${DLBS_ROOT}/scripts/utils.sh
 loginfo "$0 $*" >> ${exp_log_file}                  # Log command line arguments for debugging purposes
-echo "__exp.framework_title__=\"MXNet\"" >> ${exp_log_file}
+echo "__exp.framework_title__=\"MXNET\"" >> ${exp_log_file}
 if [[ "${exp_status}" = "simulate" ]]; then
     echo "${mxnet_env} ${runtime_launcher} python ${mxnet_bench_path}/mxnet_benchmarks/benchmarks.py ${mxnet_args}"
     exit 0

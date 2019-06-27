@@ -96,6 +96,7 @@
     }
   },
   "extensions": [
+    {"condition":{"exp.framework": "nvcnn"}, "parameters": {"exp.framework_title": "TensorFlow-nvcnn"}},
     {
       "condition":{ "exp.framework": "nvcnn", "exp.docker": false },
       "parameters": { "nvcnn.env": [

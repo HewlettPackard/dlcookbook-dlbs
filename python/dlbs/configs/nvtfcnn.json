@@ -73,6 +73,7 @@
     }
   },
   "extensions": [
+    {"condition":{"exp.framework": "nvtfcnn"}, "parameters": {"exp.framework_title": "TensorFlow-nvtfcnn"}},
     {
       "condition": {"exp.framework": "nvtfcnn"},
       "parameters": {"exp.docker_launcher": "nvidia-docker"}

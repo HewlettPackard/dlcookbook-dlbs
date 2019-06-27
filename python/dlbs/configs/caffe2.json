@@ -116,10 +116,7 @@
     }
   },
   "extensions": [
-    {
-      "condition":{ "exp.framework": "caffe2"},
-      "parameters": { "exp.framework_title": "Caffe2" }
-    },
+    {"condition":{ "exp.framework": "caffe2"}, "parameters": { "exp.framework_title": "Caffe2" }},
     {
       "condition":{ "exp.framework": "caffe2", "exp.docker": true },
       "parameters": { "caffe2.env": [

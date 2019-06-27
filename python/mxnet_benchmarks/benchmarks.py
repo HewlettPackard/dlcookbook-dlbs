@@ -271,6 +271,7 @@ def main():
     if os.environ.get('DLBS_DEBUG', '0') == '1':
         logging.getLogger().setLevel(logging.DEBUG)
     print("__mxnet.version__=%s" % (json.dumps(mx.__version__)))
+    print("__exp.framework_ver__=%s" % (json.dumps(mx.__version__)))
 
     def str2bool(v):
         return v.lower() in ('true', 'on', 't', '1')

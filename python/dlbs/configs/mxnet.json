@@ -153,6 +153,7 @@
     }
   },
   "extensions": [
+    {"condition":{"exp.framework": "mxnet"}, "parameters": {"exp.framework_title": "MXNET"}},
     {
       "condition":{ "exp.framework": "mxnet", "exp.docker": true },
       "parameters": { "mxnet.env": [
