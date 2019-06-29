@@ -3,7 +3,6 @@ unknown_params_action=set
 . ${DLBS_ROOT}/scripts/parse_options.sh || exit 1;    # Parse command line options
 . ${DLBS_ROOT}/scripts/utils.sh
 loginfo "$0 $*" >> ${exp_log_file}                  # Log command line arguments for debugging purposes
-echo "__exp.framework_title__=\"MXNET\"" >> ${exp_log_file}
 if [[ "${exp_status}" = "simulate" ]]; then
     echo "${mxnet_env} ${runtime_launcher} python ${mxnet_bench_path}/mxnet_benchmarks/benchmarks.py ${mxnet_args}"
     exit 0
@@ -17,19 +16,28 @@ if [[ "${exp_ignore_past_errors}" != "true" ]]; then
 fi
 # This script is to be executed inside docker container or on a host machine.
 # Thus, the environment must be initialized inside this scrip lazily.
-if [[ "${exp_num_nodes}" == "1" ]]; then
+[[ -z "${runtime_launcher}" ]] && runtime_launcher=":;"
+
+if [[ "${mxnet_kv_store}" == "horovod" ]]; then
+  mxnet_exec="${runtime_launcher} mpiexec  --allow-run-as-root --bind-to none --map-by slot -np ${exp_num_gpus} --mca pml ob1 --mca btl ^openib  "
+  bench_launcher=""
+elif [[ "${exp_num_nodes}" == "1" ]]; then
+  mxnet_exec="${runtime_launcher} "
   bench_launcher=""
 else
+  mxnet_exec="${runtime_launcher} "
   bench_launcher="${mxnet_bench_path}/mxnet_benchmarks/cluster_launcher.py"
   bench_launcher="${bench_launcher} --rendezvous=${mxnet_rendezvous} --num_workers=${exp_num_nodes}"
   bench_launcher="${bench_launcher} --scheduler=${mxnet_scheduler}"
 fi
+echo "MXNET exec: ${mxnet_exec}" >> ${exp_log_file}
+echo "BENCH exec: ${bench_launcher}" >> ${exp_log_file}
 
-[[ -z "${runtime_launcher}" ]] && runtime_launcher=":;"
+
 script="\
     export ${mxnet_env};\
     echo -e \"__results.start_time__= \x22\$(date +%Y-%m-%d:%H:%M:%S:%3N)\x22\";\
-    ${runtime_launcher} ${runtime_python} ${bench_launcher} ${mxnet_bench_path}/mxnet_benchmarks/benchmarks.py ${mxnet_args} &\
+    ${mxnet_exec} ${runtime_python} ${bench_launcher} ${mxnet_bench_path}/mxnet_benchmarks/benchmarks.py ${mxnet_args} &\
     proc_pid=\$!;\
     [[ \"${monitor_frequency}\" != \"0\" ]] && echo -e \"\${proc_pid}\" > ${monitor_backend_pid_folder}/proc.pid;\
     wait \${proc_pid};\

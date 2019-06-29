@@ -86,13 +86,11 @@
       "val": [
         "--model=${exp.model}",
         "--model_opts='${exp.model_opts}'",
-        "--forward_only=$('true' if '${exp.phase}'=='inference' else 'false')$",
+        "--phase=${exp.phase}",
         "--batch_size=${exp.replica_batch}",
-        "--num_batches=${exp.num_batches}",
         "--num_warmup_batches=${exp.num_warmup_batches}",
-        "--num_gpus=${exp.num_local_gpus}",
-        "--num_workers=${exp.num_nodes}",
-        "--device=${exp.device_type}",
+        "--num_batches=${exp.num_batches}",
+        "--gpus=${exp.gpus}",
         "--kv_store=${mxnet.kv_store}",
         "$('' if not '${exp.data_dir}' else '--data_dir=${exp.data_dir}' if ${exp.docker} is False else '--data_dir=/workspace/data')$",
         "--dtype=${exp.dtype}",
@@ -159,7 +157,6 @@
       "parameters": { "mxnet.env": [
         "PYTHONPATH=$('${mxnet.bench_path}:\\$PYTHONPATH'.strip(' \t:'))$",
         "${runtime.EXPORT_CUDA_CACHE_PATH}",
-        "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}",
         "MXNET_CUDNN_AUTOTUNE_DEFAULT=$(1 if '${mxnet.cudnn_autotune}' == 'true' else 0)$",
         "MXNET_CUDA_ALLOW_TENSOR_CORE=$('TRUE' if ${exp.use_tensor_core} else 'FALSE')$"
       ]}
@@ -170,7 +167,6 @@
         "LD_LIBRARY_PATH=$('${mxnet.host_libpath}:\\$LD_LIBRARY_PATH'.strip(' \t:'))$",
         "PYTHONPATH=$('${mxnet.host_python_path}:${mxnet.bench_path}:\\$PYTHONPATH'.strip(' \t:'))$",
         "${runtime.EXPORT_CUDA_CACHE_PATH}",
-        "${runtime.EXPORT_CUDA_VISIBLE_DEVICES}",
         "MXNET_CUDNN_AUTOTUNE_DEFAULT=$(1 if '${mxnet.cudnn_autotune}' == 'true' else 0)$",
         "MXNET_CUDA_ALLOW_TENSOR_CORE=$('TRUE' if ${exp.use_tensor_core} else 'FALSE')$"
       ]}

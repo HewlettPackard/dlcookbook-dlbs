@@ -51,6 +51,11 @@ To run from a command line, this module accepts the following parameters:
 * **--kv_store** Type of gradient aggregation schema (local, device, dist_sync, dist_device_sync, dist_async).
       See https://mxnet.incubator.apache.org/how_to/multi_devices.html for more details.
 * **--dtype** Precision of data variables: float(same as float32), float32 or float16
+
+Horovod:
+    https://github.com/apache/incubator-mxnet/blob/master/example/distributed_training-horovod/README.md
+    https://github.com/apache/incubator-mxnet/blob/master/example/distributed_training-horovod/resnet50_imagenet.py
+    https://github.com/horovod/horovod/blob/master/docs/mpirun.rst
 """
 
 from __future__ import absolute_import
@@ -61,43 +66,17 @@ import os
 import timeit
 import json
 import argparse
-import traceback
 import logging
+import re
 import mxnet as mx
 import numpy as np
 from mxnet_benchmarks.data_iterator import DataIteratorFactory
 from mxnet_benchmarks.model_factory import ModelFactory
-
-
-def get_local_batch_size(opts):
-    """Returns local batch size. This is an `effective` batch size for one node.
-
-    Args:
-        opts (dict): A dictionary containing benchmark parameters. Must contain `batch_size`, `device` and optionally
-            `num_gpus`.
-
-    Returns:
-        Local batch size. Type int.
-    """
-    num_devices = 1 if opts['device'] == 'cpu' else opts['num_gpus']
-    return opts['batch_size'] * num_devices
-
-
-def get_devices(opts):
-    """Creates MXNet device descriptions.
-
-    Args:
-        opts (dict): A dictionary containing benchmark parameters. Must contain `batch_size`, `device` and optionally
-            `num_gpus`.
-
-    Returns:
-        List of devices (mx.cpu or mx.gpu)
-    """
-    if opts['device'] == 'cpu':
-        devices = [mx.cpu()]
-    else:
-        devices = [mx.gpu(i) for i in range(opts['num_gpus'])]
-    return devices
+try:
+    # https://github.com/apache/incubator-mxnet/blob/master/example/distributed_training-horovod/README.md
+    import horovod.mxnet as hvd
+except ImportError:
+    hvd = None
 
 
 class BatchEndCallback(object):
@@ -139,163 +118,147 @@ class BatchEndCallback(object):
         return False if idx == len(self.batch_times)-1 else True
 
 
-def run_n_times(module, batch, opts):
-    """ Run model **module** with input data **batch** as many times as specified in
-        **opts**. Used for inference, not for training.
+class Benchmark(object):
+    def __init__(self, args):
+        self.args = args
+        self.is_inference = args.phase == 'inference'
+        self.is_horovod = 'horovod' in args.kv_store
+        self.is_gpu = len(args.gpus) > 0
+        self.kv_store = None if self.is_inference or self.is_horovod else mx.kvstore.create(args.kv_store)
+        self.devices = [mx.cpu()] if not self.is_gpu else [mx.gpu(i) for i in self.args.gpus]
+        self.model = ModelFactory.get_model(vars(args))
+        #
+        self.worker_batch = args.batch_size
+        if 'horovod' not in args.kv_store and self.is_gpu:
+            self.worker_batch *= len(args.gpus)
+        # TODO: Is this implemented in NGC 19-05 in kv_store? There's a test below. I test it here because
+        #       data iterators depend on rank and world size as returned by kv_store.
+        #       Update - this does not work. KVStore reports the wrong number of workers/rank with Horovod.
+        if self.is_horovod:
+            self.num_workers = hvd.size()
+            self.rank = hvd.rank()
+        else:
+            self.num_workers = 1 if self.kv_store is None else self.kv_store.num_workers
+            self.rank = 0 if self.kv_store is None else self.kv_store.rank
+        #
+        self.effectve_batch = self.worker_batch * self.num_workers
+        logging.info("is_horovod=%s, num_workers=%d, rank=%d, worker_batch=%d, effective_batch=%d",
+                     self.is_horovod, self.num_workers, self.rank, self.worker_batch, self.effectve_batch)
 
-    Args:
-        module (mxnet.mod.Module): MXNet model to use.
-        batch (mx.io.DataBatch): One batch of data to use.
-        opts (dict): Dictionary with options.
+    def run(self):
+        return self.run_inference() if self.is_inference else self.run_training()
 
-    Returns:
-        Batch times (excluding warmup batches) in seconds. It is a numpy array. Length is opts['num_batches'].
-    """
-    print("[WARNING] This is ancient code and you do not really want to run inference tests with MXNET. Use "
-          "TensorRT backend for that (-Pexp.framework='\"tensorrt\"')")
-    is_train = opts['phase'] == 'training'
-    if is_train is True:
-        raise ValueError("This function must not be used in train phase.")
-    for i in range(opts['num_warmup_batches']):
-        module.forward(batch, is_train=is_train)
-    batch_times = np.zeros(opts['num_batches'])
-    for i in range(opts['num_batches']):
-        start_time = timeit.default_timer()
-        module.forward(batch, is_train=is_train)
-        mx.nd.waitall()
-        batch_times[i] = timeit.default_timer() - start_time
-    return batch_times
+    def run_inference(self):
+        """ Runs N inferences and returns array of batch times in seconds.
 
+        Returns:
+            Numpy array containing batch times (string, numpy array).
+        """
+        logging.warning("[WARNING] This is ancient code and you do not really want to run inference tests with MXNET. "
+                        "Use TensorRT backend for that (-Pexp.framework='\"tensorrt\"')")
 
-def benchmark(opts):
-    """Runs inference or training benchmarks depending on **opts['phase']** value.
+        if len(self.devices) > 1:
+            raise ValueError("Multiple devices ({}) are not supported in inference phase.".format(str(self.devices)))
 
-    Args:
-        opts (dict): Options for a benchmark. Must contain `model` and 'phase'. Other options are optional.
+        data_shape = [('data', (self.worker_batch,) + self.model.input_shape)]
+        mod = mx.mod.Module(symbol=self.model.output, context=self.devices[0], label_names=[])
+        mod.bind(for_training=False, inputs_need_grad=False, data_shapes=data_shape)
+        mod.init_params(initializer=mx.init.Xavier(magnitude=2.))
+        # TODO: Fix me here
+        data = [mx.random.uniform(-1.0, 1.0, shape=shape, ctx=self.devices[0]) for _, shape in mod.data_shapes]
+        batch = mx.io.DataBatch(data, [])  # empty label
 
-    Returns:
-        Tuple of model title and numpy array containing batch times (string, numpy array).
-    """
-    for param in ['model', 'phase']:
-        if param not in opts:
-            raise ValueError("Missing '%s' in options" % param)
-    if opts['phase'] not in ['inference', 'training']:
-        raise ValueError("Invalid value for 'phase' (%s). Must be 'inference' or 'training'." % opts['phase'])
-    try:
-        opts['model_opts'] = json.loads(opts.get('model_opts', "{}"))
-    except ValueError:
-        raise ValueError("[ERROR] Cannot decode JSON string: '%s'" % opts['model_opts'])
-    opts['batch_size'] = opts.get('batch_size', 16)
-    opts['num_warmup_batches'] = opts.get('num_warmup_batches', 10)
-    opts['num_batches'] = opts.get('num_batches', 10)
-    opts['device'] = opts.get('device', 'gpu')
-    opts['num_gpus'] = opts.get('num_gpus', 1)
-    opts['dtype'] = opts.get('dtype', 'float')
+        for i in range(self.args.num_warmup_batches):
+            mod.forward(batch, is_train=False)
+        batch_times = np.zeros(self.args.num_batches)
+        for i in range(self.args.num_batches):
+            start_time = timeit.default_timer()
+            mod.forward(batch, is_train=False)
+            mx.nd.waitall()
+            batch_times[i] = timeit.default_timer() - start_time
 
-    model = ModelFactory.get_model(opts)
-    if opts['phase'] == 'inference':
-        return benchmark_inference(model, opts)
-    else:
-        return benchmark_training(model, opts)
+        return batch_times
 
+    def run_training(self):
+        """ Run training benchmarks.
+        Returns:
+            Numpy array containing batch times (string, numpy array).
+        """
+        # Create data iterator and resize it to total number of iterations (no matter what input data size is)
+        train_data = DataIteratorFactory.get((self.worker_batch,) + self.model.input_shape,
+                                             (self.worker_batch,) + self.model.labels_shape,
+                                             self.model.labels_range,
+                                             self.args,
+                                             kv_store=self.kv_store)
+        # https://github.com/apache/incubator-mxnet/blob/master/example/distributed_training-horovod/resnet50_imagenet.py
+        optimizer_params = {'multi_precision': True} if self.args.dtype == 'float16' else {}
+        if self.is_horovod:
+            optimizer_params['rescale_grad'] = 1.0 / self.worker_batch
+        opt = mx.optimizer.create('sgd', **optimizer_params)
+        if self.is_horovod:
+            opt = hvd.DistributedOptimizer(opt)
 
-def benchmark_inference(model, opts):
-    """ Runs N inferences and returns array of batch times in seconds.
+        mod = mx.mod.Module(symbol=self.model.output, context=self.devices[0])
+        mod.bind(data_shapes=train_data.provide_data, label_shapes=train_data.provide_label, for_training=True)
+        mod.init_params(mx.init.Xavier(rnd_type='gaussian', factor_type="in", magnitude=2))
+        if self.is_horovod:
+            arg_params, aux_params = mod.get_params()
+            if arg_params:
+                hvd.broadcast_parameters(arg_params, root_rank=0)
+            if aux_params:
+                hvd.broadcast_parameters(aux_params, root_rank=0)
+            mod.set_params(arg_params=arg_params, aux_params=aux_params)
 
-    Args:
-        model (obj): A model from `./models` folder.
-        opts (dict): Options for the inference benchmark.
+        batch_end_callback = BatchEndCallback(self.args.num_warmup_batches, self.args.num_batches)
+        # print ("Starting benchmarks.")
+        # TODO: In current implementation, number of epochs must always equal to 1. It is iterator responsibility to
+        #       iterate the right number of batched - warm up plus benchmark batches.
+        mod.fit(train_data,
+                kvstore=self.kv_store,
+                optimizer=opt,
+                optimizer_params=optimizer_params,
+                eval_metric=self.model.eval_metric,
+                batch_end_callback=[batch_end_callback],
+                begin_epoch=0,
+                num_epoch=1)
 
-    Returns:
-        Tuple of model title and numpy array containing batch times (string, numpy array).
-    """
-    if opts['device'] == 'gpu' and opts['num_gpus'] != 1:
-        raise ValueError("When inference is performed on a GPU, only one GPU (--num_gpus=1) must be specified.")
-
-    data_shape = [('data', (opts['batch_size'],) + model.input_shape)]
-    device = get_devices(opts)[0]
-
-    mod = mx.mod.Module(symbol=model.output, context=device, label_names=None)
-    mod.bind(for_training=False, inputs_need_grad=False, data_shapes=data_shape)
-    mod.init_params(initializer=mx.init.Xavier(magnitude=2.))
-    # TODO: Fix me here
-    data = [mx.random.uniform(-1.0, 1.0, shape=shape, ctx=device) for _, shape in mod.data_shapes]
-    batch = mx.io.DataBatch(data, [])  # empty label
-
-    return model.name, run_n_times(mod, batch, opts)
-
-
-def benchmark_training(model, opts):
-    """ Run training benchmarks.
-
-    Args:
-        model (obj): A model from `./models` folder.
-        opts (dict): Options for the inference benchmark.
-
-    Returns:
-        Tuple of model title and numpy array containing batch times (string, numpy array).
-    """
-    # Label tensor always have shape (N,)
-    kv = mx.kvstore.create(opts['kv_store'])
-    # Create data iterator and resize it to total number of iterations (no matter what input data size is)
-    train_data = DataIteratorFactory.get(
-        (get_local_batch_size(opts),) + model.input_shape,
-        (get_local_batch_size(opts),) + model.labels_shape,
-        model.labels_range,
-        opts,
-        kv_store=kv
-    )
-    devices = get_devices(opts)
-    optimizer_params = {'multi_precision': True} if opts['dtype'] == 'float16' else {}
-    mod = mx.mod.Module(symbol=model.output, context=devices)
-    batch_end_callback = BatchEndCallback(opts['num_warmup_batches'], opts['num_batches'])
-    # print ("Starting benchmarks.")
-    # TODO: In current implementation, number of epochs must always equal to 1. It is iterator responsibility to
-    #       iterate the right number of batched - warm up plus benchmark batches.
-    mod.fit(
-        train_data,
-        kvstore=kv,
-        optimizer='sgd',
-        optimizer_params=optimizer_params,
-        eval_metric=model.eval_metric,
-        initializer=mx.init.Normal(),
-        batch_end_callback=[batch_end_callback],
-        begin_epoch=0,
-        num_epoch=1
-    )
-    # print ("Finished benchmarks.")
-    return model.name, batch_end_callback.batch_times
+        if self.is_horovod:
+            start_time = timeit.default_timer()
+            mx.ndarray.waitall()
+            logging.info("(horovod) wait time for all ndarrays is %.5f seconds", timeit.default_timer() - start_time)
+        return batch_end_callback.batch_times
 
 
 def main():
-    if os.environ.get('DLBS_DEBUG', '0') == '1':
-        logging.getLogger().setLevel(logging.DEBUG)
-    print("__mxnet.version__=%s" % (json.dumps(mx.__version__)))
-    print("__exp.framework_ver__=%s" % (json.dumps(mx.__version__)))
+    """
+        Environmental variables:
+            DLBS_MXNET_SYNTHETIC_DATA_CONTEXT  [cpu]
+            DLBS_MXNET_LOG_LEVEL               [INFO]
+    """
+    logging.basicConfig()
+    logging.getLogger().setLevel(os.environ.get('DLBS_MXNET_LOG_LEVEL', 'INFO'))
 
     def str2bool(v):
         return v.lower() in ('true', 'on', 't', '1')
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, required=True, default='',
                         help="A model to benchmark ('alexnet', 'googlenet' ...)")
-    parser.add_argument('--model_opts', type=str, required=False, default='{}',
+    parser.add_argument('--model_opts', type=json.loads, required=False, default={},
                         help="Model's additional parameters (flat JSON dictionary).")
-    parser.add_argument('--forward_only', nargs='?', const=True, default=False, type=str2bool,
-                        help="Benchmark inference (if true) else benchmark training.")
-    parser.add_argument('--batch_size', type=int, required=True, default=None, help="Per device batch size")
+    parser.add_argument('--phase', required=False, default='training', choices=['inference', 'training'],
+                        help="Benchmark phase - training or inference.")
+    parser.add_argument('--batch_size', type=int, required=True, default=None, help="Replica (per device) batch size.")
     parser.add_argument('--num_batches', type=int, required=False, default=100, help="Number of benchmark iterations")
     parser.add_argument('--num_warmup_batches', type=int, required=False, default=1, help="Number of warmup iterations")
-    parser.add_argument('--num_gpus', type=int, required=False, default=1,
-                        help="Number of gpus to use (per node?). Use CUDA_VISIBLE_DEVICES to select those devices.")
-    parser.add_argument('--num_workers', type=int, required=False, default=1,
-                        help="Number of workers participating in training.")
-    parser.add_argument('--device', type=str, required=False, default='cpu', help="Compute device, 'cpu' or 'gpu'")
+    parser.add_argument('--gpus', type=str, required=False, default='0',
+                        help="Comma-separated list of GPUs to use or empty for CPUs.")
     parser.add_argument('--kv_store', type=str, required=False, default='device',
                         help="Type of gradient aggregation schema (local, device, dist_sync, dist_device_sync, "
                              "dist_async). See https://mxnet.incubator.apache.org/how_to/multi_devices.html "
                              "for more details.")
-    parser.add_argument('--dtype', required=False, default='float', choices=['float', 'float32', 'float16'],
-                        help="Precision of data variables: float(same as float32), float32 or float16.")
+    parser.add_argument('--dtype', required=False, default='float', choices=['float32', 'float16'],
+                        help="Precision of data variables: float32 or float16.")
     parser.add_argument('--data_dir', type=str, required=False, default='',
                         help="Path to the image RecordIO (.rec) file or a directory path. "
                              "Created with tools/im2rec.py.")
@@ -325,39 +288,49 @@ def main():
                              "kernel. When CUDNN is used, it controls the maximum temporary storage used for tuning " 
                              "the best CUDNN kernel when limited_workspace strategy is used.")
     args = parser.parse_args()
+    if 'horovod' in args.kv_store:
+        if hvd:
+            hvd.init()
+            if hvd.local_rank() != 0:
+                logging.getLogger().setLevel(logging.ERROR)
+        else:
+            raise ValueError("Horovod library not found")
 
-    if args.dtype == 'float':
-        args.dtype = 'float32'
+    args.gpus = [int(gpu) for gpu in re.sub('[:,]', ' ', args.gpus).split()]
+    if 'horovod' in args.kv_store and len(args.gpus) > 0:
+        args.gpus = [args.gpus[hvd.local_rank()]]
+
+    benchmark = Benchmark(args)
+    if benchmark.rank == 0:
+        print("__mxnet.version__=%s" % (json.dumps(mx.__version__)))
+        print("__exp.framework_ver__=%s" % (json.dumps(mx.__version__)))
 
     try:
-        opts = vars(args)
-        opts['phase'] = 'inference' if args.forward_only else 'training'
-        model_title, times = benchmark(opts)
-    except Exception as e:
+        batch_times = benchmark.run()
+    except Exception:
         # TODO: this is not happening, program terminates earlier.
         # For now, do not rely on __results.status__=...
-        times = np.zeros(0)
-        opts = {}
-        model_title = 'Unk'
-        print("Critical error while running benchmarks (%s). See stacktrace below." % (str(e)))
-        traceback.print_exc(file=sys.stdout)
+        batch_times = np.zeros(0)
+        logging.exception("Critical error while running benchmarks. See stacktrace below.")
 
-    if len(times) > 0:
-        mean_time = np.mean(times)                                                      # seconds
-        mean_throughput = opts['num_workers'] * get_local_batch_size(opts) / mean_time  # images / sec
-        print("__results.time__=%s" % (json.dumps(1000.0 * mean_time)))
-        print("__results.throughput__=%s" % (json.dumps(int(mean_throughput))))
-        print("__exp.model_title__=%s" % (json.dumps(model_title)))
-        print("__results.time_data__=%s" % (json.dumps((1000.0*times).tolist())))
-    else:
-        print("__results.status__=%s" % (json.dumps("failure")))
+    if benchmark.rank == 0:
+        if len(batch_times) > 0:
+            mean_time = np.mean(batch_times)  # -----------------------------  in seconds
+            mean_throughput = benchmark.effectve_batch / mean_time  # -------  images / sec
+            print("__results.time__=%s" % (json.dumps(1000.0 * mean_time)))  # in milliseconds
+            print("__results.throughput__=%s" % (json.dumps(int(mean_throughput))))
+            print("__exp.model_title__=%s" % (json.dumps(benchmark.model.name)))
+            print("__results.time_data__=%s" % (json.dumps((1000.0*batch_times).tolist())))
+        else:
+            print("__results.status__=%s" % (json.dumps("failure")))
     # Need this because of os._exit below to make sure that all gets printed.
     sys.stdout.flush()
     sys.stderr.flush()
     # TODO: Without exit call mxnet seems to hang in distributed mode.
     #    https://stackoverflow.com/questions/73663/terminating-a-python-script
     #    https://stackoverflow.com/a/5120178/1278994
-    os._exit(os.EX_OK)
+    if not benchmark.is_horovod:
+        os._exit(os.EX_OK)
 
 
 if __name__ == '__main__':

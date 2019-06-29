@@ -19,6 +19,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import logging
 import os
 import copy
 import mxnet as mx
@@ -55,9 +56,9 @@ class Layers(object):
                                          'cudnn_tensor_core_only': False})
             self.__conv_args.update({'layout': self.__model_layout})
             self.__pool_args.update({'layout': self.__model_layout})
-        print("Layers: model_layout = {}.".format(self.__model_layout))
-        print("Layers: conv_args = {}.".format(str(self.__conv_args)))
-        print("Layers: pool_args = {}.".format(str(self.__pool_args)))
+        logging.info("Layers: model_layout = %s.", self.__model_layout)
+        logging.info("Layers: conv_args = %s.", self.__conv_args)
+        logging.info("Layers: pool_args = %s.", self.__pool_args)
 
     @staticmethod
     def merge_args(user_args, additional_args):
@@ -132,40 +133,39 @@ class Layers(object):
 class Model(object):
     """Base class for all models"""
 
-    def __init__(self, params):
+    def __init__(self, kwargs):
         """ name: printable name like AlexNet, ResNet152 etc
             input_shape: tuple of dimensions of input data excluding batch, for
                          instance, (3,224,224) - 3 channels with 224 spatial dimensions
             num_classes: size of output softmax (affine) operator
             phase: 'inference' or 'training'
         """
-        for param in ['name', 'input_shape', 'num_classes', 'phase', 'dtype', 'model_opts']:
-            if param not in params:
-                raise ValueError("Missing mandatory neural net parameter '%s'" % param)
-        if params['phase'] not in ['inference', 'training']:
-            raise ValueError("Invalid phase: '%s'. Expecting 'inference' or 'training'" % (params['phase']))
-        self.__name = params['name']
-        self.__input_shape = params['input_shape']
-        self.__num_classes = params['num_classes']
-        self.__phase = params['phase']
-        self.__dtype = params['dtype']
-        self.__model_opts = copy.deepcopy(params['model_opts'])
+        for arg in ['name', 'input_shape', 'num_classes', 'phase', 'dtype', 'model_opts']:
+            if arg not in kwargs:
+                raise ValueError("Missing mandatory neural net parameter '%s'" % arg)
+        self.__name = kwargs['name']
+        self.__input_shape = kwargs['input_shape']
+        self.__num_classes = kwargs['num_classes']
+        self.__phase = kwargs['phase']
+        self.__dtype = kwargs['dtype']
+        self.__model_opts = copy.deepcopy(kwargs['model_opts'])
         self.__have_float16_lrn = 'DLBS_MXNET_NO_FLOAT16_LRN' not in os.environ
         self._eval_metric = 'acc'
         # The following two parameters are used by data providers.
         self._labels_shape = (1,)                      # Shape of labels tensor excluding leading batch dimension
         self._labels_range = (0, self.num_classes-1)   # Possible labels' values inclusive
         if self.__dtype == 'float16' and self.__have_float16_lrn:
-            print("[WARNING] The data type is 'float16' and I assume MXNET provides a float16 kernel for LRN layer. "
-                  "If this model uses LRN and your MXNET version is outdated, you will get error. In this case, to "
-                  "disable LRN layers in float16 regime, define the following variable 'DLBS_MXNET_NO_FLOAT16_LRN' "
-                  "(the value of this variable does not matter) i.e.: "
-                  "-Pruntime.launcher='\"DLBS_MXNET_NO_FLOAT16_LRN=1 \"'")
+            logging.warning(
+                "The data type is 'float16' and I assume MXNET provides a float16 kernel for LRN layer. If this model "
+                "uses LRN and your MXNET version is outdated, you will get error. In this case, to disable LRN layers "
+                "in float16 regime, define the following variable 'DLBS_MXNET_NO_FLOAT16_LRN' (the value of this "
+                "variable does not matter) i.e.: -Pruntime.launcher='\"DLBS_MXNET_NO_FLOAT16_LRN=1 \"'")
         if self.__dtype == 'float16' and not self.__have_float16_lrn:
-            print("[WARNING] The data type is 'float16' and you disable LRN layers. All calls to Model.maybe_lrn "
-                  " will do nothing. If your MXNET version is up to date and provides LRN float16 kernel make sure "
-                  "DLBS_MXNET_NO_FLOAT16_LRN environment variable is not defined. All this is relevant only if this "
-                  "model uses LRN operators.")
+            logging.warning(
+                "The data type is 'float16' and you disable LRN layers. All calls to Model.maybe_lrn will do nothing. "
+                "If your MXNET version is up to date and provides LRN float16 kernel make sure "
+                "DLBS_MXNET_NO_FLOAT16_LRN environment variable is not defined. All this is relevant only if this "
+                "model uses LRN operators.")
 
     @staticmethod
     def conv_shape(num_channels, spatial_dims, layout='NCHW'):
@@ -220,7 +220,7 @@ class Model(object):
         """
         v = mx.sym.FullyConnected(data=v, num_hidden=self.num_classes)
         if self.dtype == 'float16':
-            print("Casting logits to np.float32")
+            logging.info("Casting logits to np.float32")
             v = mx.sym.cast(data=v, dtype=np.float32)
         if self.phase == 'training':
             labels = mx.sym.Variable(name="softmax_label")
