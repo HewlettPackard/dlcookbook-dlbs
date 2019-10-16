@@ -1,0 +1,14 @@
+{
+    "parameters": {
+        "exp.framework": "nvtfcnn",
+        "exp.docker": false,
+        "exp.log_file": "${LOGS_ROOT}/${exp.dtype}_${exp.model}_${exp.replica_batch}.log",
+
+        "exp.gpus": "0"
+    },
+    "variables":{
+        "exp.model": ["resnet50"],
+        "exp.replica_batch": [2, 4, 8, 16],
+        "exp.dtype": ["float16","float32"]
+    }
+}

@@ -1,0 +1,58 @@
+{
+  "parameters": {
+    "exp.phase": "training",
+    "exp.status": "inactive",
+
+    "exp.framework": "nvtfcnn",
+    "exp.docker_image": "nvcr.io/nvidia/tensorflow:19.09-py3",
+
+    "exp.num_warmup_batches": 50,
+    "exp.num_batches": 400,
+    "exp.log_file": "${BENCH_ROOT}/logs/${exp.phase}/${exp.backend}_19.09/${exp.trial}/${exp.data}/${exp.dtype}/$(\"${exp.gpus}\".replace(\",\",\".\"))$_${exp.model}_${exp.effective_batch}.log",
+
+    "exp.proj_name": "${exp.node_title} training with ${exp.num_node_gpus} ${exp.device_title}",
+    "exp.proj_parent_name": "",
+    "exp.proj_description": "Benchmarking training with TensorFlow on ${exp.node_title} node with ${exp.num_node_gpus} ${exp.device_title} GPUs",
+
+    "exp.experimenter_name": "${DLBS_USER} <${DLBS_USER_EMAIL}>",
+    "exp.experiment_name": "Benchmarking using ${exp.docker_image} container",
+    "exp.experiment_description": "Running TensorFlow training with one of the latest TensorFlow containers from NGC",
+
+    "exp.framework_title": "TensorFlow",
+    "exp.framework_ver": "1.14.0",
+    "exp.backend" : "nvtfcnn",
+    "exp.dlbs_hashtag": "7c5ca5a6dfa4e2f7b8b4d81c60bd8be343dabd30",
+    "exp.software": "tensorflow/tensorflow:${exp.framework_ver}##nvidia/nvtfcnn##${exp.docker_image}",
+    "exp.node_id": "${NODE_ID}",
+    "exp.node_title": "${NODE_TITLE}",
+    "exp.node_nic": "",
+    "exp.device_title": "${GPU_TITLE}",
+    "exp.device_type" : "gpu",
+    "exp.num_node_gpus": 4,
+    "exp.num_nodes": 1,
+
+    "exp.docker_launcher": "docker",
+    "exp.docker_args":  "--runtime=nvidia --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864"
+  },
+  "variables":{
+    "exp.model": ["resnet50", "inception3", "vgg16", "resnet152", "inception4", "alexnet_owt", "googlenet", "resnet34"],
+    "exp.replica_batch": [16, 32, 64, 128, 256, 512, 1024],
+    "exp.dtype": ["float16", "float32"],
+    "exp.gpus": ["0", "0,1", "0,1,2,3"],
+    "exp.trial": [0]
+  },
+  "extensions": [
+    {"condition": {                        "exp.model":["alexnet_owt"],                     "exp.replica_batch":[128, 256, 512, 1024]},   "parameters": {"exp.status": ""}},
+    {"condition": {"exp.dtype": "float16", "exp.model":["googlenet"],                       "exp.replica_batch":[32, 64, 128, 256]},      "parameters": {"exp.status": ""}},
+
+    {"condition": {"exp.dtype": "float16", "exp.model":["resnet50", "vgg16", "resnet34"],   "exp.replica_batch":[32, 64, 128]},           "parameters": {"exp.status": ""}},
+    {"condition": {"exp.dtype": "float16", "exp.model":["inception3"],                      "exp.replica_batch":[16, 32, 64]},            "parameters": {"exp.status": ""}},
+    {"condition": {"exp.dtype": "float16", "exp.model":["resnet152", "inception4"],         "exp.replica_batch":[16, 32]},                "parameters": {"exp.status": ""}},
+
+    {"condition": {"exp.dtype": "float32", "exp.model":["googlenet"],                       "exp.replica_batch":[32, 64, 128]},           "parameters": {"exp.status": ""}},
+    {"condition": {"exp.dtype": "float32", "exp.model":["resnet50", "resnet34"],            "exp.replica_batch":[16, 32, 64]},            "parameters": {"exp.status": ""}},
+    {"condition": {"exp.dtype": "float32", "exp.model":["vgg16"],                           "exp.replica_batch":[16, 32]},                "parameters": {"exp.status": ""}},
+    {"condition": {"exp.dtype": "float32", "exp.model":["inception3"],                      "exp.replica_batch":[16, 32]},                "parameters": {"exp.status": ""}}
+
+  ]
+}
