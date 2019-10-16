@@ -1,0 +1,58 @@
+10-15-19 21:09:38 [INFO]    [STEP 01] Initializing host environment
+10-15-19 21:09:38 [INFO]    [STEP 02] Cleaning previous run
+10-15-19 21:09:38 [INFO]    [STEP 03] Pulling docker image
+18.07-py3: Pulling from nvidia/tensorflow
+Digest: sha256:a1bc94e251d065c754b31c1594ca5316d29f0ecf1b9f8dc98ee54635cb4086f8
+Status: Image is up to date for nvcr.io/nvidia/tensorflow:18.07-py3
+10-15-19 21:09:39 [INFO]    [STEP 04] Running 8 TensorFlow benchmarks (2 models and 4 batch sizes)
+INFO:root:Plan was built with 8 experiments
+Plan was built with 8 experiments
+INFO:root:Benchmark plan has been validated
+Benchmark plan has been validated
+--------------------------------------------------------------
+Experimenter pid 21148. Run this to gracefully terminate me:
+	kill -USR1 21148
+I will terminate myself as soon as current benchmark finishes.
+--------------------------------------------------------------
+---------------------------------------------------------------------
+- DLBS benchmark session summary (this is not a performance report) -
+---------------------------------------------------------------------
+  Start time: ................... 2019-10-15 21:09:40.717772
+  End time: ..................... 2019-10-15 21:14:28.734490
+  Duration (minutes): ........... 4.80027863333
+  Total benchmarks in plan: ..... 8
+  |--Inactive benchmarks: ....... 0
+  |--Existing benchmarks: ....... 0
+  |  |--Successful benchmarks: .. 0
+  |  |--Failed benchmarks: ...... 0
+  |--Active benchmarks: ......... 8
+  |  |--Completed benchmarks: ... 8
+  |  |--Successful benchmarks: .. 8
+  |  |--Failed benchmarks: ...... 0
+---------------------------------------------------------------------
+- Your next steps: analyze performance data with bench_data.py      -
+---------------------------------------------------------------------
+10-15-19 21:14:28 [INFO]    [STEP 05] Parsing summary and building benchmark report
+Batch time (milliseconds)
+                            Replica Batch
+  Model       DeviceType         4       8      16       32
+  AlexNetOWT  gpu            20.09   21.09   22.66    27.46
+  ResNet50    gpu            52.02   66.50   96.33   157.04
+
+
+
+Throughput (instances per second e.g. images/sec)
+                            Replica Batch
+  Model       DeviceType         4       8      16       32
+  AlexNetOWT  gpu           199.14  379.27  706.02  1165.42
+  ResNet50    gpu            76.90  120.30  166.10   203.78
+
+
+
+This report is configured with the following parameters:
+ inputs = ['exp.model_title', 'exp.device_type']
+ output = exp.replica_batch
+ output_cols = None
+ report_speedup = False
+ report_efficiency = False
+10-15-19 21:14:29 [INFO]    [STEP 07] All done, bye bye

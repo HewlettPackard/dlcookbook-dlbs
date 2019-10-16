@@ -1,0 +1,268 @@
+Running subprocess (['/dlbs/scripts/launchers/nvtfcnn.sh', '--tensorrt_input', 'data', '--exp_phase', 'training', '--exp_data_store', '', '--caffe2_data_backend', 'lmdb', '--pytorch_cudnn_fastest', 'false', '--mxnet_env', '', '--tensorrt_model_dir', '/dlbs/models/resnet50', '--pytorch_docker_args', '-i --security-opt seccomp=unconfined --pid=host --ipc=host --volume=/dlbs/python/pytorch_benchmarks:/workspace/pytorch_benchmarks --volume=/dev/shm/dlbs:/workspace/cuda_cache   --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3', '--tensorrt_host_path', '/dlbs/src/tensorrt/build', '--bvlc_caffe_host_libpath', '', '--exp_model_title', '', '--tensorrt_prefetch_queue_size', '3', '--pytorch_data_shuffle', 'false', '--mxnet_docker_args', '-i --security-opt seccomp=unconfined --pid=host --volume=/dlbs/python/mxnet_benchmarks:/workspace/mxnet_benchmarks --volume=/dev/shm/dlbs:/workspace/cuda_cache   --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3', '--caffe_docker_args', '-i --security-opt seccomp=unconfined --pid=host --volume=/dlbs/models/resnet50:/workspace/model --volume=/dev/shm/dlbs:/workspace/cuda_cache    --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3', '--tensorrt_data_name', 'synthetic', '--nvcnn_args', '--model=resnet50  --batch_size=8 --nstep_burnin=1 --num_batches=101 --nccl --noxla --nodistort_color --num_gpus=1 --display_every=1000 --log_dir= --fp16', '--tensorrt_launcher', '/dlbs/scripts/launchers/tensorrt.sh', '--tensorrt_env', 'CUDA_CACHE_PATH=/dev/shm/dlbs', '--exp_framework', 'nvtfcnn', '--nvidia_caffe_solver_precision', 'FLOAT16', '--nvcnn_launcher', '/dlbs/scripts/launchers/nvcnn.sh', '--caffe2_float16_compute', 'true', '--nvcnn_python_path', '/dlbs/python/nvcnn_benchmarks', '--nvcnn_use_distort_color', 'false', '--caffe2_rank', '0', '--exp_framework_title', 'TensorFlow-nvtfcnn', '--bvlc_caffe_docker_image', 'hpe/bvlc_caffe:cuda9-cudnn7', '--nvtfcnn_docker_args', '-i --security-opt seccomp=unconfined --pid=host --ipc=host --volume=/dev/shm/dlbs:/workspace/cuda_cache   --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3', '--tensorflow_local_parameter_device', 'cpu', '--caffe2_host_python_path', '/root/projects/caffe2/build', '--tensorrt_report_frequency', '-1', '--caffe2_launcher', '/dlbs/scripts/launchers/caffe2.sh', '--intel_caffe_docker_image', 'hpe/intel_caffe:cpu', '--exp_replica_batch', '8', '--pytorch_distributed_rank', '0', '--caffe2_interface', '', '--nvtfcnn_mpi_args', '--allow-run-as-root --bind-to socket -np 1', '--caffe_host_path', '/root/projects/bvlc_caffe/build/tools', '--exp_model', 'resnet50', '--tensorrt_data_dir', '', '--tensorflow_docker_image', 'hpe/tensorflow:cuda9-cudnn7', '--runtime_EXPORT_CUDA_VISIBLE_DEVICES', 'CUDA_VISIBLE_DEVICES=0', '--tensorrt_inference_queue_size', '3', '--tensorrt_no_batch_times', 'false', '--tensorflow_distortions', 'false', '--mxnet_use_dali', 'false', '--caffe_data_dir', '', '--exp_num_replicas', '1', '--tensorflow_num_inter_threads', '0', '--exp_num_local_gpus', '1', '--nvidia_caffe_precision', 'float16', '--mxnet_nvidia_layers', 'false', '--exp_gpus', '0', '--bvlc_caffe_data_dir', '', '--exp_proj', '', '--exp_device_title', '', '--pytorch_docker_image', 'nvcr.io/nvidia/pytorch:18.06-py3', '--pytorch___master_port', '4000', '--tensorflow_resize_method', 'bilinear', '--tensorflow_use_mkl', 'false', '--runtime_cuda_cache', '/dev/shm/dlbs', '--pytorch_host_python_path', '/root/projects/pytorch/python', '--tensorrt_cache', '/root/.tensorrt_cache', '--exp_num_local_replicas', '1', '--mxnet_workspace', '1024', '--pytorch_cudnn_benchmark', 'true', '--nvcnn_docker_image', 'nvcr.io/nvidia/tensorflow:18.04-py3', '--mxnet_model_layout', '', '--tensorflow_host_libpath', '', '--mxnet_host_python_path', '/root/projects/mxnet/python', '--monitor_pid_folder', '/dev/shm/monitor', '--mxnet_docker_image', 'dlbs/mxnet:18.11', '--exp_docker_launcher', 'nvidia-docker', '--mxnet_input_layout', '', '--tensorrt_prefetch_batch_size', '8', '--caffe_env', 'CUDA_CACHE_PATH=/dev/shm/dlbs', '--nvtfcnn_python_path', '/dlbs/python/nvtfcnn_benchmarks', '--nvcnn_env', 'PYTHONPATH=/dlbs/python/nvcnn_benchmarks:\\$PYTHONPATH CUDA_CACHE_PATH=/dev/shm/dlbs CUDA_VISIBLE_DEVICES=0', '--caffe_mirror', 'true', '--exp_node_id', '', '--tensorrt_fake_inference', 'false', '--tensorrt_fake_decoder', 'false', '--tensorflow_var_update', 'replicated', '--runtime_visible_gpus', '0', '--tensorrt_docker_image', 'dlbs/tensorrt:18.11', '--tensorrt_args', '--model resnet50 --model_file /dlbs/models/resnet50/e00a135b125a4f50b3378edb4304c3e5.model.prototxt --batch_size 8 --dtype float16 --num_warmup_batches 1 --num_batches 100  --input data --output prob --cache /root/.tensorrt_cache --report_frequency=-1  --gpus 0  --resize_method resize --num_prefetchers 3 --num_decoders 3 --prefetch_queue_size 3 --prefetch_batch_size 8 --inference_queue_size 3   --data_name=synthetic', '--nvtfcnn_model_file', 'resnet', '--tensorflow_num_intra_threads', '0', '--exp_framework_family', 'nvtfcnn', '--caffe2_transport', 'tcp', '--nvidia_caffe_docker_image', 'hpe/nvidia_caffe:cuda9-cudnn7', '--pytorch_distributed_rendezvous', 'localhost:4000', '--pytorch___master_addr', 'localhost', '--pytorch_launcher', '/dlbs/scripts/launchers/pytorch.sh', '--monitor_timeseries', 'time:str:1,mem_virt:float:2,mem_res:float:3,mem_shrd:float:4,cpu:float:5,mem:float:6,power:float:7,gpus:float:8:', '--nvidia_caffe_backward_math_precision', 'FLOAT16', '--nvtfcnn_model_args', '--layers=50', '--tensorflow_data_name', '', '--nvtfcnn_docker_image', 'nvcr.io/nvidia/tensorflow:18.07-py3', '--exp_docker_image', 'nvcr.io/nvidia/tensorflow:18.07-py3', '--caffe_model_dir', '/dlbs/models/resnet50', '--exp_data', 'synthetic', '--exp_log_file', '/workspace/logs/float16_resnet50_8.log', '--exp_docker', 'false', '--monitor_launcher', '/dlbs/scripts/resource_monitor.sh', '--nvcnn_host_libpath', '', '--bvlc_caffe_host_path', '/root/projects/bvlc_caffe/build/tools', '--exp_effective_batch', '8', '--exp_use_tensor_core', 'true', '--exp_ignore_past_errors', 'false', '--exp_data_dir', '', '--tensorrt_resize_method', 'resize', '--nvidia_caffe_forward_precision', 'FLOAT16', '--tensorflow_report_interval', '100', '--caffe_data_mean_file', '', '--exp_node_nic', '', '--tensorrt_profile', 'false', '--pytorch_num_loader_threads', '4', '--mxnet_data_dir', '', '--tensorrt_docker_args', '-i --security-opt seccomp=unconfined --pid=host --volume=/dlbs/models/resnet50:/workspace/model --volume=/dev/shm/dlbs:/workspace/cuda_cache --volume=/root/.tensorrt_cache:/workspace/tensorrt_cache   --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3', '--nvidia_caffe_host_path', '/root/projects/nvidia_caffe/build/tools', '--tensorflow_use_xla', 'false', '--tensorflow_args', '--per_gpu_thread_count=1 --xla=false --use_fp16=true --use_tf_layers=true --staged_vars=false --model=resnet50 --eval=false --forward_only=false --batch_size=8 --num_batches=100 --num_warmup_batches=1 --num_gpus=1 --display_every=100 --device=gpu --data_format=NCHW --variable_update=replicated --all_reduce_spec=nccl --local_parameter_device=cpu   --distortions=false --num_intra_threads=0 --num_inter_threads=0 --resize_method=bilinear  ', '--exp_cudnn', '', '--tensorflow_launcher', '/dlbs/scripts/launchers/tensorflow_hpm.sh', '--nvtfcnn_args', ' --precision=fp16 --log_dir=/tmp/nvtfcnn --batch_size=8 --num_iter=101 --iter_unit=batch --layers=50', '--runtime_python', '/usr/bin/python', '--pytorch_args', '--model resnet50 --forward_only false --batch_size 8 --num_batches 100 --num_warmup_batches 1 --device gpu  --data synthetic --data_backend caffe_lmdb --data_shuffle false --num_loader_threads 4 --dtype float16 --cudnn_benchmark true --cudnn_fastest false --data_loader_only false', '--caffe_model_file', 'e00a135b125a4f50b3378edb4304c3e5.model.prototxt', '--caffe2_data_dir', '', '--nvcnn_data_dir', '', '--pytorch_env', '', '--tensorrt_host_libpath', '', '--tensorflow_python_path', '/dlbs/python/tf_cnn_benchmarks', '--exp_framework_commit', '', '--pytorch_data_backend', 'caffe_lmdb', '--intel_caffe_host_path', '/root/projects/intel_caffe/build/tools', '--caffe2_run_id', '0001', '--mxnet_cudnn_autotune', 'true', '--exp_num_gpus', '1', '--exp_model_opts', '{}', '--intel_caffe_host_libpath', '', '--nvtfcnn_env', 'CUDA_CACHE_PATH=/dev/shm/dlbs CUDA_VISIBLE_DEVICES=0', '--monitor_frequency', '0', '--caffe2_docker_args', '-i --security-opt seccomp=unconfined --pid=host --volume=/dlbs/python/caffe2_benchmarks:/workspace/caffe2_benchmarks --volume=/dev/shm/dlbs:/workspace/cuda_cache    --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3', '--caffe_data_mean_file_name', '', '--exp_device_type', 'gpu', '--tensorrt_model_file', 'e00a135b125a4f50b3378edb4304c3e5.model.prototxt', '--exp_status_msg', '', '--exp_id', 'e00a135b125a4f50b3378edb4304c3e5', '--tensorflow_docker_args', '-i --security-opt seccomp=unconfined --pid=host --volume=/dlbs/python/tf_cnn_benchmarks:/workspace/tf_cnn_benchmarks --volume=/dev/shm/dlbs:/workspace/cuda_cache   --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3', '--caffe_action', 'train', '--nvtfcnn_launcher', '/dlbs/scripts/launchers/nvtfcnn.sh', '--nvcnn_log_dir', '', '--nvcnn_display_every', '1000', '--caffe_solver', "net: '/dlbs/models/resnet50/e00a135b125a4f50b3378edb4304c3e5.model.prototxt'\\n max_iter: 100\\n test_interval: 0\\n snapshot: 0\\n snapshot_after_train: false\\n base_lr: 0.01\\n lr_policy: 'fixed'\\n solver_mode: GPU\\n  layer_wise_reduce: true", '--tensorflow_env', 'PYTHONPATH=/dlbs/python/tf_cnn_benchmarks:\\$PYTHONPATH CUDA_CACHE_PATH=/dev/shm/dlbs CUDA_VISIBLE_DEVICES=0 TF_DISABLE_CUDNN_TENSOR_OP_MATH=false', '--tensorflow_other_args', '', '--mxnet_rendezvous', '127.0.0.1:4000', '--mxnet_prefetch_buffer', '10', '--caffe2_host_libpath', '/root/projects/caffe2/build/caffe2', '--nvidia_caffe_backward_precision', 'FLOAT16', '--tensorflow_use_nccl', 'true', '--tensorrt_num_prefetchers', '3', '--exp_framework_ver', '', '--nvidia_caffe_forward_math_precision', 'FLOAT16', '--mxnet_args', "--model=resnet50 --model_opts='{}' --phase=training --batch_size=8 --num_warmup_batches=1 --num_batches=100 --gpus=0 --kv_store=device  --dtype=float16 --preprocess_threads=4 --prefetch_buffer=10   --nvidia_layers=False --use_dali=False --workspace=1024", '--caffe_solver_file', 'e00a135b125a4f50b3378edb4304c3e5.solver.prototxt', '--caffe_data_mean_file_path', '', '--tensorflow_git_hashtag', '', '--mxnet_preprocess_threads', '4', '--caffe_layer_wise_reduce', 'true', '--tensorrt_user_model', 'false', '--exp_cuda', '', '--intel_caffe_data_dir', '', '--caffe2_args', '--model=resnet50  --batch_size=8 --num_batches=100 --num_warmup_batches=1 --num_gpus=1 --device=gpu --data_dir= --data_backend=lmdb --dtype=float16 --enable_tensor_core --num_decode_threads=1 --float16_compute=true --num_workers=1 --rendezvous=file:///tmp/caffe2_rendezvous --run_id=0001 --rank=0 --transport=tcp --interface=', '--pytorch_data_loader_only', 'false', '--exp_num_batches', '100', '--exp_num_warmup_batches', '1', '--mxnet_scheduler', 'false', '--mxnet_launcher', '/dlbs/scripts/launchers/mxnet.sh', '--caffe2_rendezvous', 'file:///tmp/caffe2_rendezvous', '--mxnet_bench_path', '/dlbs/python', '--caffe_fork', 'bvlc', '--caffe2_num_decode_threads', '1', '--runtime_EXPORT_CUDA_CACHE_PATH', 'CUDA_CACHE_PATH=/dev/shm/dlbs', '--exp_docker_args', '--rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host', '--runtime_launcher', '', '--mxnet_kv_store', 'device', '--caffe2_docker_image', 'nvcr.io/nvidia/caffe2:18.05-py2', '--exp_rerun', 'never', '--nvidia_caffe_data_dir', '', '--pytorch_bench_path', '/dlbs/python', '--nvcnn_use_nccl', 'true', '--caffe_data_backend', 'LMDB', '--nvcnn_use_xla', 'false', '--exp_status', 'ok', '--nvcnn_docker_args', '-i --security-opt seccomp=unconfined --pid=host --volume=/dlbs/python/nvcnn_benchmarks:/workspace/nvcnn_benchmarks --volume=/dev/shm/dlbs:/workspace/cuda_cache   --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3', '--caffe2_bench_path', '/dlbs/python', '--monitor_backend_pid_folder', '/dev/shm/monitor', '--caffe_launcher', '/dlbs/scripts/launchers/caffe.sh', '--tensorrt_output', 'prob', '--caffe_docker_image', 'hpe/bvlc_caffe:cuda9-cudnn7', '--nvtfcnn_data_dir', '', '--mxnet_host_libpath', '', '--caffe_args', '--solver=/dlbs/models/resnet50/e00a135b125a4f50b3378edb4304c3e5.solver.prototxt   --gpu=0', '--exp_sys_info', '', '--exp_num_nodes', '1', '--exp_dtype', 'float16', '--tensorflow_data_dir', '', '--tensorrt_num_decoders', '3', '--nvidia_caffe_host_libpath', '', '--pytorch_host_libpath', '', '--pytorch_data_dir', '']) with log file '/workspace/logs/float16_resnet50_8.log'
+
+--------------------------
+Variables from python script.
+--------------------------
+__tensorrt.input__="data"
+__exp.phase__="training"
+__exp.data_store__=""
+__caffe2.data_backend__="lmdb"
+__pytorch.cudnn_fastest__=false
+__mxnet.env__=""
+__tensorrt.model_dir__="/dlbs/models/resnet50"
+__pytorch.docker_args__="-i --security-opt seccomp=unconfined --pid=host --ipc=host --volume=/dlbs/python/pytorch_benchmarks:/workspace/pytorch_benchmarks --volume=/dev/shm/dlbs:/workspace/cuda_cache   --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3"
+__tensorrt.host_path__="/dlbs/src/tensorrt/build"
+__bvlc_caffe.host_libpath__=""
+__exp.model_title__=""
+__tensorrt.prefetch_queue_size__=3
+__pytorch.data_shuffle__=false
+__mxnet.docker_args__="-i --security-opt seccomp=unconfined --pid=host --volume=/dlbs/python/mxnet_benchmarks:/workspace/mxnet_benchmarks --volume=/dev/shm/dlbs:/workspace/cuda_cache   --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3"
+__caffe.docker_args__="-i --security-opt seccomp=unconfined --pid=host --volume=/dlbs/models/resnet50:/workspace/model --volume=/dev/shm/dlbs:/workspace/cuda_cache    --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3"
+__tensorrt.data_name__="synthetic"
+__nvcnn.args__="--model=resnet50  --batch_size=8 --nstep_burnin=1 --num_batches=101 --nccl --noxla --nodistort_color --num_gpus=1 --display_every=1000 --log_dir= --fp16"
+__tensorrt.launcher__="/dlbs/scripts/launchers/tensorrt.sh"
+__tensorrt.env__="CUDA_CACHE_PATH=/dev/shm/dlbs"
+__exp.framework__="nvtfcnn"
+__nvidia_caffe.solver_precision__="FLOAT16"
+__nvcnn.launcher__="/dlbs/scripts/launchers/nvcnn.sh"
+__caffe2.float16_compute__=true
+__nvcnn.python_path__="/dlbs/python/nvcnn_benchmarks"
+__nvcnn.use_distort_color__=false
+__caffe2.rank__=0
+__exp.framework_title__="TensorFlow-nvtfcnn"
+__bvlc_caffe.docker_image__="hpe/bvlc_caffe:cuda9-cudnn7"
+__nvtfcnn.docker_args__="-i --security-opt seccomp=unconfined --pid=host --ipc=host --volume=/dev/shm/dlbs:/workspace/cuda_cache   --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3"
+__tensorflow.local_parameter_device__="cpu"
+__caffe2.host_python_path__="/root/projects/caffe2/build"
+__tensorrt.report_frequency__=-1
+__caffe2.launcher__="/dlbs/scripts/launchers/caffe2.sh"
+__intel_caffe.docker_image__="hpe/intel_caffe:cpu"
+__exp.replica_batch__=8
+__pytorch.distributed_rank__=0
+__caffe2.interface__=""
+__nvtfcnn.mpi_args__="--allow-run-as-root --bind-to socket -np 1"
+__caffe.host_path__="/root/projects/bvlc_caffe/build/tools"
+__exp.model__="resnet50"
+__tensorrt.data_dir__=""
+__tensorflow.docker_image__="hpe/tensorflow:cuda9-cudnn7"
+__runtime.EXPORT_CUDA_VISIBLE_DEVICES__="CUDA_VISIBLE_DEVICES=0"
+__tensorrt.inference_queue_size__=3
+__tensorrt.no_batch_times__=false
+__tensorflow.distortions__=false
+__mxnet.use_dali__=false
+__caffe.data_dir__=""
+__exp.num_replicas__=1
+__tensorflow.num_inter_threads__=0
+__exp.num_local_gpus__=1
+__nvidia_caffe.precision__="float16"
+__mxnet.nvidia_layers__=false
+__exp.gpus__="0"
+__bvlc_caffe.data_dir__=""
+__exp.proj__=""
+__exp.device_title__=""
+__pytorch.docker_image__="nvcr.io/nvidia/pytorch:18.06-py3"
+__pytorch.__master_port__=4000
+__tensorflow.resize_method__="bilinear"
+__tensorflow.use_mkl__=false
+__runtime.cuda_cache__="/dev/shm/dlbs"
+__pytorch.host_python_path__="/root/projects/pytorch/python"
+__tensorrt.cache__="/root/.tensorrt_cache"
+__exp.num_local_replicas__=1
+__mxnet.workspace__=1024
+__pytorch.cudnn_benchmark__=true
+__nvcnn.docker_image__="nvcr.io/nvidia/tensorflow:18.04-py3"
+__mxnet.model_layout__=""
+__tensorflow.host_libpath__=""
+__mxnet.host_python_path__="/root/projects/mxnet/python"
+__monitor.pid_folder__="/dev/shm/monitor"
+__mxnet.docker_image__="dlbs/mxnet:18.11"
+__exp.docker_launcher__="nvidia-docker"
+__mxnet.input_layout__=""
+__tensorrt.prefetch_batch_size__=8
+__caffe.env__="CUDA_CACHE_PATH=/dev/shm/dlbs"
+__nvtfcnn.python_path__="/dlbs/python/nvtfcnn_benchmarks"
+__nvcnn.env__="PYTHONPATH=/dlbs/python/nvcnn_benchmarks:\\$PYTHONPATH CUDA_CACHE_PATH=/dev/shm/dlbs CUDA_VISIBLE_DEVICES=0"
+__caffe.mirror__=true
+__exp.node_id__=""
+__tensorrt.fake_inference__=false
+__tensorrt.fake_decoder__=false
+__tensorflow.var_update__="replicated"
+__runtime.visible_gpus__="0"
+__tensorrt.docker_image__="dlbs/tensorrt:18.11"
+__tensorrt.args__="--model resnet50 --model_file /dlbs/models/resnet50/e00a135b125a4f50b3378edb4304c3e5.model.prototxt --batch_size 8 --dtype float16 --num_warmup_batches 1 --num_batches 100  --input data --output prob --cache /root/.tensorrt_cache --report_frequency=-1  --gpus 0  --resize_method resize --num_prefetchers 3 --num_decoders 3 --prefetch_queue_size 3 --prefetch_batch_size 8 --inference_queue_size 3   --data_name=synthetic"
+__nvtfcnn.model_file__="resnet"
+__tensorflow.num_intra_threads__=0
+__exp.framework_family__="nvtfcnn"
+__caffe2.transport__="tcp"
+__nvidia_caffe.docker_image__="hpe/nvidia_caffe:cuda9-cudnn7"
+__pytorch.distributed_rendezvous__="localhost:4000"
+__pytorch.__master_addr__="localhost"
+__pytorch.launcher__="/dlbs/scripts/launchers/pytorch.sh"
+__monitor.timeseries__="time:str:1,mem_virt:float:2,mem_res:float:3,mem_shrd:float:4,cpu:float:5,mem:float:6,power:float:7,gpus:float:8:"
+__nvidia_caffe.backward_math_precision__="FLOAT16"
+__nvtfcnn.model_args__="--layers=50"
+__tensorflow.data_name__=""
+__nvtfcnn.docker_image__="nvcr.io/nvidia/tensorflow:18.07-py3"
+__exp.docker_image__="nvcr.io/nvidia/tensorflow:18.07-py3"
+__caffe.model_dir__="/dlbs/models/resnet50"
+__exp.data__="synthetic"
+__exp.log_file__="/workspace/logs/float16_resnet50_8.log"
+__exp.docker__=false
+__monitor.launcher__="/dlbs/scripts/resource_monitor.sh"
+__nvcnn.host_libpath__=""
+__bvlc_caffe.host_path__="/root/projects/bvlc_caffe/build/tools"
+__exp.effective_batch__=8
+__exp.use_tensor_core__=true
+__exp.ignore_past_errors__=false
+__exp.data_dir__=""
+__tensorrt.resize_method__="resize"
+__nvidia_caffe.forward_precision__="FLOAT16"
+__tensorflow.report_interval__=100
+__caffe.data_mean_file__=""
+__exp.node_nic__=""
+__tensorrt.profile__=false
+__pytorch.num_loader_threads__=4
+__mxnet.data_dir__=""
+__tensorrt.docker_args__="-i --security-opt seccomp=unconfined --pid=host --volume=/dlbs/models/resnet50:/workspace/model --volume=/dev/shm/dlbs:/workspace/cuda_cache --volume=/root/.tensorrt_cache:/workspace/tensorrt_cache   --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3"
+__nvidia_caffe.host_path__="/root/projects/nvidia_caffe/build/tools"
+__tensorflow.use_xla__=false
+__tensorflow.args__="--per_gpu_thread_count=1 --xla=false --use_fp16=true --use_tf_layers=true --staged_vars=false --model=resnet50 --eval=false --forward_only=false --batch_size=8 --num_batches=100 --num_warmup_batches=1 --num_gpus=1 --display_every=100 --device=gpu --data_format=NCHW --variable_update=replicated --all_reduce_spec=nccl --local_parameter_device=cpu   --distortions=false --num_intra_threads=0 --num_inter_threads=0 --resize_method=bilinear  "
+__exp.cudnn__=""
+__tensorflow.launcher__="/dlbs/scripts/launchers/tensorflow_hpm.sh"
+__nvtfcnn.args__=" --precision=fp16 --log_dir=/tmp/nvtfcnn --batch_size=8 --num_iter=101 --iter_unit=batch --layers=50"
+__runtime.python__="/usr/bin/python"
+__pytorch.args__="--model resnet50 --forward_only false --batch_size 8 --num_batches 100 --num_warmup_batches 1 --device gpu  --data synthetic --data_backend caffe_lmdb --data_shuffle false --num_loader_threads 4 --dtype float16 --cudnn_benchmark true --cudnn_fastest false --data_loader_only false"
+__caffe.model_file__="e00a135b125a4f50b3378edb4304c3e5.model.prototxt"
+__caffe2.data_dir__=""
+__nvcnn.data_dir__=""
+__pytorch.env__=""
+__tensorrt.host_libpath__=""
+__tensorflow.python_path__="/dlbs/python/tf_cnn_benchmarks"
+__exp.framework_commit__=""
+__pytorch.data_backend__="caffe_lmdb"
+__intel_caffe.host_path__="/root/projects/intel_caffe/build/tools"
+__caffe2.run_id__="0001"
+__mxnet.cudnn_autotune__=true
+__exp.num_gpus__=1
+__exp.model_opts__="{}"
+__intel_caffe.host_libpath__=""
+__nvtfcnn.env__="CUDA_CACHE_PATH=/dev/shm/dlbs CUDA_VISIBLE_DEVICES=0"
+__monitor.frequency__=0
+__caffe2.docker_args__="-i --security-opt seccomp=unconfined --pid=host --volume=/dlbs/python/caffe2_benchmarks:/workspace/caffe2_benchmarks --volume=/dev/shm/dlbs:/workspace/cuda_cache    --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3"
+__caffe.data_mean_file_name__=""
+__exp.device_type__="gpu"
+__tensorrt.model_file__="e00a135b125a4f50b3378edb4304c3e5.model.prototxt"
+__exp.status_msg__=""
+__exp.id__="e00a135b125a4f50b3378edb4304c3e5"
+__tensorflow.docker_args__="-i --security-opt seccomp=unconfined --pid=host --volume=/dlbs/python/tf_cnn_benchmarks:/workspace/tf_cnn_benchmarks --volume=/dev/shm/dlbs:/workspace/cuda_cache   --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3"
+__caffe.action__="train"
+__nvtfcnn.launcher__="/dlbs/scripts/launchers/nvtfcnn.sh"
+__nvcnn.log_dir__=""
+__nvcnn.display_every__=1000
+__caffe.solver__="net: '/dlbs/models/resnet50/e00a135b125a4f50b3378edb4304c3e5.model.prototxt'\\n max_iter: 100\\n test_interval: 0\\n snapshot: 0\\n snapshot_after_train: false\\n base_lr: 0.01\\n lr_policy: 'fixed'\\n solver_mode: GPU\\n  layer_wise_reduce: true"
+__tensorflow.env__="PYTHONPATH=/dlbs/python/tf_cnn_benchmarks:\\$PYTHONPATH CUDA_CACHE_PATH=/dev/shm/dlbs CUDA_VISIBLE_DEVICES=0 TF_DISABLE_CUDNN_TENSOR_OP_MATH=false"
+__tensorflow.other_args__=""
+__mxnet.rendezvous__="127.0.0.1:4000"
+__mxnet.prefetch_buffer__=10
+__caffe2.host_libpath__="/root/projects/caffe2/build/caffe2"
+__nvidia_caffe.backward_precision__="FLOAT16"
+__tensorflow.use_nccl__=true
+__tensorrt.num_prefetchers__=3
+__exp.framework_ver__=""
+__nvidia_caffe.forward_math_precision__="FLOAT16"
+__mxnet.args__="--model=resnet50 --model_opts='{}' --phase=training --batch_size=8 --num_warmup_batches=1 --num_batches=100 --gpus=0 --kv_store=device  --dtype=float16 --preprocess_threads=4 --prefetch_buffer=10   --nvidia_layers=False --use_dali=False --workspace=1024"
+__caffe.solver_file__="e00a135b125a4f50b3378edb4304c3e5.solver.prototxt"
+__caffe.data_mean_file_path__=""
+__tensorflow.git_hashtag__=""
+__mxnet.preprocess_threads__=4
+__caffe.layer_wise_reduce__=true
+__tensorrt.user_model__="false"
+__exp.cuda__=""
+__intel_caffe.data_dir__=""
+__caffe2.args__="--model=resnet50  --batch_size=8 --num_batches=100 --num_warmup_batches=1 --num_gpus=1 --device=gpu --data_dir= --data_backend=lmdb --dtype=float16 --enable_tensor_core --num_decode_threads=1 --float16_compute=true --num_workers=1 --rendezvous=file:///tmp/caffe2_rendezvous --run_id=0001 --rank=0 --transport=tcp --interface="
+__pytorch.data_loader_only__=false
+__exp.num_batches__=100
+__exp.num_warmup_batches__=1
+__mxnet.scheduler__=false
+__mxnet.launcher__="/dlbs/scripts/launchers/mxnet.sh"
+__caffe2.rendezvous__="file:///tmp/caffe2_rendezvous"
+__mxnet.bench_path__="/dlbs/python"
+__caffe.fork__="bvlc"
+__caffe2.num_decode_threads__=1
+__runtime.EXPORT_CUDA_CACHE_PATH__="CUDA_CACHE_PATH=/dev/shm/dlbs"
+__exp.docker_args__="--rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host"
+__runtime.launcher__=""
+__mxnet.kv_store__="device"
+__caffe2.docker_image__="nvcr.io/nvidia/caffe2:18.05-py2"
+__exp.rerun__="never"
+__nvidia_caffe.data_dir__=""
+__pytorch.bench_path__="/dlbs/python"
+__nvcnn.use_nccl__=true
+__caffe.data_backend__="LMDB"
+__nvcnn.use_xla__=false
+__exp.status__="ok"
+__nvcnn.docker_args__="-i --security-opt seccomp=unconfined --pid=host --volume=/dlbs/python/nvcnn_benchmarks:/workspace/nvcnn_benchmarks --volume=/dev/shm/dlbs:/workspace/cuda_cache   --rm --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --ipc=host nvcr.io/nvidia/tensorflow:18.07-py3"
+__caffe2.bench_path__="/dlbs/python"
+__monitor.backend_pid_folder__="/dev/shm/monitor"
+__caffe.launcher__="/dlbs/scripts/launchers/caffe.sh"
+__tensorrt.output__="prob"
+__caffe.docker_image__="hpe/bvlc_caffe:cuda9-cudnn7"
+__nvtfcnn.data_dir__=""
+__mxnet.host_libpath__=""
+__caffe.args__="--solver=/dlbs/models/resnet50/e00a135b125a4f50b3378edb4304c3e5.solver.prototxt   --gpu=0"
+__exp.sys_info__=""
+__exp.num_nodes__=1
+__exp.dtype__="float16"
+__tensorflow.data_dir__=""
+__tensorrt.num_decoders__=3
+__nvidia_caffe.host_libpath__=""
+__pytorch.host_libpath__=""
+__pytorch.data_dir__=""
+
+----------------------------
+Starting framework launcher.
+----------------------------
+10-16-19 06:46:29 [INFO]    /dlbs/scripts/launchers/nvtfcnn.sh 
+__exp.framework_title__="TensorFlow-nvtfcnn"
+__exp.framework_ver__= "1.8.0"
+__results.start_time__= "2019-10-16:06:46:30:712"
+PY 3.5.2 (default, Nov 23 2017, 16:37:01) 
+[GCC 5.4.0 20160609]
+TF 1.8.0
+Script arguments:
+  --num_iter 101
+  --layers 50
+  --log_dir /tmp/nvtfcnn
+  --display_every 10
+  --batch_size 8
+  --iter_unit batch
+  --precision fp16
+Training
+2019-10-16 06:46:44.889054: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1356] Found device 0 with properties: 
+name: GeForce RTX 2080 SUPER major: 7 minor: 5 memoryClockRate(GHz): 1.815
+pciBusID: 0000:05:00.0
+totalMemory: 7.79GiB freeMemory: 7.67GiB
+2019-10-16 06:46:44.889112: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1435] Adding visible gpu devices: 0
+2019-10-16 06:46:45.194351: I tensorflow/core/common_runtime/gpu/gpu_device.cc:923] Device interconnect StreamExecutor with strength 1 edge matrix:
+2019-10-16 06:46:45.194422: I tensorflow/core/common_runtime/gpu/gpu_device.cc:929]      0 
+2019-10-16 06:46:45.194437: I tensorflow/core/common_runtime/gpu/gpu_device.cc:942] 0:   N 
+2019-10-16 06:46:45.194573: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1053] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 7392 MB memory) -> physical GPU (device: 0, name: GeForce RTX 2080 SUPER, pci bus id: 0000:05:00.0, compute capability: 7.5)
+  Step Epoch Img/sec   Loss  LR
+     1   1.0     1.3  7.433  8.404 2.00000
+    10  10.0    21.3  0.029  1.002 1.62000
+    20  20.0   133.2  1.018  1.995 1.24469
+    30  30.0   142.6  0.918  1.897 0.91877
+    40  40.0   142.3  1.932  2.913 0.64222
+    50  50.0   142.8  0.000  0.979 0.41506
+    60  60.0   142.2  0.000  0.975 0.23728
+    70  70.0   142.6  0.000  0.972 0.10889
+    80  80.0   141.1  0.000  0.971 0.02988
+    90  90.0   142.6  0.000  0.970 0.00025
+   100 100.0   143.1  0.000  0.970 0.00000
+__results.end_time__= "2019-10-16:06:47:09:915"
+__results.proc_pid__= 1127
+[WARNING] Number of performance points is too low (8). I will use almost all points to compute average. Better algorithm exists.
+__exp.model_title__="ResNet50"
+__results.throughput__=141.175000
+__results.time__=56.667257
+__exp.status__="success"
