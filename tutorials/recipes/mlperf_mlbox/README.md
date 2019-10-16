@@ -10,7 +10,7 @@ This document briefly presents a Deep Learning Benchmarking Suite and introduces
 ## Deep Learning Benchmarking Suite
 - DL/ML oriented benchmarking suite for hardware and software infrastructures
     - Frameworks: TensorFlow, Caffe, Caffe2, MXNet, PyTorch, TensorRT
-    - Neural networks: 25 models (AlexNet, GoogleNet, ResNets, VGGs �)
+    - Neural networks: 25 models (AlexNet, GoogleNet, ResNets, VGGs, ...)
     - User models via ONNX and framework-specific formats
     - Runtimes: bare metal / docker / singularity
     - Phases: training and inference.
