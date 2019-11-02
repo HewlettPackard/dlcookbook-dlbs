@@ -56,6 +56,7 @@ class Validator(object):
         """
         self.plan = copy.deepcopy(plan)     # We will compute variables here - so it's a machine dependent validation.
         self.plan_ok = True                 # Global summary: is plan OK.
+        self.num_existing_log_files = 0     # Number of existing log files that match experiment log files
         self.log_files_collisions = set()   # Files that are produced by 2 or more experiments (collisions)
         self.num_inactive = 0               # Number of inactive experiments
         self.frameworks = {}                # Frameworks stats excluding inactive experiments
@@ -100,6 +101,8 @@ class Validator(object):
                         )
                     elif log_file in log_files:
                         self.log_files_collisions.add(log_file)
+                    if os.path.exists(log_file):
+                        self.num_existing_log_files += 1
                     log_files.add(log_file)
             # Update framework statistics
             self.update_framework_stats(experiment)
@@ -144,6 +147,7 @@ class Validator(object):
         print("Number of inactive experiments ............ %d" % self.num_inactive)
         print("Number of active experiments .............. %d" % (len(self.plan) - self.num_inactive))
         print("Log files collisions ...................... %s" % ('YES' if self.log_files_collisions else 'NO'))
+        print("Number of existing log files .............. %d" % self.num_existing_log_files)
         print("================================================================")
 
     def update_framework_stats(self, exp):
