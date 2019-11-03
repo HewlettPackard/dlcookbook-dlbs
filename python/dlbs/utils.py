@@ -32,6 +32,7 @@ import re
 import subprocess
 import importlib
 import logging
+import datetime
 from multiprocessing import Process
 from multiprocessing import Queue
 from glob import glob
@@ -493,16 +494,32 @@ class DictUtils(object):
         return return_dictionary
 
     @staticmethod
-    def dump_json_to_file(dictionary, file_name):
+    def dump_json_to_file(dictionary, file_name, ignore_io_errors=False, **kwargs):
         """ Dumps `dictionary` as a json object to a file with `file_name` name.
         Args:
             dictionary (dict): Dictionary to serialize.
             file_name (str): Name of a file to serialize dictionary in.
+            ignore_io_errors (bool): If true, silently ignore IO errors.
+            kwargs (dict): Additional parameters for `json.dumps` that follow first two:
+                json.dump(dictionary, open(file_name, 'w'), **kwargs).
         """
-        if file_name is not None:
+        if file_name is None:
+            return
+
+        def default_serializer(obj):
+            if isinstance(obj, (datetime.datetime, datetime.date)):
+                return obj.isoformat()
+            raise TypeError(repr(obj) + " is not JSON serializable")
+
+        kwargs['indent'] = kwargs.get('indent', 4)
+        kwargs['default'] = kwargs.get('default', default_serializer)
+        try:
             IOUtils.mkdirf(file_name)
             with open(file_name, 'w') as file_obj:
-                json.dump(dictionary, file_obj, indent=4)
+                json.dump(dictionary, file_obj, **kwargs)
+        except IOError as e:
+            if not ignore_io_errors:
+                raise e
 
     @staticmethod
     def add(dictionary, iterable, pattern, must_match=True, add_only_keys=None, ignore_errors=False):

@@ -63,6 +63,15 @@ class ProgressTracker(object):
             'completed_benchmarks': []
         }
 
+    def __report_to_file(self):
+        """ Report current progress to a file if it was specified.
+
+        Ignore IO errors - do not want to stop benchmark process if something happens, like for instance, remote file
+        system failure where the progress file may be located.
+        """
+        if self.__file_name:
+            DictUtils.dump_json_to_file(self.__progress, self.__file_name, ignore_io_errors=True)
+
     def num_completed_benchmarks(self):
         return self.__progress['num_completed_benchmarks']
 
@@ -145,8 +154,7 @@ class ProgressTracker(object):
                 self.__progress['num_failed_benchmarks'] += 1
 
         # 5. If progress file has been provided, update that.
-        if self.__file_name:
-            DictUtils.dump_json_to_file(self.__progress, self.__file_name)
+        self.__report_to_file()
 
     def report_active(self, log_file):
         """ Report that new active benchmark has just started.
@@ -161,15 +169,12 @@ class ProgressTracker(object):
             'end_time': None,
             'log_file': log_file
         }
-        if self.__file_name:
-            DictUtils.dump_json_to_file(self.__progress, self.__file_name)
+        self.__report_to_file()
 
     def report_all_completed(self):
         """Report all benchmarks have been done."""
-        self.__progress['end_time'] = datetime.datetime.now()
-        self.__progress['status'] = 'completed'
-        if self.__file_name:
-            DictUtils.dump_json_to_file(self.__progress, self.__file_name)
+        self.__progress.update({'status': 'completed', 'end_time': datetime.datetime.now()})
+        self.__report_to_file()
 
 
 class Launcher(object):
