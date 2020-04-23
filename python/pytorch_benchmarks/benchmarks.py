@@ -36,11 +36,7 @@ import torch.autograd as autograd
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
 
-try:
-    from apex.parallel import DistributedDataParallel as DDP
-    from apex.fp16_utils import network_to_half, prep_param_lists, model_grads_to_master_grads, master_params_to_model_params
-except ImportError:
-    raise ImportError("Please install apex from https://www.github.com/nvidia/apex to run this example.")
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 from pytorch_benchmarks.model_factory import ModelFactory
 from pytorch_benchmarks.dataset_factory import DatasetFactory, DataPrefetcher
