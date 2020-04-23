@@ -206,7 +206,7 @@ def benchmark_training(model, opts):
             model = network_to_half(model)
 
     if opts['distributed']:
-        model = DDP(model)
+        model = DDP(model, [opts['local_rank']], opts['local_rank'])
 
     if opts['fp16']:
         model_params, master_params = prep_param_lists(model)
