@@ -23,7 +23,7 @@
     "mxnet.kv_store": {
       "val": "device",
       "type": "str",
-      "var_domain": ["local", "device", "dist_sync", "dist_device_sync", "dist_async"],
+      "var_domain": ["local", "device", "dist_sync", "dist_device_sync", "dist_async", "horovod"],
       "desc": [
         "A method to aggregate gradients (local, device, dist_sync, dist_device_sync, dist_async).",
         "See https://mxnet.incubator.apache.org/how_to/multi_devices.html for more details."

@@ -52,6 +52,7 @@ class Six(object):
     if PY3:
         string_types = str,
         integer_types = int,
+        numeric_types = (int, float)
 
         @staticmethod
         def iteritems(d, **kw):
@@ -59,6 +60,7 @@ class Six(object):
     else:
         string_types = basestring,
         integer_types = (int, long)
+        numeric_types = (int, long, float)
 
         @staticmethod
         def iteritems(d, **kw):

@@ -1,0 +1,50 @@
+#!/bin/bash
+
+export BENCH_ROOT=$( cd $( dirname "${BASH_SOURCE[0]}" ) && pwd )
+. ${BENCH_ROOT}/../../../scripts/environment.sh
+
+# Read README.md in this folder for more details.
+
+# Run benchmarks. Actions: run, validate, print-config
+
+# python $experimenter run --config=./config.json -Pexp.device_code='"gold.6248.250"' -Pexp.image_tag='"19.09"' -Vopenvino.api='["async", "sync"]' -Vexp.vnni_status='["on"]'
+# python $experimenter run --config=./config.json -Pexp.device_code='"gold.6248.250"' -Pexp.image_tag='"19.09-custom-mkldnn"' -Vopenvino.api='["async", "sync"]' -Vexp.vnni_status='["on", "off"]'
+
+
+# Parse results
+# To print it without warnings, use: ./run 2>/dev/null
+
+# This is for the firt run for the following configuration file:  config.json
+#for cpu_config in 3
+#do
+#    echo "--------------------------------------------------------------------------"
+#    echo "CPU CONFIG: ${cpu_config}"
+#    echo "--------------------------------------------------------------------------"
+#    python ${benchdata} report ./logs/openvino/gold.6248.250/19.09-custom-mkldnn/async --report regular --select '{"exp.vnni_status": "off", "exp.cpu_config": '"${cpu_config}"'}'
+#done
+
+# This is for the second round of benchmarks with custom MKLDNN CPU plugin (config file - config_vnni_tests.json).
+#for vnni_status in 'on' 'off'
+#do
+#    echo "--------------------------------------------------------------------------"
+#    echo "VNNI STATUS: ${vnni_status}"
+#    echo "--------------------------------------------------------------------------"
+#
+#    for cpu_config in 1 2 3
+#    do
+#        echo "--------------------------------------------------------------------------"
+#        echo "CPU CONFIG: ${cpu_config}"
+#        echo "--------------------------------------------------------------------------"
+#        python ${benchdata} report ./logs/openvino-custom-mkldnn --report regular --select '{"exp.cpu_config": '"${cpu_config}"', "exp.vnni_status": "'"${vnni_status}"'"}'
+#    done
+
+# This is alternative report for the 2nd round of benchmarks that compares VNNI impacat on performance in one table (config file - config_vnni_tests.json).
+#for cpu_config in 1 2 3
+#do
+#    echo "--------------------------------------------------------------------------"
+#    echo "CPU CONFIG: ${cpu_config}"
+#    echo "--------------------------------------------------------------------------"
+#    python ${benchdata} report ./logs/openvino-custom-mkldnn --report '{"inputs": ["exp.model_title", "exp.vnni_status"], "output": "exp.replica_batch"}' --select '{"exp.cpu_config": '"${cpu_config}"'}'
+#done
+
+

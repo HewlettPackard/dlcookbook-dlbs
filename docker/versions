@@ -16,3 +16,6 @@ tensorrt/18.08: "nv-tensorrt-repo-ubuntu1604-ga-cuda9.0-trt3.0.4-20180208_1-1_am
 tensorrt/18.10: "nv-tensorrt-repo-ubuntu1604-ga-cuda9.0-trt3.0.4-20180208_1-1_amd64.deb"
 tensorrt/18.11: "nv-tensorrt-repo-ubuntu1604-cuda9.0-trt5.0.0.10-rc-20180906_1-1_amd64.deb"
 tensorrt/18.12: ""
+openvino/19.09.rc1: "15792/l_openvino_toolkit_p_2019.2.275"
+openvino/19.09: "15944/l_openvino_toolkit_p_2019.3.334"
+openvino/19.09-custom-mkldnn: ""

@@ -79,7 +79,7 @@ import argparse
 import gzip
 import math
 
-from dlbs.utils import DictUtils, IOUtils, OpenFile
+from dlbs.utils import DictUtils, IOUtils, OpenFile, Six
 from dlbs.processor import Processor
 
 
@@ -126,7 +126,7 @@ class LogParser(object):
                 # params = params[0]
             # Identify is this benchmark succeeded of failed.
             succeeded = 'results.throughput' in params and \
-                        isinstance(params['results.throughput'], (int, long, float)) and \
+                        isinstance(params['results.throughput'], Six.numeric_types) and \
                         params['results.throughput'] > 0
             # Get only those key/values that need to be serialized
             params = DictUtils.subdict(params, opts['output_params'])

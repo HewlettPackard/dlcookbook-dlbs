@@ -19,6 +19,8 @@
 # Those tags should be meaningful, specifying, for instance, target device (cpu/gpu)
 # or specific enironment settings like cuda or cudnn versions.
 
+# This file needs to be re-implemented in python - it has become too big for a bash script.
+
 # Source common paths
 . ../scripts/environment.sh
 
@@ -77,10 +79,10 @@ other cases, docker files list compute capabilities explicitly (Caffe, TensorFlo
 "
 
 # Parse command line options
-. $DLBS_ROOT/scripts/parse_options.sh
+. ${DLBS_ROOT}/scripts/parse_options.sh
 
 # If no path specified, print list of supported images
-if [ "$#" -eq 0 ]; then
+if [[ "$#" -eq 0 ]]; then
     docker_images=$(find . -name 'Dockerfile' -printf '%P\n' | xargs dirname | sed 's/\//:/g')
     echo "$docker_images"
     exit 0;
@@ -88,93 +90,112 @@ fi
 
 # If version provided (like 'master') and multiple images are requested,
 # use this version for all images. Else, read versions from file.
-[ "${version}XXX" == "XXX" ] && use_version=false || use_version=true
+[[ "${version}XXX" == "XXX" ]] && use_version=false || use_version=true
 
 status=0
 for dockerfile_dir in "$@"; do
     # If no version provided, read it from file.
-    [ "${use_version}" == "false" ] && version=""
+    [[ "${use_version}" == "false" ]] && version=""
 
     # Firstly, check if user specified Dockerfile instead of a directory
-    if [ "$(basename $dockerfile_dir)" == "Dockerfile" ] && [ -f "$dockerfile_dir" ]; then
-        dockerfile_dir=$(dirname $dockerfile_dir)
+    if [[ "$(basename ${dockerfile_dir})" == "Dockerfile" ]] && [[ -f "${dockerfile_dir}" ]]; then
+        dockerfile_dir=$(dirname ${dockerfile_dir})
     fi
 
     # Verify directory exists
-    if ! [ -d "$dockerfile_dir" ]; then
-        logfatal "Directory does not exist (\"$dockerfile_dir\")"
+    if ! [[ -d "${dockerfile_dir}" ]]; then
+        logfatal "Directory does not exist (\"${dockerfile_dir}\")"
         status=1
         continue
     fi
 
     # Normalize name
-    dockerfile_dir=$(cd $dockerfile_dir && pwd)
+    dockerfile_dir=$(cd ${dockerfile_dir} && pwd)
 
     # Verify that the name actually points to a nested two level subdirectory
-    if [ "$(pwd)" != "$(cd $dockerfile_dir/../.. && pwd)" ]; then
+    if [[ "$(pwd)" != "$(cd ${dockerfile_dir}/../.. && pwd)" ]]; then
         echo "Invalid argument ${dockerfile_dir}. It must point to a two level nested subdirectory i.e. 'tensorflow/cuda8-cudnn7'."
         status=1
         continue
     fi
 
     # Extract framework and tag names
-    tag=$(basename $dockerfile_dir)
-    name=$(basename $(dirname $dockerfile_dir))
+    tag=$(basename ${dockerfile_dir})
+    name=$(basename $(dirname ${dockerfile_dir}))
 
     # If version is not provided, get it from ./versions file.
     # Version must be specified.
-    if [ "${version}XXX" == "XXX" ]; then
+    if [[ "${version}XXX" == "XXX" ]]; then
         # First, try to get this docker file specific version, then - general version for this framework
         version=$(get_value_by_key ./versions  "${name}\/${tag}")
-        if [ "${version}XXX" == "XXX" ]; then
+        if [[ "${version}XXX" == "XXX" ]]; then
             logwarn "Framework version for docker file  '${name}/${tag}' not found in ./versions (trying general framework version)."
             version=$(get_value_by_key ./versions  "${name}")
-            if [ "${version}XXX" == "XXX" ]; then
+            if [[ "${version}XXX" == "XXX" ]]; then
                 logwarn "Framework version '${name}' not found in ./versions. Will use default defined in docker file for this framework:tag"
             fi
         fi
     fi
-    # Sergey: this code will be removed once all frameworks use new image prefix 'dlbs'
-    # If prefix was not provided by a user, set it here.
-    if [ "${prefix}XXX" == "XXX" ]; then
-        if [ "${name}" == "tensorrt" ] || [ "${name}" == "pytorch" ] || [ "${name}" == "mxnet" ] || [ "${name}" == "caffe2" ] || [ "${name}" == "intel_caffe" ] || [ "${name}" == "tensorflow" ]; then
-            prefix=dlbs
-        else
-            prefix=hpe
-        fi
+
+    if [[ "${prefix}XXX" == "XXX" ]]; then
+        prefix=dlbs
     fi
     #
-    img_name=$prefix/$name:$tag                     # something like hpe/caffe:gpu
-    assert_files_exist $dockerfile_dir/Dockerfile
-    dockerfile_dir=$DLBS_ROOT/docker/$name/$tag     # something like caffe/gpu (dir)
-    [ "${version}XXX" == "XXX" ] && args="" || args="--build-arg version=${version}"
-    [ -n "$http_proxy" ] && args="$args --build-arg http_proxy=$http_proxy"
-    [ -n "$https_proxy" ] && args="$args --build-arg https_proxy=$https_proxy"
+    img_name=${prefix}/${name}:${tag}                     # something like hpe/caffe:gpu
+    assert_files_exist ${dockerfile_dir}/Dockerfile
+    dockerfile_dir=${DLBS_ROOT}/docker/${name}/${tag}     # something like caffe/gpu (dir)
+    [[ "${version}XXX" == "XXX" ]] && args="" || args="--build-arg version=${version}"
+    [[ -n "${http_proxy}" ]] && args="$args --build-arg http_proxy=${http_proxy}"
+    [[ -n "${https_proxy}" ]] && args="$args --build-arg https_proxy=${https_proxy}"
 
     # If we are building tensorrt docker, we need to copy source of benchmark
     # project to docker context folder
-    if [ "$name" == "tensorrt" ]; then
+    if [[ "${name}" == "tensorrt" ]]; then
         # Old versions of docker files used external TensorRT packages and base CUDA images
         # because at that time NGC did not exist or did not provide TensorRT images.
         # Starting December 2018, DLBS can use TensorRT images from NGC.
-        if [ ! "$tag" == "18.12" ]; then
+        if [[ ! "$tag" == "18.12" ]]; then
             # One special thing about building TensorRT images is that we need to have
             # a TensorRT package in a docker file folder. The name of that file must be
             # specified in a 'versions' file - so we need verify user has copied this
             # file there.
-            if [ "${version}XXX" == "XXX" ]; then
+            if [[ "${version}XXX" == "XXX" ]]; then
                 logwarn "Will not build TensorRT ($dockerfile_dir) because name of a package is missing in 'versions' file."
                 continue
             fi
-            if [ ! -f "$dockerfile_dir/$version" ]; then
+            if [[ ! -f "${dockerfile_dir}/${version}" ]]; then
                 logwarn "Will not build TensorRT ($dockerfile_dir) because TensorRT package ($dockerfile_dir/$version) not found."
                 logwarn "You must copy corresponding package (most likely, *.deb file) into that folder."
                 logwarn "You can get it from NVIDIA developer site."
                 continue
             fi
         fi
-        rm -rf -- $dockerfile_dir/tensorrt       # Delete if old version exists
-        cp -r ../src/tensorrt  $dockerfile_dir   # Copy project
+        rm -rf -- ${dockerfile_dir}/tensorrt       # Delete if old version exists
+        cp -r ../src/tensorrt  ${dockerfile_dir}   # Copy project
+    fi
+
+    if [[ "${name}" == "openvino" ]] && [[ ! ${tag} == "19.09-custom-mkldnn" ]]; then
+        # Once base image with OpenVINO becomes available, this will not be required anymore.
+        # http://registrationcenter-download.intel.com/akdlm/irc_nas/15792/l_openvino_toolkit_p_2019.2.275.tgz
+        # http://registrationcenter-download.intel.com/akdlm/irc_nas/15944/l_openvino_toolkit_p_2019.3.334.tgz
+        work_dir=$(pwd)
+        cd ${dockerfile_dir}
+        # Remove first 6 characters
+        openvino_fname="${version:6}"
+        if [[ ! -d "./${openvino_fname}" ]]; then
+            logwarn "Directory with OpenVINO not found (${openvino_fname})"
+            if [[ ! -f "./${openvino_fname}.tgz" ]]; then
+                logwarn "Archive with OpenVINO not found (${openvino_fname}.tgz)"
+                openvino_url="http://registrationcenter-download.intel.com/akdlm/irc_nas/${version}.tgz"
+                wget "${openvino_url}" || logfatal "Error downloading OpenVINO from ${openvino_url}"
+            else
+                loginfo "Found OpenVINO archive (${openvino_fname}.tgz)"
+            fi
+            tar -xf l_openvino_toolkit*
+        else
+            loginfo "Found OpenVINO directory (${openvino_fname})"
+        fi
+        cd ${work_dir}
     fi
 
     exec="${docker} build -t $img_name $args $dockerfile_dir"
@@ -190,9 +211,9 @@ for dockerfile_dir in "$@"; do
 
     ret_code=$?
     loginfo "docker image $img_name build finished with code $ret_code"
-    [ "$ret_code" -ne "0" ] && status=$ret_code
+    [[ "$ret_code" -ne "0" ]] && status=${ret_code}
 
     # If it was TensorRT, clean folder
-    [ "$name" == "tensorrt" ] && rm -rf -- $dockerfile_dir/tensorrt
+    [[ "$name" == "tensorrt" ]] && rm -rf -- ${dockerfile_dir}/tensorrt
 done
-exit $status
+exit ${status}

@@ -117,7 +117,8 @@ class Experimenter(object):
         self.__variables = {}            # Override variables from files
         self.__initialized = False       # Experimenter can be initialized only once
         # Dirty hacks
-        DictUtils.ensure_exists(os.environ, 'CUDA_CACHE_PATH', '')
+        for var in ('CUDA_CACHE_PATH', 'http_proxy', 'https_proxy'):
+            DictUtils.ensure_exists(os.environ, var, '')
         DictUtils.ensure_exists(
             os.environ,
             'DLBS_ROOT',

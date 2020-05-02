@@ -29,6 +29,7 @@ import csv
 import argparse
 import itertools
 import os
+import sys
 import pickle
 import tarfile
 from dlbs.utils import Six, IOUtils, OpenFile, DictUtils
@@ -37,6 +38,18 @@ from dlbs.processor import Processor
 
 class DLPGUtils(object):
 
+    # Parameters that are expected to be of string type.
+    STRING_PARAMS = ["exp.proj_name", "exp.proj_parent_name", "exp.proj_description", "exp.experimenter_name",
+                     "exp.experiment_name", "exp.experiment_description", "exp.framework_title", "exp.framework_ver",
+                     "exp.backend", "exp.dlbs_hashtag", "exp.software", "exp.node_id", "exp.node_title", "exp.node_nic",
+                     "exp.device_type", "exp.device_title", "exp.id", "exp.dtype", "exp.data", "exp.phase",
+                     "exp.model_title"]
+    # Parameters that are expected to be of numeric (integers/floating point numbers) type.
+    NUMERIC_PARAMS = ["results.throughput", "results.time"]
+    # Parameters that are expected to be of integer type.
+    INTEGER_PARAMS = ["exp.num_node_gpus", "exp.num_nodes", "exp.effective_batch", "exp.replica_batch",
+                      "exp.num_local_replicas"]
+    # Some commonly used values, failing these tests does not necessarily mean that compliance tests have failed.
     EXPECTED_VALUES = {
         "exp.framework_title": ["TensorFlow", "Caffe", "Caffe2", "MXNET", "PyTorch", "TensorRT"],
         "exp.backend": ["caffe", "caffe2", "mxnet", "nvcnn", "nvtfcnn", "pytorch", "tensorflow", "tensorrt"],
@@ -57,19 +70,71 @@ class DLPGUtils(object):
     }
 
     @staticmethod
+    def report_check_status(test_failed, test_name, not_ok_message):
+        if test_failed:
+            print("[FAILED]  [{}]  '{}'".format(test_name, not_ok_message))
+        else:
+            print("[OK]      [{}]  'All tests passed.'".format(test_name))
+
+    @staticmethod
+    def check_missing_parameters(bench_data):
+        params = DLPGUtils.STRING_PARAMS + DLPGUtils.NUMERIC_PARAMS + DLPGUtils.INTEGER_PARAMS
+        failed_parameters = set()
+        for benchmark in bench_data.benchmarks():
+            failed_parameters.update(par for par in params if par not in benchmark)
+        DLPGUtils.report_check_status(failed_parameters, "Missing parameters      ",
+                                      "Not found: {}".format(failed_parameters))
+
+    @staticmethod
+    def check_parameter_type(bench_data, params, types, human_type):
+        failed_parameters = set()
+        for benchmark in bench_data.benchmarks():
+            failed_parameters.update(par for par in params if not isinstance(benchmark.get(par, None), types))
+        DLPGUtils.report_check_status(failed_parameters, "Parameter type ({})".format(human_type),
+                                      "TypeOf({}) must be one of ({})".format(failed_parameters,
+                                                                              [t.__name__ for t in types]))
+
+    @staticmethod
+    def check_values_positive(bench_data):
+        params = DLPGUtils.NUMERIC_PARAMS + DLPGUtils.INTEGER_PARAMS
+        failed_parameters = set()
+        for benchmark in bench_data.benchmarks():
+            failed_parameters.update(par for par in params if benchmark[par] <= 0)
+        DLPGUtils.report_check_status(failed_parameters, "Parameters > 0 test     ",
+                                      "These parameters must be positive (>0): {}".format(failed_parameters))
+
+    @staticmethod
+    def check_values_not_empty(bench_data):
+        params = set(DLPGUtils.STRING_PARAMS) - set(('exp.dlbs_hashtag', 'exp.proj_parent_name', 'exp.node_nic'))
+        failed_parameters = set()
+        for benchmark in bench_data.benchmarks():
+            failed_parameters.update(par for par in params if benchmark.get(par, None) == "")
+        DLPGUtils.report_check_status(failed_parameters, "Parameters == '' test   ",
+                                      "These parameters must not be empty (!= ''): {}".format(failed_parameters))
+
+    @staticmethod
     def check_values(param, param_values, expected_values):
         unexpected_values = [val for val in param_values if val not in expected_values]
-        if unexpected_values:
-            print("Parameter '{}' has unexpected values {}. "
-                  "Expecting one of {}.".format(param, unexpected_values, expected_values))
-        else:
-            print("Parameter '{}' check OK.".format(param))
+        DLPGUtils.report_check_status(unexpected_values, "Parameter values        ",
+                                      "{} = {} but should be one of : {}".format(param, unexpected_values,
+                                                                                 expected_values))
 
     @staticmethod
     def check(bench_data):
+        print("==== DLPG Compliance Tests ====")
+
+        DLPGUtils.check_missing_parameters(bench_data)
+        DLPGUtils.check_parameter_type(bench_data, DLPGUtils.STRING_PARAMS, Six.string_types, ' string')
+        DLPGUtils.check_parameter_type(bench_data, DLPGUtils.NUMERIC_PARAMS, Six.numeric_types, 'numeric')
+        DLPGUtils.check_parameter_type(bench_data, DLPGUtils.INTEGER_PARAMS, Six.integer_types, 'integer')
+        DLPGUtils.check_values_positive(bench_data)
+        DLPGUtils.check_values_not_empty(bench_data)
+
         summary = bench_data.summary(params=list(DLPGUtils.EXPECTED_VALUES))
         for param in DLPGUtils.EXPECTED_VALUES:
             DLPGUtils.check_values(param, summary[param], DLPGUtils.EXPECTED_VALUES[param])
+
+        print("===============================")
 
 
 def print_vals(obj):
@@ -474,11 +539,22 @@ class BenchData(object):
                 self.output_cols[idx] = {"index": idx, "value": param_value, "title": param_value,
                                          "width": len(BenchData.Reporter.to_string(param_value))}
             self.cache = {}
+            print("Number of benchmarks = {}".format(len(self.bench_data.benchmarks())), file=sys.stderr)
             for bench in self.bench_data.benchmarks():
                 if BenchData.status(bench) != "ok":
+                    print("Ignoring failed benchmark: exp.id={}, exp.status={}, results.time={}, exp.model={}, "
+                          "exp.replica_batch={}, exp.dtype={}, exp.num_gpus={}.".format(
+                            bench.get('exp.id', 'UNKNOWN'), bench.get('exp.status', 'UNKNOWN'),
+                            bench.get('results.time', -1), bench.get('exp.model', 'UNKNOWN'),
+                            bench.get('exp.replica_batch', 'UNKNOWN'), bench.get('exp.dtype', 'UNKNOWN'),
+                            bench.get('exp.num_gpus', -1)), file=sys.stderr)
                     continue
+                # The 'bench_key' is the composite benchmark ID that includes values of input and output variable, for
+                # instance ['VGG16', 128, 2] may mean [ModelTitle, ReplicaBatch, NumGPUs].
                 bench_key = []
+                # Build initial version of the key taking into account input parameters.
                 for input_col in self.input_cols:
+                    # The param_value is the value of an output parameter, for instance, number of GPUs
                     param_value = DictUtils.get(bench, input_col['param'], None)
                     if not param_value:
                         bench_key = []
@@ -492,6 +568,8 @@ class BenchData(object):
                             self.cache[bench_key] = bench
                         else:
                             raise ValueError("Duplicate benchmark with key = {}".format(bench_key))
+                    else:
+                        pass
 
         def compute_column_widths(self, times, throughputs):
             # Input columns
@@ -615,6 +693,8 @@ class BenchData(object):
                     if key in self.cache:
                         times[-1][output_col['index']] = self.cache[key]['results.time']
                         throughputs[-1][output_col['index']] = self.cache[key]['results.throughput']
+                    else:
+                        pass
             # Determine minimal widths for columns
             self.compute_column_widths(times, throughputs)
             #
@@ -657,10 +737,8 @@ def parse_arguments():
                         help="Input file(s) and/or folders. ")
     parser.add_argument('--no-recursive', '--no_recursive', required=False, default=False,
                         action='store_true', help='When parsing log files, do not parse folders recursively.')
-    parser.add_argument(
-        '--ignore_errors', required=False, default=False, action='store_true',
-        help="If set, ignore errors related to parsing benchmark parameters."
-    )
+    parser.add_argument('--ignore_errors', required=False, default=False, action='store_true',
+                        help="If set, ignore errors related to parsing benchmark parameters.")
 
     parser.add_argument('--select', type=str, required=False, default=None,
                         help="A select query to filter benchmarks.")
@@ -713,6 +791,7 @@ class BenchDataApp(object):
         return data
 
     def action_parse(self):
+        print("Number of benchmarks: {}".format(len(self.__data)), file=sys.stderr)
         self.__data.save(self.__args['output'])
 
     def action_summary(self):
@@ -763,5 +842,9 @@ class BenchDataApp(object):
 
 
 if __name__ == "__main__":
+    # This module does not work with Python3 if input / output files are *.gz files. Use Python2 instead, or
+    # use raw json without compression. Google for this error:
+    #   "json.dump gzip typeerror memoryview a bytes-like object is required"
+    # To fix it, possible changes are required in DLPG.
     app = BenchDataApp(parse_arguments())
     app.run()
