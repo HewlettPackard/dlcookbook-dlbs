@@ -75,10 +75,6 @@
   "extensions": [
     {"condition":{"exp.framework": "nvtfcnn"}, "parameters": {"exp.framework_title": "TensorFlow-nvtfcnn"}},
     {
-      "condition": {"exp.framework": "nvtfcnn"},
-      "parameters": {"exp.docker_launcher": "nvidia-docker"}
-    },
-    {
       "condition":{"exp.framework": "nvtfcnn", "exp.model": "alexnet_owt"},
       "parameters": {"nvtfcnn.model_file": "alexnet"}
     },
