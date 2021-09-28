@@ -1,0 +1,42 @@
+{
+  "bvlc_caffe": {
+    "default": "c430690aa5528e94e019971b94de325539984e77"
+  },
+  "nvidia_caffe": {
+    "default": "cdb3d9a5d46774a3be3cc4c4ecc0bcd760901cc1"
+  },
+  "intel_caffe": {
+    "default": "f6a2a6b05defab4b637028ce4f7719cac340a86d",
+    "18.12": "7010334f159da247db3fe3a9d96a3116ca06b09a"
+  },
+  "mxnet": {
+    "default": "afdb839600e3582432ac4fa1da793f1f469eb6fd",
+    "18.11": "12371fb6b98823c369187fc6dbd26c2fcfcacca9"
+  },
+  "caffe2": {
+    "18.10": "f075a2b55f93c6c9c7e5cca0c4279406a03b8653"
+  },
+  "tensorflow": {
+    "default": "d752244fbaad5e4268243355046d30990f59418f",
+    "cuda9-cudnn7": "8d327187577c797499d5697cdef79af6a5fc7823",
+    "cpu": "8d327187577c797499d5697cdef79af6a5fc7823",
+    "19.02-mkl": "d9d5ab289d08da9b3fa0a4feccf8dfa87a7b669e"
+  },
+  "pytorch": {
+    "18.10-py3": "65bf181ddf6ea27f77d09d98c67996c991848c42"
+  },
+  "tensorrt": {
+    "cuda8-cudnn5": "nv-tensorrt-repo-ubuntu1604-7-ea-cuda8.0_2.0.2-1_amd64.deb",
+    "cuda9-cudnn7": "nv-tensorrt-repo-ubuntu1604-ga-cuda9.0-trt3.0.4-20180208_1-1_amd64.deb",
+    "18.08": "nv-tensorrt-repo-ubuntu1604-ga-cuda9.0-trt3.0.4-20180208_1-1_amd64.deb",
+    "18.10": "nv-tensorrt-repo-ubuntu1604-ga-cuda9.0-trt3.0.4-20180208_1-1_amd64.deb",
+    "18.11": "nv-tensorrt-repo-ubuntu1604-cuda9.0-trt5.0.0.10-rc-20180906_1-1_amd64.deb",
+    "18.12": "",
+    "21.08": ""
+  },
+  "openvino": {
+    "19.09.rc1": "15792/l_openvino_toolkit_p_2019.2.275",
+    "19.09": "15944/l_openvino_toolkit_p_2019.3.334",
+    "19.09-custom-mkldnn": ""
+  }
+}
