@@ -74,6 +74,6 @@ void synthetic_dataset::run() {
             inference_msg *msg = inference_msg_pool_->get();
             request_queue_->push(msg);
         }
-    } catch(queue_closed) {
+    } catch(queue_closed const&) {
     }
 }

@@ -64,10 +64,14 @@
 
 #ifdef HAVE_OPENCV
 #include <opencv2/opencv.hpp>
+#define MAYBE_UNUSED
+#else
+#define MAYBE_UNUSED __attribute__((unused))
 #endif
 
 namespace po = boost::program_options;
 
+#ifdef HAVE_OPENCV
 /**
  * @brief Convert a subset of images into a tensor representation. This function runs in its own thread.
  * 
@@ -89,7 +93,6 @@ template<typename T>
 void convert(std::vector<std::string>& input_files, const std::string input_dir, const std::string output_dir,
              const size_t num_shards, const size_t my_shard, const size_t img_size, logger_impl& logger,
              const int images_per_file) {
-#ifdef HAVE_OPENCV
     const size_t channel_size = img_size * img_size;
     std::vector<T> tensor(3 * channel_size);
     sharded_vector<std::string> my_files(input_files, num_shards, my_shard, true);
@@ -157,14 +160,21 @@ void convert(std::vector<std::string>& input_files, const std::string input_dir,
     }
     const float throughput = 1000.0 * nprocessed / tm.ms_elapsed();
     logger.log_info(fmt("Thread %d: throughput %f images/sec", my_shard, throughput));
-#endif
 }
+#endif
 
 /**
  * @brief Application entry point.
  */
-int main(int argc, char **argv) {
+int main(MAYBE_UNUSED int argc, MAYBE_UNUSED char **argv) {
     logger_impl logger(std::cout);
+
+#ifndef HAVE_OPENCV
+    std::cerr << "The images2tensors tool was compiled without OpenCV support and hence cannot load and resize images." << std::endl
+              << "It does not support generating artificial datasets for benchmarking purposes. Open a new issue on" << std::endl
+              << "GitHub and we will add this functionaity" << std::endl;
+    logger.log_error("Can not do anything without OpenCV support.");
+#else
     std::string input_dir,
                 output_dir,
                 dtype;
@@ -173,13 +183,7 @@ int main(int argc, char **argv) {
         nimages,
         images_per_file;
     bool shuffle;
-#ifndef HAVE_OPENCV
-    std::cerr << "The images2tensors tool was compiled without OpenCV support and hence cannot load and resize images." << std::endl
-              << "It does not support generating artificial datasets for benchmarking purposes. Open a new issue on" << std::endl
-              << "GitHub and we will add this functionaity" << std::endl;
-    logger.log_error("Can not do anything without OpenCV support.");
-#endif
-    
+
     // Parse command line options
     po::options_description opt_desc("Images2Tensors");
     po::variables_map var_map;
@@ -267,4 +271,5 @@ int main(int argc, char **argv) {
     const float throughput = 1000.0 * file_names.size() / tm.ms_elapsed();
     logger.log_info(fmt("images2tensors: total throughput %f images/sec", throughput));
     return 0;
+#endif
 }

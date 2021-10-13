@@ -26,7 +26,7 @@ void abstract_queue<T>::close() {
 
 
 template <typename T>
-void infinite_queue<T>::push(const T& item) throw (queue_closed) {
+void infinite_queue<T>::push(const T& item) {
     std::lock_guard<std::mutex> lock(this->m_);
     if (this->closed_) 
         throw queue_closed();
@@ -34,7 +34,7 @@ void infinite_queue<T>::push(const T& item) throw (queue_closed) {
 }
 
 template <typename T>
-T infinite_queue<T>::pop() throw (queue_closed) {
+T infinite_queue<T>::pop() {
     std::lock_guard<std::mutex> lock(this->m_);
     if (this->closed_)
             throw queue_closed();
@@ -53,7 +53,7 @@ void infinite_queue<T>::empty_queue(std::vector<T>& queue_content) {
 
 
 template <typename T>
-void thread_safe_queue<T>::push(const T& item) throw (queue_closed) {
+void thread_safe_queue<T>::push(const T& item) {
     std::unique_lock<std::mutex> lock(this->m_);
     if (this->closed_)
         throw queue_closed();
@@ -68,7 +68,7 @@ void thread_safe_queue<T>::push(const T& item) throw (queue_closed) {
 }
 
 template <typename T>
-T thread_safe_queue<T>::pop() throw (queue_closed) {
+T thread_safe_queue<T>::pop() {
     std::unique_lock<std::mutex> lock(this->m_);
     if (this->closed_)
         throw queue_closed();

@@ -60,6 +60,7 @@ public:
      * @param batch_size Number of instances in this infer message.
      * @param input_size Number of elements in one input data point
      * @param output_size Number of elements in one output data point
+     * @param alloc Memory allocator, either standard (new/delete) or the one that allocates pinned memory.
      * @param randomize_input If true, randomly initialize input tensor.
      */
     inference_msg(const size_t batch_size, const size_t input_size, const size_t output_size,
@@ -109,6 +110,8 @@ public:
      * @param input_size Number of elements in one data point. We need this to pre-allocate memory.
      * @param output_size Number of elements in one output vector. We need this to pre-allocate memory.
      *                    Usually, it's the same as numebr of neural network outputs (classes).
+     * @param alloc Memory allocator, either standard (new/delete) or the one that allocates pinned memory.
+     * @param randomize_input If true, randomly initialize input tensor.
      */
     inference_msg_pool(const int count, const size_t batch_size, const size_t input_size, const size_t output_size,
                        allocator& alloc, const bool randomize_input=false) {

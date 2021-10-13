@@ -85,16 +85,17 @@ public:
                                        std::string& input_name, std::string& output_name);
 
     /**
-    * @brief Returns size of idx-th engine binding.
+    * @brief Returns size of binding_idx-th engine binding.
     * @param engine Inference engine.
-    * @param idx is the binding index.
+    * @param binding_idx is the binding index.
     * @return Size (number of elements) for this binding. It is basically a multiplication if tensor dimensions.
     */
     static size_t get_tensor_size(ICudaEngine* engine, const int binding_idx);
 
     /**
     * @brief Returns number of elements in a tensor.
-    * @param tensor is the tensor instance.
+    * @param network Neural network definition.
+    * @param tensor_name is the name of the tensor to compute number of elements (size).
     * @return Number of elements in the tensor.
     */    
     static size_t get_tensor_size(INetworkDefinition* network, const std::string& tensor_name);

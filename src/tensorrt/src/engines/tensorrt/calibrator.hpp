@@ -55,7 +55,7 @@ public:
     explicit calibrator_impl(logger_impl& logger, const bool do_log=false) : logger_(logger), do_log_(do_log) {}
     
     // The batch size is for a calibration stage.
-    int getBatchSize() const override {
+    int getBatchSize() const noexcept override {
         if (do_log_) {
             logger_.log_info("[calibrator] Calibrator::getBatchSize() { return " + std::to_string(batch_size_) + "; }");
         }
@@ -67,7 +67,7 @@ public:
     // array. The names array contains the names of the input tensors, and the position for each tensor 
     // in the bindings array matches the position of its name in the names array. Both arrays have size 
     // nbBindings.
-    bool getBatch(void* bindings[], const char* names[], int nbBindings) override { 
+    bool getBatch(void* bindings[], const char* names[], int nbBindings) noexcept override {
         if (do_log_) {
             std::ostringstream stream;
             stream << "[calibrator] Calibrator::getBatch(names=[";
@@ -108,19 +108,19 @@ public:
     // networks, 5000 images were used to find the optimal calibration. Since the calibration process 
     // will run many times varying only the regression and cutoff parameters, histogram caching is 
     // strongly recommended.
-    double getQuantile() const override { 
+    double getQuantile() const noexcept override {
         if (do_log_) {
             logger_.log_info("[calibrator] Calibrator::getQuantile() { return " + std::to_string(quantile_) + "; }");
         }
         return quantile_; 
     }
-    double getRegressionCutoff() const override { 
+    double getRegressionCutoff() const noexcept override {
         if (do_log_) {
             logger_.log_info("[calibrator] Calibrator::getRegressionCutoff() { return " + std::to_string(cutoff_) + "; }");
         }
         return cutoff_; 
     }
-    const void* readCalibrationCache(std::size_t& length/*output param*/) override {
+    const void* readCalibrationCache(std::size_t& length/*output param*/) noexcept override {
         if (do_log_) {
             logger_.log_info("[calibrator] Calibrator::readCalibrationCache()");
         }
@@ -131,13 +131,13 @@ public:
         }
         return static_cast<const void*>(calibration_cache_);
     }
-    void writeCalibrationCache(const void* ptr, std::size_t length) override {
+    void writeCalibrationCache(const void* ptr, std::size_t length) noexcept override {
         if (do_log_) {
             logger_.log_info("[calibrator] Calibrator::writeCalibrationCache(length=" + std::to_string(length) + ")");
         }
         fs_utils::write_data(get_cache_file("calibration"), ptr, length);
     }
-    const void* readHistogramCache(std::size_t& length/*output param*/) override { 
+    const void* readHistogramCache(std::size_t& length/*output param*/) noexcept override {
         if (do_log_) {
             logger_.log_info("[calibrator] Calibrator::readHistogramCache()");
         }
@@ -148,7 +148,7 @@ public:
         }
         return static_cast<const void*>(histogram_cache_);
     }
-    void writeHistogramCache(const void* ptr, std::size_t length) override { 
+    void writeHistogramCache(const void* ptr, std::size_t length) noexcept override {
         if (do_log_) {
             logger_.log_info("[calibrator] Calibrator::writeHistogramCache(length=" + std::to_string(length) + ")");
         }

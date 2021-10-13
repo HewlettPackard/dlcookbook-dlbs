@@ -69,14 +69,14 @@ public:
      * 
      * This call will block if a queue is empty.
      */
-    virtual T pop() throw (queue_closed) = 0;
+    virtual T pop() = 0;
     /**
      * @brief Adds one item to a queue.
      * @param item is the element to push inti the queue,
      * 
      * This call will block if a queue has limited capacity.
      */
-    virtual void push(const T& item) throw (queue_closed) = 0;
+    virtual void push(const T& item) = 0;
     /**
      * @brief Returns content of a queue once it's closed.
      */
@@ -103,8 +103,8 @@ public:
      * @param item is the item that will be returned by this queue.
      */
     explicit infinite_queue(const T& item) : abstract_queue<T>() { item_ = item; }
-    void push(const T& item) throw (queue_closed) override;
-    T pop() throw (queue_closed) override;
+    void push(const T& item) override;
+    T pop() override;
     void empty_queue(std::vector<T>& queue_content) override;
 };
 
@@ -119,8 +119,8 @@ private:
 public:
     explicit thread_safe_queue(const size_t max_size=0) : abstract_queue<T>(), max_size_(max_size) {}
 
-    void push(const T& item) throw (queue_closed) override;
-    T pop() throw (queue_closed) override;
+    void push(const T& item) override;
+    T pop() override;
     void empty_queue(std::vector<T>& queue_content) override;
 };
 

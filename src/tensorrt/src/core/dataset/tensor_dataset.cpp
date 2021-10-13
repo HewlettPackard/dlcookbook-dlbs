@@ -121,7 +121,7 @@ void tensor_dataset::prefetcher_func(tensor_dataset* myself,
             // How many images have we just loaded?
             num_images_in_batch += read_count / img_size;
         }
-    } catch(queue_closed) {
+    } catch(queue_closed const&) {
     }
     delete my_files;
     delete file_reader;

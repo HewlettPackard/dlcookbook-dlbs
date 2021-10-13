@@ -42,14 +42,16 @@ private:
         internal_error = 0,
         error = 1,
         warning = 2,
-        info = 3
+        info = 3,
+        verbose = 4
     };
 #if defined HAVE_NVINFER
     std::map<ILogger::Severity, severity> severity_transform_ = {
         {ILogger::Severity::kINTERNAL_ERROR, severity::internal_error},
         {ILogger::Severity::kERROR, severity::error},
         {ILogger::Severity::kWARNING, severity::warning},
-        {ILogger::Severity::kINFO, severity::info}
+        {ILogger::Severity::kINFO, severity::info},
+        {ILogger::Severity::kVERBOSE, severity::verbose}
     };
 #endif
 
@@ -66,6 +68,7 @@ public:
      * @param iter_index An index of the last iteration start
      * @param data_size Data size as number of instances for which individial \p times are reported. In
      * most cases this is the same as effective batch size.
+     * @param key_prefix Prefix for the key name (__results.{KEY_PREFIX}progress__)
      */
     void log_progress(const std::vector<float>& times, const int iter_index,
                       const int data_size, const std::string& key_prefix);
@@ -97,12 +100,13 @@ public:
     void log_bindings(nvinfer1::ICudaEngine* engine, const std::string& log_prefix);
     void log_bindings(nvinfer1::INetworkDefinition* network, const std::string& log_prefix);
 
-    void log(nvinfer1::ILogger::Severity the_severity, const char* msg) override { log_internal(severity_transform_[the_severity], msg); }
+    void log(nvinfer1::ILogger::Severity the_severity, const char* msg) noexcept override { log_internal(severity_transform_[the_severity], msg); }
 #endif
     template <typename T> void log_internal_error(const T& msg) { log_internal(severity::internal_error, msg); }
     template <typename T> void log_error(const T& msg) { log_internal(severity::error, msg); }
     template <typename T> void log_warning(const T& msg) { log_internal(severity::warning, msg); }
     template <typename T> void log_info(const T& msg) { log_internal(severity::info, msg); }
+    template <typename T> void log_verbose(const T& msg) { log_internal(severity::verbose, msg); }
 private:
     template <typename T>
     void log_internal(severity the_severity, const T& msg) {
@@ -121,7 +125,8 @@ private:
         {severity::internal_error, "INTERNAL_ERROR"},
         {severity::error,          "         ERROR"},
         {severity::warning,        "       WARNING"},
-        {severity::info,           "          INFO"}
+        {severity::info,           "          INFO"},
+        {severity::verbose,        "       VERBOSE"}
     };
   
 };

@@ -17,17 +17,18 @@
 #ifndef DLBS_TENSORRT_BACKEND_CORE_UTILS
 #define DLBS_TENSORRT_BACKEND_CORE_UTILS
 
+#include <cmath>
 #include <memory>
 #include <exception>
 #include <vector>
 #include <iostream>
 #include <fstream>
 #include <algorithm>
-#include <dirent.h>
 #include <cstring>
+#include <chrono>
+#include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <chrono>
 #include <sys/stat.h>
 #include <semaphore.h>
 

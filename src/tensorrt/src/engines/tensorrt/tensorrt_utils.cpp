@@ -104,11 +104,6 @@ void tensorrt_utils::get_input_output_names(const std::string& me, logger_impl& 
     output_name = get_tensor_name(me, logger, output_names, "output", opts.output_name_);
 }
 
-/**
- * @brief Return number of elements in \p tensor.
- * @param tensor A pointer to a tensor object.
- * @return Number of elements in \p tensor.
- */
 size_t tensorrt_utils::get_tensor_size(INetworkDefinition* network, const std::string& tensor_name) {
     ITensor* tensor = get_tensor(network, tensor_name);
 #if NV_TENSORRT_MAJOR >= 3
@@ -148,7 +143,7 @@ ICudaEngine* tensorrt_utils::load_engine_from_file(const std::string& fname, log
     ICudaEngine* engine(nullptr);
     if (nbytes_read > 0 && data) {
         IRuntime *runtime = createInferRuntime(logger);
-        engine = runtime->deserializeCudaEngine(data, nbytes_read,nullptr);
+        engine = runtime->deserializeCudaEngine(data, nbytes_read);
         runtime->destroy();
         delete [] data;
     }

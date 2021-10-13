@@ -64,7 +64,7 @@ void fake_inference_engine::do_inference(abstract_queue<inference_msg*>& request
             msg->set_gpu(engine_id_);
             clock.restart();  response_queue.push(msg);                  submit.update(clock.ms_elapsed());
         }
-    } catch(queue_closed) {
+    } catch(queue_closed const&) {
     }
     logger_.log_info(fmt(
         "[inference engine %02d/%02d]: {fetch:%.5f}-->--{submit:%.5f}",

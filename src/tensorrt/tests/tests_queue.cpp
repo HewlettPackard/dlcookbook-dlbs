@@ -28,7 +28,7 @@ void client(abstract_queue<int>* queue, long& counter, bool is_provider, int sle
             counter ++;
             std::this_thread::sleep_for(std::chrono::milliseconds(sleep_milliseconds));
         }
-    } catch(queue_closed) {
+    } catch(queue_closed const&) {
     }
 }
 

@@ -21,7 +21,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <chrono>
+#include <functional>
 #include <thread>
+#include <random>
 #include <sstream>
 #include <algorithm>
 
@@ -361,11 +363,11 @@ void reader::allocate_if_needed(const size_t count) {
     }
 #else
     if (dtype_ == "float") {
-        throw "With unsigned char host data type files with SP32 elements are not supported.";
+        std::cout << "reader::allocate_if_needed(count=" << count << ")" << std::endl;
+        throw "Files with SP32 elements are not supported when host data type is set to unsigned char.";
     }
 #endif
 }
-
 
 // ---------------------------------------------------------------------------
 direct_reader::direct_reader(const std::string& dtype) : 
@@ -427,7 +429,7 @@ void direct_reader::close() {
 ssize_t direct_reader::read(host_dtype* dest, const size_t count) {
     // Number of elements preloaded from last read for this batch.
     const size_t nelements_preloaded = (buffer_offset_ == 0 ? 0 : block_sz_ - buffer_offset_);
-    // Number of elements to read. This number is 'aligned' on block_sz_ boundary. But it's length
+    // Number of elements to read. This number is 'aligned' on block_sz_ boundary. But its length
     // is not necesserily a multiple of block_sz_. Alignment here means that we either write into
     // buffer starting from 1st block (offset is 0), or starting from 2nd block (offset is block_sz_).
     const size_t nelements_to_read = count - nelements_preloaded;

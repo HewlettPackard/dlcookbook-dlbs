@@ -153,12 +153,16 @@ int main(int argc, char **argv) {
         logger.log_warning(me + "Computing resize dimensions assuming input data has shape [BatchSize, 3, H, W] where H == W.");
         data_opts.height_ = data_opts.width_ = std::sqrt(engine.input_size() / 3);
         if (data_opts.data_name_ == "images") {
+#if defined HAVE_OPENCV
             if (!environment::allow_image_dataset()) {
                 logger.log_warning(me + "Image dataset is disabled by default due to serious performance issues.");
                 logger.log_error(me + "If you really want to use it, provide the following env variable: DLBS_TENSORRT_ALLOW_IMAGE_DATASET=yes");
             }
             logger.log_warning(me + "Will use 'images' data set (found DLBS_TENSORRT_ALLOW_IMAGE_DATASET env variable). Expect bad performance due to unoptimized ingestion pipeline.");
             data = new image_dataset(data_opts, &infer_msg_pool, engine.request_queue(), logger);
+#else
+            throw "TensorRT benchmark tool was compiled without OpenCV which is required for 'images' dataset.";
+#endif
         } else {
             if (data_opts.data_name_ == "tensors1") {
                 logger.log_info(me + "Will use 'tensors1' data set");

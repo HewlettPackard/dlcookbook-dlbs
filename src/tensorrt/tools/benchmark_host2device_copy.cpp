@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
     benchmark(host_mem, device_mem, nbytes, num_warmup_batches, helper);
     const float throughput = benchmark(host_mem, device_mem, nbytes, num_batches, helper);
     std::string memory = (pinned ? "pinned" : "pageable");
-    std::cout << fmt("{\"gpu\": %d, \"warmup_iters\": %d, \"bench_iters\": %d, \"size_mb\": %d, \"memory\": \"%s\", \"throughput_mb_s\": %f}",
+    std::cout << fmt(":::DLBS_LOG {\"labels\": [\"host2device\"], \"time\": null, \"content\": {\"gpu\": %d, \"warmup_iters\": %d, \"bench_iters\": %d, \"size_mb\": %d, \"memory\": \"%s\", \"throughput_mb_s\": %f}}",
                      gpu, num_warmup_batches, num_batches, size, memory.c_str(), throughput) << std::endl;
     //
     cudaCheck(cudaFree(device_mem));

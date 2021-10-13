@@ -43,7 +43,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Release or Debug mode.")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
-message("Configuring TensorRT benchmark backend in ${CMAKE_BUILD_TYPE} mode.")
+message("Configuring TensorRT benchmark backend in '${CMAKE_BUILD_TYPE}' mode.")
 
 # https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#Warning-Options
 add_compile_options(-Wpedantic)              # Issue all the warnings demanded by strict ISO C and ISO C++ ...

@@ -97,7 +97,7 @@ INetworkDefinition* trt_parser<nvcaffeparser1::ICaffeParser>::parse() {
     logger_.log_info(me_ + " Creating network with Caffe parser (model: " + opts_.model_file_ + ")");
     parser_impl_ = nvcaffeparser1::createCaffeParser();
     const DataType data_type = str2dtype(opts_.dtype_);
-    INetworkDefinition* network = builder_->createNetwork();
+    INetworkDefinition* network = builder_->createNetworkV2(0);
     const nvcaffeparser1::IBlobNameToTensor* blob_name_to_tensor = parser_impl_->parse(
         opts_.model_file_.c_str(), // *.prototxt caffe model definition
         nullptr,       // if null, random weights?
@@ -123,7 +123,7 @@ template <>
 INetworkDefinition* trt_parser<nvonnxparser::IParser>::parse() {
     logger_.log_warning(me_ + " You are using a model in ONNX format. It's under active development and anything can happen, in particular, segmentation fault. Good luck!");
     logger_.log_info(me_ + " Creating network with ONNX parser. Model: " + opts_.model_file_ + ". Parser version: " + tensorrt_utils::onnx_parser_version() + ".");
-    INetworkDefinition* network = builder_->createNetwork();
+    INetworkDefinition* network = builder_->createNetworkV2(0);
     parser_impl_ = nvonnxparser::createParser(*network, logger_);
     if (!parser_impl_->parseFromFile(opts_.model_file_.c_str(), static_cast<int>(nvinfer1::ILogger::Severity::kWARNING))) {
         logger_.log_error("Failed to parse ONNX file.");
@@ -148,7 +148,7 @@ parser* parser::get_parser(const std::string& me, logger_impl& logger, const inf
         throw std::runtime_error(msg);
 #endif
     }
-    logger.log_error("Invalid model file. Only Caffe (.prototxt) and ONNX (.oxxn) formats are supported.");
+    logger.log_error("Invalid model file. Only Caffe (.prototxt) and ONNX (.onnx) formats are supported.");
     return nullptr; // To avoid compiler warning.
 }
 
@@ -192,37 +192,42 @@ tensorrt_inference_engine::tensorrt_inference_engine(const int engine_id, const 
     std::string input_name, output_name;
     if (!engine_) {
         timer clock;
-        const DataType data_type = parser::str2dtype(opts.dtype_);
         logger.log_info(me + " Creating inference builder");
-        IBuilder* builder = createInferBuilder(logger_);
+
         // Build model definition (from caffe's prototxt or onnx format)
+        IBuilder* builder = createInferBuilder(logger_);
+        builder->setMaxBatchSize(opts.batch_size_);
+
         parser* model_parser = parser::get_parser(me, logger, opts, builder);
         INetworkDefinition* network = model_parser->parse();
+
         // Log model's inputs/outputs and make sure we have the right names for tensors.
         logger.log_info(me + " Getting network bindings (from INetworkDefinition)");
         logger.log_bindings(network, me);
         tensorrt_utils::get_input_output_names(me, logger, network, opts, input_name, output_name);
+
         // Build the engine.
-        builder->setMaxBatchSize(opts.batch_size_);
-        builder->setMaxWorkspaceSize(1 << 30); 
+        IBuilderConfig *config = builder->createBuilderConfig();
+        config->setMaxWorkspaceSize(1 << 30);
+
         // Half and INT8 precision specific options
+        const DataType data_type = parser::str2dtype(opts.dtype_);
         if (data_type == DataType::kHALF) {
             logger.log_info(me + " Enabling FP16 mode");
-            builder->setHalf2Mode(true);
+            config->setFlag(BuilderFlag::kFP16);
         } else if (data_type == DataType::kINT8) {
             logger.log_info(me + " Enabling INT8 mode");
             calibrator_.setBatchSize(opts.batch_size_);
             // Allocate memory but before figure out the size of an input tensor.
             calibrator_.initialize(tensorrt_utils::get_tensor_size(network, input_name),
                                    10, opts.model_id_, opts.calibrator_cache_path_);
-
-            builder->setInt8Mode(true);
-            builder->setInt8Calibrator(&calibrator_);
+            config->setFlag(BuilderFlag::kINT8);
+            config->setInt8Calibrator(&calibrator_);
         } else {
             logger.log_info(me + " Enabling FP32 mode");
         }
         // This is where we need to use calibrator
-        engine_ = builder->buildCudaEngine(*network);
+        engine_ = builder->buildEngineWithConfig(*network, *config);
         // Destroy objects that we do not need anymore
         network->destroy();
         builder->destroy();
@@ -404,7 +409,7 @@ void tensorrt_inference_engine::do_inference(abstract_queue<inference_msg*> &req
             next_msg = nullptr;
             curr_batch_clock = next_batch_clock;
         }
-    }catch (queue_closed) {
+    }catch (queue_closed const&) {
     }
     helper.destroy();
     if (!overlap_copy_compute) {
@@ -460,7 +465,7 @@ void tensorrt_inference_engine::do_inference1(abstract_queue<inference_msg*> &re
             //
             clock.restart();  response_queue.push(msg);  submit.update(clock.ms_elapsed());
         }
-    }catch (queue_closed) {
+    }catch (queue_closed const&) {
     }
     logger_.log_info(fmt("%s: {fetch:%.5f}-->--[process:%.5f]-->--{submit:%.5f}", me.c_str(), fetch.value(), process.value(), submit.value()));
 }
