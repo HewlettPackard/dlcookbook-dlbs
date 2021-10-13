@@ -32,10 +32,38 @@ import re
 import subprocess
 import importlib
 import logging
+from datetime import datetime
 from multiprocessing import Process
 from multiprocessing import Queue
 from glob import glob
 from dlbs.exceptions import ConfigurationError
+
+
+class LogEvent(object):
+    @staticmethod
+    def is_dlbs_log(s):
+        return s.startswith(":::DLBS_LOG")
+
+    @staticmethod
+    def from_string(s):
+        if s.startswith(":::DLBS_LOG"):
+            try:
+                return LogEvent(**json.loads(s[11:]))
+            except (TypeError, json.decoder.JSONDecodeError):
+                print("Invalid DLBS_LOG record ", s)
+                raise
+        return None
+
+    def __init__(self, content, labels=None, time=None):
+        self.content = copy.deepcopy(content) if content else dict()
+        self.labels = labels or []
+        if isinstance(self.labels, str):
+            self.labels = [self.labels]
+        self.time = time if time is not None else datetime.utcnow()
+
+    def log(self):
+        event = dict(labels=self.labels, time=self.time.isoformat(), content=self.content)
+        print(':::DLBS_LOG ' + json.dumps(event))
 
 
 # 99% of the DLBS source code is written in Python2/Python3 compatible mode using only standard modules. Some parts
