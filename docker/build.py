@@ -247,7 +247,7 @@ class ImageBuilder(object):
             http_proxy=os.environ.get('http_proxy', None),
             https_proxy=os.environ.get('https_proxy', None)
         )
-        return ' '.join([f"--build-arg {k}={v}" for k, v in args.items() if v is not None])
+        return ' '.join([f"--build-arg {k}={v}" for k, v in args.items() if v])
 
     @staticmethod
     def get_framework_hook(build_context: t.Text, image: DockerImage, version: t.Text) -> BuildHook:
