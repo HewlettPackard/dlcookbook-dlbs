@@ -63,10 +63,16 @@
 #include <thread>
 
 #ifdef HAVE_OPENCV
-#include <opencv2/opencv.hpp>
-#define MAYBE_UNUSED
+    #include <opencv2/opencv.hpp>
+    // The `CV_MAJOR_VERSION` seems to be consistently defined in all versions (2.4/3.4/4.5).
+    #if CV_MAJOR_VERSION == 4
+        const auto LOAD_IMAGE_COLOR = cv::IMREAD_COLOR;
+    #else
+        const auto LOAD_IMAGE_COLOR = CV_LOAD_IMAGE_COLOR;
+    #endif
+    #define MAYBE_UNUSED
 #else
-#define MAYBE_UNUSED __attribute__((unused))
+    #define MAYBE_UNUSED __attribute__((unused))
 #endif
 
 namespace po = boost::program_options;
@@ -109,7 +115,7 @@ void convert(std::vector<std::string>& input_files, const std::string input_dir,
     
     while(my_files.has_next()) {
         const std::string file_name = my_files.next();
-        cv::Mat img = cv::imread(input_dir + file_name, CV_LOAD_IMAGE_COLOR);
+        cv::Mat img = cv::imread(input_dir + file_name, LOAD_IMAGE_COLOR);
         if (!img.data) {
             logger.log_warning(fmt("Thread %d: bad input file %s", int(my_shard), file_name.c_str()));
             continue;
