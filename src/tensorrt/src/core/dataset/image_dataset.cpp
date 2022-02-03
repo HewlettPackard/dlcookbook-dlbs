@@ -39,7 +39,7 @@ void image_dataset::prefetcher_func(image_dataset* myself,
                 msg = new prefetch_msg();
             }
         }
-    } catch(queue_closed) {
+    } catch(queue_closed const&) {
     }
     myself->logger_.log_info(fmt(
         "[prefetcher       %02d/%02d]: [load:%.5f]-->--{submit:%.5f}",
@@ -122,7 +122,7 @@ void image_dataset::decoder_func(image_dataset* myself, const int decoder_id, co
             }
             decode_time += clock.ms_elapsed();
         }
-    } catch(queue_closed) {
+    } catch(queue_closed const&) {
     }
     myself->logger_.log_info(fmt(
         "[decoder          %02d/%02d]: {fetch_requet:%.5f}-->--{fetch_images:%.5f}-->--[process:%.5f]-->--{submit:%.5f}",

@@ -8,7 +8,7 @@ set(HOST_DTYPE "INT8" CACHE STRING "Data type to use to store images in host OS 
 # Following preprocessor variables can be defined: HAVE_CUDA, HAVE_NVINFER, HAVE_OPENCV
 find_package(Boost REQUIRED COMPONENTS program_options)
 find_package(CUDA COMPONENTS cudart)
-find_package(OpenCV 2)
+find_package(OpenCV)
 find_package(Doxygen)
 
 # Find TensorRT library (libnvinfer.so). If found, also search for caffe and onnx parsers.
