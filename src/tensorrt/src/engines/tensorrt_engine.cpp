@@ -192,31 +192,33 @@ tensorrt_inference_engine::tensorrt_inference_engine(const int engine_id, const 
     std::string input_name, output_name;
     if (!engine_) {
         timer clock;
-        logger.log_info(me + " Creating inference builder");
 
         // Build model definition (from caffe's prototxt or onnx format)
+        logger.log_info(me + " Creating inference builder.");
         IBuilder* builder = createInferBuilder(logger_);
         builder->setMaxBatchSize(opts.batch_size_);
 
+        logger.log_info(me + " Parsing INetwork Definition.");
         parser* model_parser = parser::get_parser(me, logger, opts, builder);
         INetworkDefinition* network = model_parser->parse();
 
         // Log model's inputs/outputs and make sure we have the right names for tensors.
-        logger.log_info(me + " Getting network bindings (from INetworkDefinition)");
+        logger.log_info(me + " Getting network bindings (from INetworkDefinition).");
         logger.log_bindings(network, me);
         tensorrt_utils::get_input_output_names(me, logger, network, opts, input_name, output_name);
 
         // Build the engine.
+        logger.log_info(me + " Creating builder config.");
         IBuilderConfig *config = builder->createBuilderConfig();
         config->setMaxWorkspaceSize(1 << 30);
 
         // Half and INT8 precision specific options
         const DataType data_type = parser::str2dtype(opts.dtype_);
         if (data_type == DataType::kHALF) {
-            logger.log_info(me + " Enabling FP16 mode");
+            logger.log_info(me + " Enabling FP16 mode.");
             config->setFlag(BuilderFlag::kFP16);
         } else if (data_type == DataType::kINT8) {
-            logger.log_info(me + " Enabling INT8 mode");
+            logger.log_info(me + " Enabling INT8 mode.");
             calibrator_.setBatchSize(opts.batch_size_);
             // Allocate memory but before figure out the size of an input tensor.
             calibrator_.initialize(tensorrt_utils::get_tensor_size(network, input_name),
@@ -224,21 +226,24 @@ tensorrt_inference_engine::tensorrt_inference_engine(const int engine_id, const 
             config->setFlag(BuilderFlag::kINT8);
             config->setInt8Calibrator(&calibrator_);
         } else {
-            logger.log_info(me + " Enabling FP32 mode");
+            logger.log_info(me + " Enabling FP32 mode.");
         }
         // This is where we need to use calibrator
+        logger.log_info(me + " Building Engine With Config.");
         engine_ = builder->buildEngineWithConfig(*network, *config);
         // Destroy objects that we do not need anymore
-        network->destroy();
-        builder->destroy();
-        delete model_parser;
+        logger.log_info(me + " Calling 'network->destroy()'.");   network->destroy();
+        logger.log_info(me + " Calling 'builder->destroy()'.");   builder->destroy();
+        logger.log_info(me + " Calling 'delete model_parser'.");  delete model_parser;
         logger.log_info(me + " Cleaning buffers");
         if (data_type == DataType::kINT8) {
+            logger.log_info(me + " Freeing calibration memory.");
             calibrator_.freeCalibrationMemory();
         }
         logger_.log_info(fmt("%s Inference engine was created in %f seconds.", me.c_str(), (clock.ms_elapsed()/1000.0)));
         if (!engine_fname.empty()) {
             clock.restart();
+            logger.log_info(me + " Serializing inference engine to file.");
             tensorrt_utils::serialize_engine_to_file(engine_, engine_fname);
             logger_.log_info(fmt("%s Inference engine (model: '%s') was serialized to file (%s) in %f ms.",
                                  me.c_str(), opts.model_file_.c_str(), engine_fname.c_str(), clock.ms_elapsed()));
@@ -254,16 +259,18 @@ tensorrt_inference_engine::tensorrt_inference_engine(const int engine_id, const 
         // If these are empty, it means we have loaded the serialized engine. We do not need to
         // check bindings in this case, because we have already done so in previous runs, but just
         // in case this model came from somebody else.
-        logger.log_info(me + " Getting network bindings (from ICudaEngine)");
+        logger.log_info(me + " Getting network bindings (from ICudaEngine).");
         logger.log_bindings(engine_, me);
         tensorrt_utils::get_input_output_names(me, logger, engine_, opts, input_name, output_name);
     }
+    logger.log_info(me + " Getting final bindings, input and output indices.");
     bindings_.resize(static_cast<size_t>(engine_->getNbBindings()), nullptr);
     input_idx_ = static_cast<size_t>(engine_->getBindingIndex(input_name.c_str()));
     output_idx_ = static_cast<size_t>(engine_->getBindingIndex(output_name.c_str()));
     input_sz_ = tensorrt_utils::get_tensor_size(engine_, input_idx_),    // Number of elements in 'data' tensor.
     output_sz_ = tensorrt_utils::get_tensor_size(engine_, output_idx_);  // Number of elements in 'prob' tensor.
     cudaCheck(cudaSetDevice(prev_cuda_device));
+    logger.log_info(me + " Inference Engine has been created.");
 }
     
 tensorrt_inference_engine::~tensorrt_inference_engine() {
