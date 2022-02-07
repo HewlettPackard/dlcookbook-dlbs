@@ -27,7 +27,7 @@
 #define cudaCheck(ans) { cudaCheckf((ans), __FILE__, __LINE__); }
 inline void cudaCheckf(const cudaError_t code, const char *file, const int line, const bool abort=true) {
   if (code != cudaSuccess) {
-    fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+    fprintf(stderr,"[GPUassert] code = %d, message = \"%s\", location = %s:%d\n", code, cudaGetErrorString(code), file, line);
     if (abort) exit(code);
   }
 }

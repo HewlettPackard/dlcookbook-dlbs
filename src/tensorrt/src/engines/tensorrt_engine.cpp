@@ -137,18 +137,18 @@ parser* parser::get_parser(const std::string& me, logger_impl& logger, const inf
 #ifdef HAVE_CAFFE_PARSER
         return new trt_parser<nvcaffeparser1::ICaffeParser>(me, logger, opts, builder);
 #else
-        logger.log_error("No Caffe parser module was found with TensorRT.");
+        logger.log_error(me + " No Caffe parser module was found with TensorRT.");
 #endif
     } else if (ends_with(opts.model_file_, ".onnx")) {
 #ifdef HAVE_ONNX_PARSER
         return new trt_parser<nvonnxparser::IParser>(me, logger, opts, builder);
 #else
-        auto msg = fmt("TensorRT version 5 and above is required to load models in ONNX format. "\
-                       "Your TensorRT version is %d.%d.%d.", int(NV_TENSORRT_MAJOR), int(NV_TENSORRT_MINOR), int(NV_TENSORRT_PATCH));
+        auto msg = me + fmt(" TensorRT version 5 and above is required to load models in ONNX format. "\
+                            "Your TensorRT version is %d.%d.%d.", int(NV_TENSORRT_MAJOR), int(NV_TENSORRT_MINOR), int(NV_TENSORRT_PATCH));
         throw std::runtime_error(msg);
 #endif
     }
-    logger.log_error("Invalid model file. Only Caffe (.prototxt) and ONNX (.onnx) formats are supported.");
+    logger.log_error(me + " Invalid model file ('" + opts.model_file_ + "'). Only Caffe (.prototxt) and ONNX (.onnx) formats are supported.");
     return nullptr; // To avoid compiler warning.
 }
 
@@ -231,10 +231,14 @@ tensorrt_inference_engine::tensorrt_inference_engine(const int engine_id, const 
         // This is where we need to use calibrator
         logger.log_info(me + " Building Engine With Config.");
         engine_ = builder->buildEngineWithConfig(*network, *config);
-        // Destroy objects that we do not need anymore
+        // Destroy objects that we do not need anymore. Since API has changed, this needs some refactoring.
+        // Also, pay attention to the order this objects are being destroyed. For instance, when a model is
+        // in the ONNX format, the model_parser internally references `network`, and needs to be destroyed first.
+        logger.log_info(me + " Calling 'config->destroy()'.");    config->destroy();
+        logger.log_info(me + " Calling 'delete model_parser'.");  delete model_parser;
         logger.log_info(me + " Calling 'network->destroy()'.");   network->destroy();
         logger.log_info(me + " Calling 'builder->destroy()'.");   builder->destroy();
-        logger.log_info(me + " Calling 'delete model_parser'.");  delete model_parser;
+        
         logger.log_info(me + " Cleaning buffers");
         if (data_type == DataType::kINT8) {
             logger.log_info(me + " Freeing calibration memory.");

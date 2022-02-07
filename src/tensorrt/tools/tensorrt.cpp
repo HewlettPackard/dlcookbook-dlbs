@@ -42,6 +42,7 @@ int main(int argc, char **argv) {
 
 namespace po = boost::program_options;
 
+void print_cuda_driver_versions(const std::string& me, logger_impl& logger);
 void parse_command_line(int argc, char **argv,
                         po::options_description& opt_desc, po::variables_map& var_map,
                         inference_engine_opts& engine_opts, dataset_opts& data_opts,
@@ -106,6 +107,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     const std::string me = "[main                  ]: ";
+    print_cuda_driver_versions(me, logger);
     logger.log_info(me + "File format for cached models changed. It was: `resnet50_engine_float16_128.bin`, it is now: `resnet50_float16_128_v${MAJOR}.bin`. Please, clean your cache folder.");
     //
 #ifdef DEBUG_LOG
@@ -133,9 +135,12 @@ int main(int argc, char **argv) {
     // Create pool of inference engines. All inference engines will be listening to data queue
     // for new inference requests. All engines will be exactly the same - model, batch size etc.
     // There will be a 1:1 mapping between GPU and inference engines.
-    logger.log_info(me + "Creating multi-GPU inference engine");
+    logger.log_info(me + "Creating multi-GPU inference engine.");
     mgpu_inference_engine engine(engine_opts, logger);
     const size_t num_engines = engine.num_engines();
+    if (num_engines == 0) {
+        logger.log_error(me + "No inference engines have been created. Did you use --gpus=COMMA_SPARATED_LIST_OF_GPU_IDs CLI parameter (e.g., --gpus=0 or --gpus=0,1)?");
+    }
     // Create pool of available task request objects. These objects (infer_task) will be initialized
     // to store input/output tensors so there will be no need to do memory allocations during benchmark.
     const float est_mp_mem = static_cast<float>(engine_opts.inference_queue_size_*(8+4+4+4+engine.batch_size()*(engine.input_size()+engine.output_size()))) / (1024*1024);
@@ -273,6 +278,20 @@ int main(int argc, char **argv) {
     logger.log_final_results(tm_tracker.get_batch_times(), engine_opts.batch_size_*num_engines, "", !engine_opts.do_not_report_batch_times_);
     return 0;
 }
+
+
+void print_cuda_driver_versions(const std::string& me, logger_impl& logger) {
+    int cuda_runtime_version{-1}, cuda_driver_version{-1};
+#if HAVE_CUDA
+    // If there is a mismatch between CUDA runtime/driver versions, this code fails on the first 'cudaCheck' call with the message "CUDA driver version ...".
+    cudaCheck(cudaRuntimeGetVersion(&cuda_runtime_version));
+    cudaCheck(cudaDriverGetVersion(&cuda_driver_version));
+    logger.log_info(me + "CUDA version: " + std::to_string(cuda_runtime_version) + ",  Driver Version: " + std::to_string(cuda_driver_version) + ".");
+#else
+    logger.log_warning(me + "CUDA version: NA,  Driver Version: NA (no CUDA available)");
+#endif
+}
+
 
 void parse_command_line(int argc, char **argv,
                         boost::program_options::options_description& opt_desc, po::variables_map& var_map,
