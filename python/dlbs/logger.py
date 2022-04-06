@@ -17,19 +17,6 @@
 
 import sys
 import json
-# ----------------------------------------------------------------------------------------------------------------------
-# Ad hoc fix. This script may be called from launcher scripts where PYTHONPATH is not properly set.
-# TODO: Fix the above mentioned problem (as an example, see tensorflow_hpm.sh file).
-import os
-DLBS_PYTHON_ROOT = os.path.abspath(
-    os.path.join(
-        os.path.abspath(os.path.dirname(__file__)),
-        '..'
-    )
-)
-if DLBS_PYTHON_ROOT not in sys.path:
-    sys.path.insert(0, DLBS_PYTHON_ROOT)
-# ----------------------------------------------------------------------------------------------------------------------
 from dlbs.utils import DictUtils
 
 # Common model identifiers and their names. Will be moved to some other place.
