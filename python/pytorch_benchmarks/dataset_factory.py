@@ -173,7 +173,7 @@ class SyntheticDataLoader(object):
         data_shape = (opts['batch_size'],) + input_shape
         self.data = torch.randn(data_shape)
         self.labels = torch.from_numpy(
-            np.random.randint(0, num_classes, opts['batch_size']).astype(np.long)
+            np.random.randint(0, num_classes, opts['batch_size']).astype(np.int_)
         )
         self.prefetchable = True
         if opts['device'] == 'gpu':

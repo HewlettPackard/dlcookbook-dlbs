@@ -430,7 +430,7 @@ def _process_image_files(name, filenames, synsets, labels, humans,
   assert len(filenames) == len(bboxes)
 
   # Break all images into batches with a [ranges[i][0], ranges[i][1]].
-  spacing = np.linspace(0, len(filenames), FLAGS.num_threads + 1).astype(np.int)
+  spacing = np.linspace(0, len(filenames), FLAGS.num_threads + 1).astype(np.int_)
   ranges = []
   threads = []
   for i in range(len(spacing) - 1):
